@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import logo from '../assets/logo-techxl.png';
 
 export default function Login() {
-    const { loginWithMicrosoft } = useApp();
+    const { loginWithMicrosoft, loginAsFake } = useApp();
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -86,6 +86,36 @@ export default function Login() {
                     </svg>
                     {loading ? 'Redirecting...' : 'Sign in with Microsoft'}
                 </button>
+
+                <div style={{ marginTop: '24px', width: '100%', borderTop: '1px solid #eee', paddingTop: '16px' }}>
+                    <p style={{ textAlign: 'center', fontSize: '12px', color: '#888', marginBottom: '12px', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Developer Testing</p>
+                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                        <button 
+                            onClick={() => loginAsFake('hr')}
+                            style={{ flex: 1, padding: '8px', fontSize: '13px', backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer', color: '#334155', fontWeight: '500', transition: 'background-color 0.2s' }}
+                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#e2e8f0'}
+                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'}
+                        >
+                            HR
+                        </button>
+                        <button 
+                            onClick={() => loginAsFake('manager')}
+                            style={{ flex: 1, padding: '8px', fontSize: '13px', backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer', color: '#334155', fontWeight: '500', transition: 'background-color 0.2s' }}
+                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#e2e8f0'}
+                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'}
+                        >
+                            Manager
+                        </button>
+                        <button 
+                            onClick={() => loginAsFake('employee')}
+                            style={{ flex: 1, padding: '8px', fontSize: '13px', backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer', color: '#334155', fontWeight: '500', transition: 'background-color 0.2s' }}
+                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#e2e8f0'}
+                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'}
+                        >
+                            Employee
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     );

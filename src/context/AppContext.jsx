@@ -81,15 +81,27 @@ export function AppProvider({ children }) {
             deadline: g.deadline,
             status: g.status,
         })));
-        setSelfReviews((reviewsData || []).map(r => ({
-            id: r.id,
-            cycleId: r.cycle_id,
-            employeeId: r.employee_id,
-            summary: r.summary,
-            goalRatings: r.goal_ratings || {},
-            comments: r.comments,
-            submittedAt: r.submitted_at,
-        })));
+        setSelfReviews((reviewsData || []).map(r => {
+            let metadata = {};
+            try {
+                if (r.comments && r.comments.startsWith('{')) {
+                    metadata = JSON.parse(r.comments);
+                }
+            } catch (e) {
+                console.error("Failed to parse review metadata", e);
+            }
+
+            return {
+                id: r.id,
+                cycleId: r.cycle_id,
+                employeeId: r.employee_id,
+                summary: r.summary,
+                goalRatings: r.goal_ratings || {},
+                comments: metadata.comments || r.comments, // Fallback to raw if not JSON
+                metadata: metadata, // Store full metadata object
+                submittedAt: r.submitted_at,
+            };
+        }));
         setEvaluations((evalsData || []).map(e => ({
             id: e.id,
             cycleId: e.cycle_id,
@@ -120,6 +132,44 @@ export function AppProvider({ children }) {
 
         // Restore existing session on page refresh
         const init = async () => {
+            const fakeRole = localStorage.getItem('fake_session_role');
+            if (fakeRole && mounted) {
+                const fakeUsers = {
+                    'hr': { id: 'b065d8b6-fddf-4f21-a1d4-b26e23d40999', name: 'Surya Prabhakar Ganapathy Kannan', email: 'surya.p@techxle.com', role: 'hr', department: 'hr', avatar: 'SP', managerId: null },
+                    'manager': { id: 'b7e82aea-1d9e-4765-82e1-802f40adcb26', name: 'Haran Sinka', email: 'haran@techxle.com', role: 'manager', department: 'manager', avatar: 'HS', managerId: null },
+                    'employee': { id: '46342d06-791b-45e3-8ce2-a67eb322675c', name: 'Sreehari Palani', email: 'sreehari@techxle.com', role: 'employee', department: 'employee', avatar: 'SP', managerId: 'b7e82aea-1d9e-4765-82e1-802f40adcb26' }
+                };
+                if (fakeUsers[fakeRole]) {
+                    setCurrentUser(fakeUsers[fakeRole]);
+                    
+                    try {
+                        // Set fake users in state
+                        setUsers(Object.values(fakeUsers));
+
+                        // Load fake data from localStorage if exists, otherwise fallback to DB fetch
+                        const fakeCycles = localStorage.getItem('fake_cycles');
+                        if (fakeCycles) setCycles(JSON.parse(fakeCycles));
+                        
+                        const fakeGoals = localStorage.getItem('fake_goals');
+                        if (fakeGoals) setGoals(JSON.parse(fakeGoals));
+                        
+                        const fakeReviews = localStorage.getItem('fake_reviews');
+                        if (fakeReviews) setSelfReviews(JSON.parse(fakeReviews));
+                        
+                        const fakeEvals = localStorage.getItem('fake_evaluations');
+                        if (fakeEvals) setEvaluations(JSON.parse(fakeEvals));
+                        
+                        const fakeApprovals = localStorage.getItem('fake_approvals');
+                        if (fakeApprovals) setApprovals(JSON.parse(fakeApprovals));
+                    } catch (e) {
+                         console.error("Failed parsing fake local data", e);
+                    }
+                    
+                    if (mounted) setLoading(false);
+                    return;
+                }
+            }
+
             const { data: { session } } = await supabase.auth.getSession();
             if (session && mounted) {
                 let { data: profile } = await supabase
@@ -259,12 +309,83 @@ export function AppProvider({ children }) {
         } catch (err) {
             console.error("Logout error:", err);
         } finally {
+            localStorage.removeItem('fake_session_role');
             setCurrentUser(null);
         }
     };
 
+    const loginAsFake = async (role) => {
+        const fakeUsers = {
+            'hr': {
+                id: 'b065d8b6-fddf-4f21-a1d4-b26e23d40999',
+                name: 'Surya Prabhakar Ganapathy Kannan',
+                email: 'surya.p@techxle.com',
+                role: 'hr',
+                department: 'hr',
+                avatar: 'SP',
+                managerId: null
+            },
+            'manager': {
+                id: 'b7e82aea-1d9e-4765-82e1-802f40adcb26',
+                name: 'Haran Sinka',
+                email: 'haran@techxle.com',
+                role: 'manager',
+                department: 'manager',
+                avatar: 'HS',
+                managerId: null
+            },
+            'employee': {
+                id: '46342d06-791b-45e3-8ce2-a67eb322675c',
+                name: 'Sreehari Palani',
+                email: 'sreehari@techxle.com',
+                role: 'employee',
+                department: 'employee',
+                avatar: 'SP',
+                managerId: 'b7e82aea-1d9e-4765-82e1-802f40adcb26'
+            }
+        };
+        
+        const user = fakeUsers[role];
+        setCurrentUser(user);
+        
+        // Save fake session to localStorage so it persists on refresh
+        localStorage.setItem('fake_session_role', role);
+        
+        try {
+            // Set fake users in state
+            setUsers(Object.values(fakeUsers));
+
+            // Load fake data from localStorage if exists
+            const fakeCycles = localStorage.getItem('fake_cycles');
+            if (fakeCycles) setCycles(JSON.parse(fakeCycles));
+            
+            const fakeGoals = localStorage.getItem('fake_goals');
+            if (fakeGoals) setGoals(JSON.parse(fakeGoals));
+            
+            const fakeReviews = localStorage.getItem('fake_reviews');
+            if (fakeReviews) setSelfReviews(JSON.parse(fakeReviews));
+            
+            const fakeEvals = localStorage.getItem('fake_evaluations');
+            if (fakeEvals) setEvaluations(JSON.parse(fakeEvals));
+            
+            const fakeApprovals = localStorage.getItem('fake_approvals');
+            if (fakeApprovals) setApprovals(JSON.parse(fakeApprovals));
+            
+        } catch (e) {
+            console.error("Failed to parse local fake data.", e);
+        }
+        
+        return { success: true, user };
+    };
+
     // ──── Users CRUD (HR only — manages profiles) ────
     const addUser = async (user) => {
+        if (localStorage.getItem('fake_session_role')) {
+            const mapped = { id: crypto.randomUUID(), name: user.name, email: user.email, role: user.role, department: user.department, avatar: user.avatar, managerId: user.managerId || null };
+            setUsers(p => [...p, mapped]);
+            return mapped;
+        }
+
         // Create auth user first (requires service_role key in production — for demo we create profile only)
         const { data, error } = await supabase.from('profiles').insert({
             id: user.id, // Must be a valid auth.users UUID
@@ -284,27 +405,48 @@ export function AppProvider({ children }) {
     };
 
     const updateUser = async (id, updates) => {
+        if (localStorage.getItem('fake_session_role')) {
+            setUsers(p => p.map(u => u.id === id ? { ...u, ...updates } : u));
+            return;
+        }
+
         const dbUpdates = {};
         if (updates.name !== undefined) dbUpdates.name = updates.name;
         if (updates.email !== undefined) dbUpdates.email = updates.email;
         if (updates.role !== undefined) dbUpdates.role = updates.role;
         if (updates.department !== undefined) dbUpdates.department = updates.department;
         if (updates.avatar !== undefined) dbUpdates.avatar = updates.avatar;
-        if (updates.managerId !== undefined) dbUpdates.manager_id = updates.managerId;
+        if (updates.managerId !== undefined) dbUpdates.manager_id = updates.managerId || null;
 
         const { error } = await supabase.from('profiles').update(dbUpdates).eq('id', id);
+        if (error) console.error("Failed to update user profile in Supabase:", error.message);
         if (!error) {
-            setUsers(p => p.map(u => u.id === id ? { ...u, ...updates } : u));
+            setUsers(p => p.map(u => u.id === id ? { ...u, ...updates, managerId: updates.managerId || null } : u));
         }
     };
 
     const deleteUser = async (id) => {
+        if (localStorage.getItem('fake_session_role')) {
+            setUsers(p => p.filter(u => u.id !== id));
+            return;
+        }
+
         const { error } = await supabase.from('profiles').delete().eq('id', id);
         if (!error) setUsers(p => p.filter(u => u.id !== id));
     };
 
     // ──── Cycles CRUD ────
     const addCycle = async (cycle) => {
+        if (localStorage.getItem('fake_session_role')) {
+            const mapped = { id: crypto.randomUUID(), name: cycle.name, startDate: cycle.startDate, endDate: cycle.endDate, status: cycle.status || 'draft', createdBy: currentUser?.id };
+            setCycles(p => {
+                const updated = [...p, mapped];
+                localStorage.setItem('fake_cycles', JSON.stringify(updated));
+                return updated;
+            });
+            return mapped;
+        }
+
         const { data, error } = await supabase.from('cycles').insert({
             name: cycle.name,
             start_date: cycle.startDate,
@@ -325,6 +467,15 @@ export function AppProvider({ children }) {
     };
 
     const updateCycle = async (id, updates) => {
+        if (localStorage.getItem('fake_session_role')) {
+            setCycles(p => {
+                const updated = p.map(c => c.id === id ? { ...c, ...updates } : c);
+                localStorage.setItem('fake_cycles', JSON.stringify(updated));
+                return updated;
+            });
+            return;
+        }
+
         const dbUpdates = {};
         if (updates.name !== undefined) dbUpdates.name = updates.name;
         if (updates.startDate !== undefined) dbUpdates.start_date = updates.startDate;
@@ -336,19 +487,36 @@ export function AppProvider({ children }) {
     };
 
     const deleteCycle = async (id) => {
+        if (localStorage.getItem('fake_session_role')) {
+            setCycles(p => {
+                const updated = p.filter(c => c.id !== id);
+                localStorage.setItem('fake_cycles', JSON.stringify(updated));
+                return updated;
+            });
+            return;
+        }
+
         const { error } = await supabase.from('cycles').delete().eq('id', id);
         if (!error) setCycles(p => p.filter(c => c.id !== id));
     };
 
     // ──── Goals CRUD ────
     const addGoal = async (goal) => {
-        // If HR is assigning, we should ensure the goal carries the employee's managerId
-        // so the manager can see and evaluate it.
         let mId = goal.managerId || currentUser?.id;
 
         if (currentUser?.role === 'hr') {
             const emp = users.find(u => u.id === goal.employeeId);
             if (emp && emp.managerId) mId = emp.managerId;
+        }
+
+        if (localStorage.getItem('fake_session_role')) {
+            const mapped = { id: crypto.randomUUID(), cycleId: goal.cycleId, employeeId: goal.employeeId, managerId: mId, title: goal.title, description: goal.description, weightage: goal.weightage, deadline: goal.deadline, status: 'active' };
+            setGoals(p => {
+                const updated = [...p, mapped];
+                localStorage.setItem('fake_goals', JSON.stringify(updated));
+                return updated;
+            });
+            return mapped;
         }
 
         const { data, error } = await supabase.from('goals').insert({
@@ -373,6 +541,15 @@ export function AppProvider({ children }) {
         return null;
     };
     const updateGoal = async (id, updates) => {
+        if (localStorage.getItem('fake_session_role')) {
+            setGoals(p => {
+                const updated = p.map(g => g.id === id ? { ...g, ...updates } : g);
+                localStorage.setItem('fake_goals', JSON.stringify(updated));
+                return updated;
+            });
+            return;
+        }
+
         const dbUpdates = {};
         if (updates.title !== undefined) dbUpdates.title = updates.title;
         if (updates.description !== undefined) dbUpdates.description = updates.description;
@@ -385,6 +562,15 @@ export function AppProvider({ children }) {
     };
 
     const deleteGoal = async (id) => {
+        if (localStorage.getItem('fake_session_role')) {
+            setGoals(p => {
+                const updated = p.filter(g => g.id !== id);
+                localStorage.setItem('fake_goals', JSON.stringify(updated));
+                return updated;
+            });
+            return;
+        }
+
         const { error } = await supabase.from('goals').delete().eq('id', id);
         if (!error) setGoals(p => p.filter(g => g.id !== id));
     };
@@ -392,29 +578,67 @@ export function AppProvider({ children }) {
     // ──── Self Reviews ────
     const submitSelfReview = async (review) => {
         const existing = selfReviews.find(r => r.cycleId === review.cycleId && r.employeeId === review.employeeId);
+        
+        // Comprehensive metadata storage
+        const metadata = {
+            comments: review.comments,
+            progress: review.progress || {},
+            competencies: review.competencies || {},
+            feedback: review.feedback || '',
+            achievements: review.achievements || '',
+            learning: review.learning || ''
+        };
+        const packedComments = JSON.stringify(metadata);
+
+        if (localStorage.getItem('fake_session_role')) {
+            const mapped = { 
+                id: existing ? existing.id : crypto.randomUUID(), 
+                cycleId: review.cycleId, 
+                employeeId: review.employeeId, 
+                summary: review.summary, 
+                goalRatings: review.goalRatings, 
+                comments: review.comments,
+                metadata: metadata,
+                submittedAt: new Date().toISOString().split('T')[0] 
+            };
+            setSelfReviews(p => {
+                const updated = existing ? p.map(x => x.id === existing.id ? mapped : x) : [...p, mapped];
+                localStorage.setItem('fake_reviews', JSON.stringify(updated));
+                return updated;
+            });
+            return mapped;
+        }
+
         const payload = {
             cycle_id: review.cycleId,
             employee_id: review.employeeId,
             summary: review.summary,
             goal_ratings: review.goalRatings,
-            comments: review.comments,
-            submitted_at: new Date().toISOString().split('T')[0],
+            comments: packedComments,
+            submitted_at: new Date().toISOString()
         };
 
+        let result;
         if (existing) {
-            const { data, error } = await supabase.from('self_reviews').update(payload).eq('id', existing.id).select().single();
-            if (!error && data) {
-                const mapped = { id: data.id, cycleId: data.cycle_id, employeeId: data.employee_id, summary: data.summary, goalRatings: data.goal_ratings, comments: data.comments, submittedAt: data.submitted_at };
-                setSelfReviews(p => p.map(x => x.id === existing.id ? mapped : x));
-                return mapped;
-            }
+            result = await supabase.from('self_reviews').update(payload).eq('id', existing.id).select().single();
         } else {
-            const { data, error } = await supabase.from('self_reviews').insert(payload).select().single();
-            if (!error && data) {
-                const mapped = { id: data.id, cycleId: data.cycle_id, employeeId: data.employee_id, summary: data.summary, goalRatings: data.goal_ratings, comments: data.comments, submittedAt: data.submitted_at };
-                setSelfReviews(p => [...p, mapped]);
-                return mapped;
-            }
+            result = await supabase.from('self_reviews').insert(payload).select().single();
+        }
+
+        if (!result.error && result.data) {
+            const r = result.data;
+            const mapped = {
+                id: r.id,
+                cycleId: r.cycle_id,
+                employeeId: r.employee_id,
+                summary: r.summary,
+                goalRatings: r.goal_ratings,
+                comments: review.comments,
+                metadata: metadata,
+                submittedAt: r.submitted_at
+            };
+            setSelfReviews(p => existing ? p.map(x => x.id === existing.id ? mapped : x) : [...p, mapped]);
+            return mapped;
         }
         return null;
     };
@@ -422,6 +646,17 @@ export function AppProvider({ children }) {
     // ──── Evaluations ────
     const submitEvaluation = async (evaluation) => {
         const existing = evaluations.find(e => e.cycleId === evaluation.cycleId && e.employeeId === evaluation.employeeId);
+        
+        if (localStorage.getItem('fake_session_role')) {
+            const mapped = { id: existing ? existing.id : crypto.randomUUID(), cycleId: evaluation.cycleId, employeeId: evaluation.employeeId, managerId: currentUser?.id, goalRatings: evaluation.goalRatings || {}, workPerformanceRating: evaluation.workPerformanceRating, behavioralRating: evaluation.behavioralRating, feedback: evaluation.feedback, status: 'pending_approval', rejectionComment: null, submittedAt: new Date().toISOString().split('T')[0] };
+            setEvaluations(p => {
+                const updated = existing ? p.map(x => x.id === existing.id ? mapped : x) : [...p, mapped];
+                localStorage.setItem('fake_evaluations', JSON.stringify(updated));
+                return updated;
+            });
+            return mapped;
+        }
+
         const payload = {
             cycle_id: evaluation.cycleId,
             employee_id: evaluation.employeeId,
@@ -461,6 +696,20 @@ export function AppProvider({ children }) {
 
     // ──── Approvals ────
     const approveEvaluation = async (evalId, comment = '') => {
+        if (localStorage.getItem('fake_session_role')) {
+            setEvaluations(p => {
+                const updated = p.map(e => e.id === evalId ? { ...e, status: 'approved' } : e);
+                localStorage.setItem('fake_evaluations', JSON.stringify(updated));
+                return updated;
+            });
+            setApprovals(p => {
+                const updated = [...p, { evalId, approvedBy: currentUser?.id, comment, approvedAt: new Date().toISOString().split('T')[0] }];
+                localStorage.setItem('fake_approvals', JSON.stringify(updated));
+                return updated;
+            });
+            return;
+        }
+
         const { error: evalError } = await supabase.from('evaluations').update({ status: 'approved' }).eq('id', evalId);
         if (!evalError) {
             setEvaluations(p => p.map(e => e.id === evalId ? { ...e, status: 'approved' } : e));
@@ -478,6 +727,15 @@ export function AppProvider({ children }) {
     };
 
     const rejectEvaluation = async (evalId, comment = '') => {
+        if (localStorage.getItem('fake_session_role')) {
+            setEvaluations(p => {
+                const updated = p.map(e => e.id === evalId ? { ...e, status: 'rejected', rejectionComment: comment } : e);
+                localStorage.setItem('fake_evaluations', JSON.stringify(updated));
+                return updated;
+            });
+            return;
+        }
+
         const { error } = await supabase.from('evaluations').update({ status: 'rejected', rejection_comment: comment }).eq('id', evalId);
         if (!error) {
             setEvaluations(p => p.map(e => e.id === evalId ? { ...e, status: 'rejected', rejectionComment: comment } : e));
@@ -503,7 +761,7 @@ export function AppProvider({ children }) {
     return (
         <AppContext.Provider value={{
             currentUser, users, cycles, goals, selfReviews, evaluations, approvals,
-            login, loginWithMicrosoft, logout, register,
+            login, loginWithMicrosoft, logout, register, loginAsFake,
             addUser, updateUser, deleteUser,
             addCycle, updateCycle, deleteCycle,
             addGoal, updateGoal, deleteGoal,

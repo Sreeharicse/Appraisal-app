@@ -11,10 +11,9 @@ export default function HRGoals() {
 
     const activeCycles = cycles.filter(c => c.status === 'active');
 
-    React.useEffect(() => {
-        if (!selectedCycle && activeCycles.length > 0) setSelectedCycle(activeCycles[0].id);
-        if (!selectedEmp && users.length > 0) setSelectedEmp(users[0].id);
-    }, [activeCycles, users]);
+    // Initial load - don't force selection so "All Users" / "All Cycles" can work
+    // If we want a default, we should set it in useState initial value instead of a reactive effect
+    // that overrides user selection.
 
     const filteredGoals = goals.filter(g =>
         (!selectedCycle || g.cycleId === selectedCycle) &&
