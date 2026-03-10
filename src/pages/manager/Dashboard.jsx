@@ -1,9 +1,17 @@
+import React from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import NextStepsCard from '../../components/NextStepsCard';
 import Icons from '../../components/Icons';
 
 export default function ManagerDashboard() {
-    const { currentUser, getTeamEmployees, getActiveCycle, goals, evaluations, selfReviews } = useApp();
+    const navigate = useNavigate();
+    const { currentUser, getTeamEmployees, getActiveCycle, goals, evaluations, selfReviews, refreshData } = useApp();
+
+    React.useEffect(() => {
+        refreshData();
+    }, [refreshData]);
+
     const team = getTeamEmployees(currentUser.id);
     const cycle = getActiveCycle();
 
@@ -83,9 +91,9 @@ export default function ManagerDashboard() {
             <div className="table-container">
                 <div className="table-header"><h3>Team Status</h3></div>
                 <table>
-                    <thead><tr><th>Employee</th><th>Department</th><th>Goals</th><th>Self Review</th><th>Evaluated</th></tr></thead>
+                    <thead><tr><th>Employee</th><th>Department</th><th>Goals</th><th>Self Review</th><th>Evaluated</th><th>Action</th></tr></thead>
                     <tbody>
-                        {team.length === 0 && <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px' }}>No direct reports assigned to you.</td></tr>}
+                        {team.length === 0 && <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px' }}>No direct reports assigned to you.</td></tr>}
                         {team.map(emp => {
                             const empGoals = teamGoals.filter(g => g.employeeId === emp.id).length;
                             const hasReview = teamReviews.some(r => r.employeeId === emp.id);
@@ -102,6 +110,26 @@ export default function ManagerDashboard() {
                                     <td><span className="badge badge-blue">{empGoals} goals</span></td>
                                     <td><span className={`badge ${hasReview ? 'badge-green' : 'badge-gray'}`}>{hasReview ? '✓ Done' : <><Icons.Clock style={{ width: '12px', height: '12px', marginRight: '4px' }} /> Pending</>}</span></td>
                                     <td><span className={`badge ${hasEval ? 'badge-green' : 'badge-gray'}`}>{hasEval ? '✓ Done' : <><Icons.Clock style={{ width: '12px', height: '12px', marginRight: '4px' }} /> Pending</>}</span></td>
+                                    <td>
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                            <NavLink
+                                                to={`/manager/evaluate/${emp.id}`}
+                                                className="btn btn-primary"
+                                                style={{ padding: '4px 12px', fontSize: '12px' }}
+                                            >
+                                                {hasEval ? 'Update' : 'Evaluate'}
+                                            </NavLink>
+                                            {hasEval && (
+                                                <NavLink
+                                                    to="/manager/team-report"
+                                                    className="btn btn-secondary"
+                                                    style={{ padding: '4px 12px', fontSize: '12px' }}
+                                                >
+                                                    View
+                                                </NavLink>
+                                            )}
+                                        </div>
+                                    </td>
                                 </tr>
                             );
                         })}

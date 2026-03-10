@@ -37,6 +37,28 @@ export function AppProvider({ children }) {
 
     // ──── Fetch all data from Supabase ────
     const fetchAllData = useCallback(async () => {
+        if (localStorage.getItem('fake_session_role')) {
+            try {
+                const fakeCycles = localStorage.getItem('fake_cycles');
+                if (fakeCycles) setCycles(JSON.parse(fakeCycles));
+
+                const fakeGoals = localStorage.getItem('fake_goals');
+                if (fakeGoals) setGoals(JSON.parse(fakeGoals));
+
+                const fakeReviews = localStorage.getItem('fake_reviews');
+                if (fakeReviews) setSelfReviews(JSON.parse(fakeReviews));
+
+                const fakeEvals = localStorage.getItem('fake_evaluations');
+                if (fakeEvals) setEvaluations(JSON.parse(fakeEvals));
+
+                const fakeApprovals = localStorage.getItem('fake_approvals');
+                if (fakeApprovals) setApprovals(JSON.parse(fakeApprovals));
+            } catch (e) {
+                console.error("Failed to parse local fake data in refresh", e);
+            }
+            return;
+        }
+
         const [
             { data: profilesData },
             { data: cyclesData },
@@ -83,13 +105,14 @@ export function AppProvider({ children }) {
             status: g.status,
         })));
         setSelfReviews((reviewsData || []).map(r => {
-            let metadata = {};
+            let metadata = { status: 'draft' }; // Default status
             try {
                 if (r.comments && r.comments.startsWith('{')) {
                     metadata = JSON.parse(r.comments);
                 }
             } catch (e) {
                 console.error("Failed to parse review metadata", e);
+                // If parsing fails, metadata remains the default { status: 'draft' }
             }
 
             return {
@@ -101,21 +124,34 @@ export function AppProvider({ children }) {
                 comments: metadata.comments || r.comments, // Fallback to raw if not JSON
                 metadata: metadata, // Store full metadata object
                 submittedAt: r.submitted_at,
+                status: metadata.status || 'submitted' // Fallback for old ones
             };
         }));
-        setEvaluations((evalsData || []).map(e => ({
-            id: e.id,
-            cycleId: e.cycle_id,
-            employeeId: e.employee_id,
-            managerId: e.manager_id,
-            goalRatings: e.goal_ratings || {},
-            workPerformanceRating: e.work_performance_rating,
-            behavioralRating: e.behavioral_rating,
-            feedback: e.feedback,
-            status: e.status,
-            rejectionComment: e.rejection_comment,
-            submittedAt: e.submitted_at,
-        })));
+        setEvaluations((evalsData || []).map(e => {
+            let metadata = {};
+            try {
+                if (e.feedback && e.feedback.startsWith('{')) {
+                    metadata = JSON.parse(e.feedback);
+                }
+            } catch (err) {
+                console.error("Failed to parse evaluation metadata", err);
+            }
+
+            return {
+                id: e.id,
+                cycleId: e.cycle_id,
+                employeeId: e.employee_id,
+                managerId: e.manager_id,
+                goalRatings: e.goal_ratings || {},
+                workPerformanceRating: e.work_performance_rating,
+                behavioralRating: e.behavioral_rating,
+                feedback: metadata.feedback || e.feedback, // Fallback to raw if not JSON
+                metadata: metadata, // Store full metadata object (contains competencies)
+                status: e.status,
+                rejectionComment: e.rejection_comment,
+                submittedAt: e.submitted_at,
+            };
+        }));
         setApprovals((approvalsData || []).map(a => ({
             evalId: a.eval_id,
             approvedBy: a.approved_by,
@@ -142,7 +178,7 @@ export function AppProvider({ children }) {
                 };
                 if (fakeUsers[fakeRole]) {
                     setCurrentUser(fakeUsers[fakeRole]);
-                    
+
                     try {
                         // Set fake users in state
                         setUsers(Object.values(fakeUsers));
@@ -150,22 +186,22 @@ export function AppProvider({ children }) {
                         // Load fake data from localStorage if exists, otherwise fallback to DB fetch
                         const fakeCycles = localStorage.getItem('fake_cycles');
                         if (fakeCycles) setCycles(JSON.parse(fakeCycles));
-                        
+
                         const fakeGoals = localStorage.getItem('fake_goals');
                         if (fakeGoals) setGoals(JSON.parse(fakeGoals));
-                        
+
                         const fakeReviews = localStorage.getItem('fake_reviews');
                         if (fakeReviews) setSelfReviews(JSON.parse(fakeReviews));
-                        
+
                         const fakeEvals = localStorage.getItem('fake_evaluations');
                         if (fakeEvals) setEvaluations(JSON.parse(fakeEvals));
-                        
+
                         const fakeApprovals = localStorage.getItem('fake_approvals');
                         if (fakeApprovals) setApprovals(JSON.parse(fakeApprovals));
                     } catch (e) {
-                         console.error("Failed parsing fake local data", e);
+                        console.error("Failed parsing fake local data", e);
                     }
-                    
+
                     if (mounted) setLoading(false);
                     return;
                 }
@@ -194,7 +230,7 @@ export function AppProvider({ children }) {
                             .from('profiles')
                             .update({ id: session.user.id })
                             .eq('email', session.user.email);
-                        
+
                         if (!linkError) {
                             profile = { ...existingProfile, id: session.user.id };
                         } else {
@@ -377,13 +413,13 @@ export function AppProvider({ children }) {
                 managerId: 'b7e82aea-1d9e-4765-82e1-802f40adcb26'
             }
         };
-        
+
         const user = fakeUsers[role];
         setCurrentUser(user);
-        
+
         // Save fake session to localStorage so it persists on refresh
         localStorage.setItem('fake_session_role', role);
-        
+
         try {
             // Set fake users in state
             setUsers(Object.values(fakeUsers));
@@ -391,23 +427,23 @@ export function AppProvider({ children }) {
             // Load fake data from localStorage if exists
             const fakeCycles = localStorage.getItem('fake_cycles');
             if (fakeCycles) setCycles(JSON.parse(fakeCycles));
-            
+
             const fakeGoals = localStorage.getItem('fake_goals');
             if (fakeGoals) setGoals(JSON.parse(fakeGoals));
-            
+
             const fakeReviews = localStorage.getItem('fake_reviews');
             if (fakeReviews) setSelfReviews(JSON.parse(fakeReviews));
-            
+
             const fakeEvals = localStorage.getItem('fake_evaluations');
             if (fakeEvals) setEvaluations(JSON.parse(fakeEvals));
-            
+
             const fakeApprovals = localStorage.getItem('fake_approvals');
             if (fakeApprovals) setApprovals(JSON.parse(fakeApprovals));
-            
+
         } catch (e) {
             console.error("Failed to parse local fake data.", e);
         }
-        
+
         return { success: true, user };
     };
 
@@ -432,18 +468,18 @@ export function AppProvider({ children }) {
             console.warn("Supabase insert failed (possibly due to RLS/Auth):", error.message);
         }
 
-        const result = data ? { 
-            id: data.id, 
-            name: data.name, 
-            email: data.email, 
-            role: data.role, 
-            department: data.department, 
-            avatar: data.avatar, 
-            managerId: data.manager_id 
-        } : { 
-            ...user, 
-            id: tempId, 
-            managerId: user.managerId || null 
+        const result = data ? {
+            id: data.id,
+            name: data.name,
+            email: data.email,
+            role: data.role,
+            department: data.department,
+            avatar: data.avatar,
+            managerId: data.manager_id
+        } : {
+            ...user,
+            id: tempId,
+            managerId: user.managerId || null
         };
 
         setUsers(p => [...p, result]);
@@ -460,7 +496,7 @@ export function AppProvider({ children }) {
         if (updates.managerId !== undefined) dbUpdates.manager_id = updates.managerId || null;
 
         const { error } = await supabase.from('profiles').update(dbUpdates).eq('id', id);
-        
+
         if (error) {
             console.warn("Supabase update failed:", error.message);
         }
@@ -621,7 +657,7 @@ export function AppProvider({ children }) {
     // ──── Self Reviews ────
     const submitSelfReview = async (review) => {
         const existing = selfReviews.find(r => r.cycleId === review.cycleId && r.employeeId === review.employeeId);
-        
+
         // Comprehensive metadata storage
         const metadata = {
             comments: review.comments,
@@ -629,20 +665,21 @@ export function AppProvider({ children }) {
             competencies: review.competencies || {},
             feedback: review.feedback || '',
             achievements: review.achievements || '',
-            learning: review.learning || ''
+            learning: review.learning || '',
+            status: review.status || 'draft'
         };
         const packedComments = JSON.stringify(metadata);
 
         if (localStorage.getItem('fake_session_role')) {
-            const mapped = { 
-                id: existing ? existing.id : crypto.randomUUID(), 
-                cycleId: review.cycleId, 
-                employeeId: review.employeeId, 
-                summary: review.summary, 
-                goalRatings: review.goalRatings, 
+            const mapped = {
+                id: existing ? existing.id : crypto.randomUUID(),
+                cycleId: review.cycleId,
+                employeeId: review.employeeId,
+                summary: review.summary,
+                goalRatings: review.goalRatings,
                 comments: review.comments,
                 metadata: metadata,
-                submittedAt: new Date().toISOString().split('T')[0] 
+                submittedAt: new Date().toISOString().split('T')[0]
             };
             setSelfReviews(p => {
                 const updated = existing ? p.map(x => x.id === existing.id ? mapped : x) : [...p, mapped];
@@ -689,9 +726,28 @@ export function AppProvider({ children }) {
     // ──── Evaluations ────
     const submitEvaluation = async (evaluation) => {
         const existing = evaluations.find(e => e.cycleId === evaluation.cycleId && e.employeeId === evaluation.employeeId);
-        
+
+        const metadata = {
+            feedback: evaluation.feedback,
+            competencies: evaluation.competencies || {}
+        };
+        const packedFeedback = JSON.stringify(metadata);
+
         if (localStorage.getItem('fake_session_role')) {
-            const mapped = { id: existing ? existing.id : crypto.randomUUID(), cycleId: evaluation.cycleId, employeeId: evaluation.employeeId, managerId: currentUser?.id, goalRatings: evaluation.goalRatings || {}, workPerformanceRating: evaluation.workPerformanceRating, behavioralRating: evaluation.behavioralRating, feedback: evaluation.feedback, status: 'pending_approval', rejectionComment: null, submittedAt: new Date().toISOString().split('T')[0] };
+            const mapped = {
+                id: existing ? existing.id : crypto.randomUUID(),
+                cycleId: evaluation.cycleId,
+                employeeId: evaluation.employeeId,
+                managerId: currentUser?.id,
+                goalRatings: evaluation.goalRatings || {},
+                workPerformanceRating: evaluation.workPerformanceRating,
+                behavioralRating: evaluation.behavioralRating,
+                feedback: evaluation.feedback,
+                metadata: metadata,
+                status: 'pending_approval',
+                rejectionComment: null,
+                submittedAt: new Date().toISOString().split('T')[0]
+            };
             setEvaluations(p => {
                 const updated = existing ? p.map(x => x.id === existing.id ? mapped : x) : [...p, mapped];
                 localStorage.setItem('fake_evaluations', JSON.stringify(updated));
@@ -707,7 +763,7 @@ export function AppProvider({ children }) {
             goal_ratings: evaluation.goalRatings,
             work_performance_rating: evaluation.workPerformanceRating,
             behavioral_rating: evaluation.behavioralRating,
-            feedback: evaluation.feedback,
+            feedback: packedFeedback,
             status: 'pending_approval',
             submitted_at: new Date().toISOString().split('T')[0],
         };
@@ -726,7 +782,21 @@ export function AppProvider({ children }) {
             return null;
         }
         if (data) {
-            const mapped = { id: data.id, cycleId: data.cycle_id, employeeId: data.employee_id, managerId: data.manager_id, goalRatings: data.goal_ratings || {}, workPerformanceRating: data.work_performance_rating, behavioralRating: data.behavioral_rating, feedback: data.feedback, status: data.status, rejectionComment: data.rejection_comment, submittedAt: data.submitted_at };
+            const metadata = data.feedback && data.feedback.startsWith('{') ? JSON.parse(data.feedback) : {};
+            const mapped = {
+                id: data.id,
+                cycleId: data.cycle_id,
+                employeeId: data.employee_id,
+                managerId: data.manager_id,
+                goalRatings: data.goal_ratings || {},
+                workPerformanceRating: data.work_performance_rating,
+                behavioralRating: data.behavioral_rating,
+                feedback: metadata.feedback || data.feedback,
+                metadata: metadata,
+                status: data.status,
+                rejectionComment: data.rejection_comment,
+                submittedAt: data.submitted_at
+            };
             if (existing) {
                 setEvaluations(p => p.map(x => x.id === existing.id ? mapped : x));
             } else {
@@ -788,10 +858,10 @@ export function AppProvider({ children }) {
     // ──── Helpers (pure, not async — use local state) ────
     const getActiveCycle = () => cycles.find(c => c.status === 'active');
     const getUserById = (id) => users.find(u => u.id === id);
-    const getGoalsForEmployee = (empId, cycleId) => goals.filter(g => g.employeeId === empId && g.cycleId === cycleId);
-    const getTeamEmployees = (managerId) => users.filter(u => u.managerId === managerId);
-    const getSelfReview = (empId, cycleId) => selfReviews.find(r => r.employeeId === empId && r.cycleId === cycleId);
-    const getEvaluation = (empId, cycleId) => evaluations.find(e => e.employeeId === empId && e.cycleId === cycleId);
+    const getGoalsForEmployee = (empId, cycleId) => goals.filter(g => String(g.employeeId) === String(empId) && String(g.cycleId) === String(cycleId));
+    const getTeamEmployees = (managerId) => users.filter(u => String(u.managerId) === String(managerId));
+    const getSelfReview = (empId, cycleId) => selfReviews.find(r => String(r.employeeId) === String(empId) && String(r.cycleId) === String(cycleId));
+    const getEvaluation = (empId, cycleId) => evaluations.find(e => String(e.employeeId) === String(empId) && String(e.cycleId) === String(cycleId));
     const getScore = (empId, cycleId) => {
         const ev = getEvaluation(empId, cycleId);
         if (!ev) return null;
@@ -809,7 +879,7 @@ export function AppProvider({ children }) {
             addCycle, updateCycle, deleteCycle,
             addGoal, updateGoal, deleteGoal,
             submitSelfReview, submitEvaluation,
-            theme, toggleTheme,
+            theme, toggleTheme, refreshData: fetchAllData,
             approveEvaluation, rejectEvaluation,
             getActiveCycle, getUserById, getGoalsForEmployee,
             getTeamEmployees, getSelfReview, getEvaluation, getScore,

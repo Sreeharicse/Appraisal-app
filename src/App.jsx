@@ -23,12 +23,21 @@ import EmployeeDashboard from './pages/employee/Dashboard';
 import EmployeeGoals from './pages/employee/Goals';
 import SelfReview from './pages/employee/SelfReview';
 import Results from './pages/employee/Results';
+import CycleDetail from './pages/employee/CycleDetail';
 import WireframeMockup from './pages/WireframeMockup';
 
 function ProtectedRoute({ children, allowedRoles }) {
   const { currentUser } = useApp();
   if (!currentUser) return <Navigate to="/login" replace />;
-  if (allowedRoles && !allowedRoles.includes(currentUser.role)) {
+
+  const isAllowed = (role) => {
+    if (role === 'admin') return true;
+    if (allowedRoles.includes(role)) return true;
+    if (role === 'manager' && allowedRoles.includes('employee')) return true;
+    return false;
+  };
+
+  if (allowedRoles && !isAllowed(currentUser.role)) {
     if (currentUser.role === 'hr') return <Navigate to="/hr" replace />;
     if (currentUser.role === 'manager') return <Navigate to="/manager" replace />;
     return <Navigate to="/employee" replace />;
@@ -67,10 +76,12 @@ function AppRoutes() {
       <Route path="/manager" element={<ProtectedRoute allowedRoles={['manager']}><Layout><ManagerDashboard /></Layout></ProtectedRoute>} />
       <Route path="/manager/goals" element={<ProtectedRoute allowedRoles={['manager']}><Layout><Goals /></Layout></ProtectedRoute>} />
       <Route path="/manager/evaluate" element={<ProtectedRoute allowedRoles={['manager']}><Layout><Evaluate /></Layout></ProtectedRoute>} />
+      <Route path="/manager/evaluate/:employeeId" element={<ProtectedRoute allowedRoles={['manager']}><Layout><Evaluate /></Layout></ProtectedRoute>} />
       <Route path="/manager/team-report" element={<ProtectedRoute allowedRoles={['manager']}><Layout><TeamReport /></Layout></ProtectedRoute>} />
 
       {/* Employee Routes */}
       <Route path="/employee" element={<ProtectedRoute allowedRoles={['employee']}><Layout><EmployeeDashboard /></Layout></ProtectedRoute>} />
+      <Route path="/employee/cycle/:cycleId" element={<ProtectedRoute allowedRoles={['employee']}><Layout><CycleDetail /></Layout></ProtectedRoute>} />
       <Route path="/employee/goals" element={<ProtectedRoute allowedRoles={['employee']}><Layout><EmployeeGoals /></Layout></ProtectedRoute>} />
       <Route path="/employee/self-review" element={<ProtectedRoute allowedRoles={['employee']}><Layout><SelfReview /></Layout></ProtectedRoute>} />
       <Route path="/employee/results" element={<ProtectedRoute allowedRoles={['employee']}><Layout><Results /></Layout></ProtectedRoute>} />

@@ -1,146 +1,110 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import NextStepsCard from '../../components/NextStepsCard';
 import Icons from '../../components/Icons';
 
 export default function EmployeeDashboard() {
-    const { currentUser, cycles, getGoalsForEmployee, getSelfReview, getEvaluation, getScore } = useApp();
-    const activeCycles = cycles.filter(c => c.status === 'active');
-    const [selectedCycleId, setSelectedCycleId] = useState('');
+    const { cycles } = useApp();
+    const navigate = useNavigate();
 
-    useEffect(() => {
-        if (!selectedCycleId && activeCycles.length > 0) {
-            setSelectedCycleId(activeCycles[0].id);
+    const getStatusBadge = (status) => {
+        switch (status) {
+            case 'active': return 'badge-blue';
+            case 'completed': return 'badge-green';
+            case 'draft': return 'badge-gray';
+            default: return 'badge-gray';
         }
-    }, [activeCycles, selectedCycleId]);
-
-    const cycle = cycles.find(c => c.id === selectedCycleId);
-    const goals = selectedCycleId ? getGoalsForEmployee(currentUser.id, selectedCycleId) : [];
-    const selfReview = selectedCycleId ? getSelfReview(currentUser.id, selectedCycleId) : null;
-    const evaluation = selectedCycleId ? getEvaluation(currentUser.id, selectedCycleId) : null;
-    const scoreData = selectedCycleId ? getScore(currentUser.id, selectedCycleId) : null;
-
-    const getNextStep = () => {
-        if (!selectedCycleId) return { title: 'Select a Project', description: 'Please select an appraisal project/cycle to view your status.', actionPath: null, statusType: 'waiting' };
-        if (goals.length === 0) return { title: 'Waiting for Goals', description: 'Your manager needs to assign goals for this cycle before you can proceed.', actionPath: null, statusType: 'waiting' };
-        if (!selfReview) return { title: 'Complete Self-Review', description: 'Goals are assigned! It is time to reflect on your performance and submit your self-review.', actionPath: '/employee/self-review', actionLabel: 'Start Self-Review', statusType: 'pending' };
-        if (!evaluation) return { title: 'Awaiting Manager Evaluation', description: 'Your self-review is submitted. Your manager will evaluate your performance soon.', actionPath: null, statusType: 'waiting' };
-        if (evaluation.status === 'pending_approval') return { title: 'Awaiting HR Approval', description: 'Your manager has submitted the evaluation. It is now pending final approval from HR.', actionPath: null, statusType: 'waiting' };
-        return { title: 'Check Your Results', description: 'Your appraisal is complete! You can now view your final score and feedback.', actionPath: '/employee/results', actionLabel: 'View Results', statusType: 'complete' };
     };
-
-    const nextStep = getNextStep();
-
-    const statusSteps = [
-        { label: 'Goals Assigned', done: goals.length > 0 },
-        { label: 'Self Review', done: !!selfReview },
-        { label: 'Manager Eval', done: !!evaluation },
-        { label: 'HR Approved', done: evaluation?.status === 'approved' },
-    ];
 
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
             <div className="section-header">
                 <div>
-                    <h2 className="section-title">My Dashboard</h2>
-                    <p className="section-subtitle">Your appraisal status and progress</p>
-                </div>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                    <select className="form-select" value={selectedCycleId} onChange={e => setSelectedCycleId(e.target.value)} style={{ width: '220px' }}>
-                        {activeCycles.map(c => (
-                            <option key={c.id} value={c.id}>{c.name}</option>
-                        ))}
-                    </select>
+                    <h2 className="section-title">My Appraisal Cycles</h2>
+                    <p className="section-subtitle">View and manage your performance reviews across different periods</p>
                 </div>
             </div>
 
-            <NextStepsCard {...nextStep} />
+            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                <table className="table">
+                    <thead>
+                        <tr>
+                            <th>Cycle Name</th>
+                            <th>Period</th>
+                            <th>Status</th>
+                            <th style={{ textAlign: 'right' }}>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {cycles.length > 0 ? (
+                            cycles.map(cycle => (
+                                <tr key={cycle.id} onClick={() => navigate(`/employee/cycle/${cycle.id}`)} style={{ cursor: 'pointer' }}>
+                                    <td>
+                                        <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{cycle.name}</div>
+                                    </td>
+                                    <td>
+                                        <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                                            {new Date(cycle.startDate).toLocaleDateString()} - {new Date(cycle.endDate).toLocaleDateString()}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span className={`badge ${getStatusBadge(cycle.status)}`} style={{ textTransform: 'capitalize' }}>
+                                            {cycle.status}
+                                        </span>
+                                    </td>
+                                    <td style={{ textAlign: 'right' }}>
+                                        <button
+                                            className="btn btn-outline btn-sm"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                navigate(`/employee/cycle/${cycle.id}`);
+                                            }}
+                                        >
+                                            View Details
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))
+                        ) : (
+                            <tr>
+                                <td colSpan="4" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
+                                    No appraisal cycles found.
+                                </td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
 
-            {/* Progress */}
-            <div className="card" style={{ marginBottom: '24px' }}>
-                <div className="card-title" style={{ marginBottom: '20px', color: 'var(--text-primary)' }}>Appraisal Journey</div>
-                <div className="workflow-steps">
-                    {statusSteps.map((step, i) => (
-                        <React.Fragment key={i}>
-                            <div className="workflow-step">
-                                <div className={`step-dot ${step.done ? 'completed' : ''}`}>
-                                    {step.done ? '✓' : i + 1}
-                                </div>
-                                <div className="step-label" style={{ fontWeight: step.done ? 600 : 400 }}>{step.label}</div>
+            {/* Quick Tips or Info */}
+            <div style={{ marginTop: '24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+                <div className="card" style={{ background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.1) 0%, rgba(124, 58, 237, 0.05) 100%)', border: '1px solid rgba(124, 58, 237, 0.2)' }}>
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                        <div style={{ padding: '8px', background: 'var(--bg-card)', borderRadius: '8px', color: '#7c3aed' }}>
+                            <Icons.FileText />
+                        </div>
+                        <div>
+                            <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>Submission Tip</div>
+                            <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+                                Always complete your self-review before the deadline to ensure your manager has enough time for evaluation.
                             </div>
-                            {i < statusSteps.length - 1 && (
-                                <div className={`step-connector ${statusSteps[i + 1]?.done ? 'completed' : ''}`} />
-                            )}
-                        </React.Fragment>
-                    ))}
-                </div>
-            </div>
-
-            <div className="kpi-grid" style={{ marginBottom: '24px' }}>
-                <div className="kpi-card" style={{ '--accent-color': '#7c3aed' }}>
-                    <div className="kpi-icon"><Icons.Target /></div>
-                    <div className="kpi-label">Goals Assigned</div>
-                    <div className="kpi-value">{goals.length}</div>
-                    <div className="kpi-change">for this cycle</div>
-                </div>
-                <div className="kpi-card" style={{ '--accent-color': selfReview ? '#10b981' : '#f59e0b' }}>
-                    <div className="kpi-icon">{selfReview ? <Icons.Check /> : <Icons.FileText />}</div>
-                    <div className="kpi-label">Self Review</div>
-                    <div className="kpi-value" style={{ fontSize: '20px', marginTop: '4px' }}>{selfReview ? 'Submitted' : 'Pending'}</div>
-                    <div className="kpi-change">{selfReview ? `on ${new Date(selfReview.submittedAt).toLocaleDateString()}` : 'action required'}</div>
-                </div>
-                <div className="kpi-card" style={{ '--accent-color': evaluation?.status === 'approved' ? '#10b981' : '#06b6d4' }}>
-                    <div className="kpi-icon"><Icons.Star /></div>
-                    <div className="kpi-label">Evaluation Status</div>
-                    <div className="kpi-value" style={{ fontSize: '18px', marginTop: '4px' }}>
-                        {evaluation ? evaluation.status.replace('_', ' ') : 'Awaiting'}
+                        </div>
                     </div>
-                    <div className="kpi-change">by your manager</div>
                 </div>
-                <div className="kpi-card" style={{ '--accent-color': scoreData ? '#f59e0b' : '#64748b' }}>
-                    <div className="kpi-icon"><Icons.Trophy /></div>
-                    <div className="kpi-label">My Score</div>
-                    <div className="kpi-value">{scoreData ? scoreData.score : '—'}</div>
-                    <div className="kpi-change">{scoreData ? scoreData.category.label : 'not yet available'}</div>
-                </div>
-            </div>
-
-            {/* Action alerts */}
-            {!selfReview && goals.length > 0 && (
-                <div className="alert alert-warning" style={{ borderRadius: '12px' }}>
-                    <Icons.FileText style={{ width: '20px', height: '20px' }} />
-                    <span>Your self-review is pending! Please submit it from the <b>Self Review</b> page.</span>
-                </div>
-            )}
-            {scoreData && (
-                <div className="alert alert-success" style={{ borderRadius: '12px' }}>
-                    <Icons.Trophy style={{ width: '20px', height: '20px' }} />
-                    <span>Your evaluation is complete! Check your results on the <b>My Results</b> page.</span>
-                </div>
-            )}
-
-            {/* Goals preview */}
-            {goals.length > 0 && (
-                <div className="card">
-                    <div className="card-title" style={{ marginBottom: '16px', color: 'var(--text-primary)', borderBottom: '1px solid var(--border)', paddingBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Icons.Target /> My Goals (Quick View)
-                    </div>
-                    <div style={{ display: 'grid', gap: '2px' }}>
-                        {goals.map(g => (
-                            <div key={g.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0', borderBottom: '1px solid var(--border)' }}>
-                                <div>
-                                    <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-primary)' }}>{g.title}</div>
-                                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>{g.description.slice(0, 100)}{g.description.length > 100 ? '...' : ''}</div>
-                                </div>
-                                <div style={{ display: 'flex', gap: '8px', flexShrink: 0, marginLeft: '20px' }}>
-                                    <span className="badge badge-purple" style={{ borderRadius: '6px' }}>{g.weightage}%</span>
-                                    <span className="badge badge-gray" style={{ borderRadius: '6px' }}>{g.deadline}</span>
-                                </div>
+                <div className="card" style={{ background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                        <div style={{ padding: '8px', background: 'var(--bg-card)', borderRadius: '8px', color: '#10b981' }}>
+                            <Icons.Check />
+                        </div>
+                        <div>
+                            <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>Clear Goals</div>
+                            <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+                                Review your goals regularly throughout the cycle to track your progress and align with team objectives.
                             </div>
-                        ))}
+                        </div>
                     </div>
                 </div>
-            )}
+            </div>
         </div>
     );
 }

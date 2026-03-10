@@ -27,8 +27,13 @@ const EMPLOYEE_LINKS = [
     { to: '/employee/results', label: 'My Results', icon: <Icons.Trophy /> },
 ];
 
-const ROLE_LINKS = { hr: HR_LINKS, manager: MANAGER_LINKS, employee: EMPLOYEE_LINKS };
-const ROLE_LABELS = { hr: 'HR Administrator', manager: 'Team Manager', employee: 'Employee' };
+const ROLE_LINKS = {
+    employee: EMPLOYEE_LINKS,
+    manager: MANAGER_LINKS,
+    hr: HR_LINKS,
+    admin: [...MANAGER_LINKS, ...HR_LINKS]
+};
+const ROLE_LABELS = { hr: 'HR Administrator', manager: 'Team Manager', employee: 'Employee', admin: 'Administrator' };
 
 export default function Layout({ children }) {
     const { currentUser, logout, theme, toggleTheme } = useApp();
@@ -80,15 +85,15 @@ export default function Layout({ children }) {
                         </div>
                     </div>
                     <div className="theme-switcher">
-                        <button 
-                            className={`theme-btn ${theme === 'dark' ? 'active' : ''}`} 
+                        <button
+                            className={`theme-btn ${theme === 'dark' ? 'active' : ''}`}
                             onClick={() => toggleTheme('dark')}
                             title="Dark Mode"
                         >
                             <Icons.Moon /> Dark
                         </button>
-                        <button 
-                            className={`theme-btn ${theme === 'light' ? 'active' : ''}`} 
+                        <button
+                            className={`theme-btn ${theme === 'light' ? 'active' : ''}`}
                             onClick={() => toggleTheme('light')}
                             title="Light Mode"
                         >
