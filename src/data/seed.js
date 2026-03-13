@@ -45,6 +45,20 @@ export const DEMO_SELF_REVIEWS = [
         comments: 'I believe I have been a strong contributor this year and look forward to completing the remaining tasks.',
         submittedAt: '2025-11-10',
     },
+    {
+        id: 'sr2', cycleId: 'c1', employeeId: 'u4',
+        summary: 'Reduced API response times by 35% already. Swagger docs are mostly done.',
+        goalRatings: { g4: 4, g5: 3 },
+        comments: 'Good progress overall this year.',
+        submittedAt: '2025-11-12'
+    },
+    {
+        id: 'sr3', cycleId: 'c1', employeeId: 'u6',
+        summary: 'Delivered 80% of roadmap items on time. Conducted 6 user interviews.',
+        goalRatings: { g6: 3, g7: 3 },
+        comments: 'Solid year, moving towards completion.',
+        submittedAt: '2025-11-15'
+    }
 ];
 
 export const DEMO_EVALUATIONS = [
@@ -57,6 +71,24 @@ export const DEMO_EVALUATIONS = [
         status: 'pending_approval',
         submittedAt: '2025-11-20',
     },
+    {
+        id: 'ev2', cycleId: 'c1', employeeId: 'u4', managerId: 'u2',
+        goalRatings: { g4: 4, g5: 3 },
+        workPerformanceRating: 3,
+        behavioralRating: 3,
+        feedback: 'James is a solid performer. The API optimization work is impressive.',
+        status: 'approved',
+        submittedAt: '2025-11-22',
+    },
+    {
+        id: 'ev3', cycleId: 'c1', employeeId: 'u6', managerId: 'u5',
+        goalRatings: { g6: 3, g7: 3 },
+        workPerformanceRating: 5,
+        behavioralRating: 4,
+        feedback: 'Carlos has good attention to user needs. Roadmap delivery was solid.',
+        status: 'approved',
+        submittedAt: '2025-11-23',
+    }
 ];
 
 export const DEMO_APPROVED = [];

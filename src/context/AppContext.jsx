@@ -5,11 +5,11 @@ import { encrypt, decrypt } from '../utils/encryption';
 
 const AppContext = createContext(null);
 
-export function calculateScore(goals, goalRatings, workRating, behaviorRating) {
-    // Goals are no longer factored into the final score
-    const workScore = (workRating / 5) * 100 || 0;
-    const behaviorScore = (behaviorRating / 5) * 100 || 0;
-    return Math.round(workScore * 0.5 + behaviorScore * 0.5);
+export function calculateScore(workRating, behaviorRating, hrRating = 0) {
+    const workScore = (workRating / 5) * 45 || 0;
+    const behaviorScore = (behaviorRating / 5) * 45 || 0;
+    const hrScore = (hrRating / 5) * 10 || 0;
+    return Math.round(workScore + behaviorScore + hrScore);
 }
 
 export function getCategory(score) {
@@ -27,6 +27,7 @@ export function AppProvider({ children }) {
     const [selfReviews, setSelfReviews] = useState([]);
     const [evaluations, setEvaluations] = useState([]);
     const [approvals, setApprovals] = useState([]);
+    const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
     const [theme, setTheme] = useState(localStorage.getItem('app-theme') || 'dark');
     const [encryptionKey, _setEncryptionKey] = useState(localStorage.getItem('admin_encryption_key') || 'techxl-secure-2026');
@@ -49,6 +50,9 @@ export function AppProvider({ children }) {
 
                 const fakeApprovals = localStorage.getItem('fake_approvals');
                 if (fakeApprovals) setApprovals(JSON.parse(fakeApprovals));
+
+                const fakeNotifications = localStorage.getItem('fake_notifications');
+                if (fakeNotifications) setNotifications(JSON.parse(fakeNotifications));
             } catch (e) {
                 console.error("Failed to parse local fake data in refresh", e);
             }
@@ -62,6 +66,7 @@ export function AppProvider({ children }) {
             { data: reviewsData },
             { data: evalsData },
             { data: approvalsData },
+            { data: notificationsData },
         ] = await Promise.all([
             supabase.from('profiles').select('*'),
             supabase.from('cycles').select('*').order('created_at', { ascending: false }),
@@ -69,6 +74,7 @@ export function AppProvider({ children }) {
             supabase.from('self_reviews').select('*'),
             supabase.from('evaluations').select('*'),
             supabase.from('approvals').select('*'),
+            supabase.from('notifications').select('*').order('created_at', { ascending: false }),
         ]);
 
         // Map snake_case DB columns → camelCase used by the UI
@@ -159,6 +165,7 @@ export function AppProvider({ children }) {
                 goalRatings: e.goal_ratings || {},
                 workPerformanceRating: e.work_performance_rating,
                 behavioralRating: e.behavioral_rating,
+                hrRating: e.hr_rating || 0,
                 feedback: metadata.feedback || e.feedback,
                 metadata: metadata,
                 status: e.status,
@@ -171,6 +178,15 @@ export function AppProvider({ children }) {
             approvedBy: a.approved_by,
             comment: a.comment,
             approvedAt: a.approved_at,
+        })));
+        setNotifications((notificationsData || []).map(n => ({
+            id: n.id,
+            userId: n.user_id,
+            title: n.title,
+            message: n.message,
+            type: n.type,
+            isRead: n.is_read,
+            createdAt: n.created_at,
         })));
     }, []);
 
@@ -213,6 +229,9 @@ export function AppProvider({ children }) {
 
                         const fakeApprovals = localStorage.getItem('fake_approvals');
                         if (fakeApprovals) setApprovals(JSON.parse(fakeApprovals));
+
+                        const fakeNotifications = localStorage.getItem('fake_notifications');
+                        if (fakeNotifications) setNotifications(JSON.parse(fakeNotifications));
                     } catch (e) {
                         console.error("Failed parsing fake local data", e);
                     }
@@ -571,6 +590,47 @@ export function AppProvider({ children }) {
         setUsers(p => p.filter(u => u.id !== id));
     };
 
+    // ──── Notifications ────
+    const createNotification = async (userIds, title, message, type = 'info') => {
+        if (!userIds || userIds.length === 0) return;
+        const now = new Date().toISOString();
+        
+        if (localStorage.getItem('fake_session_role')) {
+            const newNotifs = userIds.map(uid => ({
+                id: crypto.randomUUID(), userId: uid, title, message, type, isRead: false, createdAt: now
+            }));
+            setNotifications(p => {
+                const updated = [...newNotifs, ...p];
+                localStorage.setItem('fake_notifications', JSON.stringify(updated));
+                return updated;
+            });
+            return;
+        }
+
+        const inserts = userIds.map(uid => ({
+            user_id: uid, title, message, type, created_at: now
+        }));
+        const { error } = await supabase.from('notifications').insert(inserts);
+        if (error) console.error('Error creating notifications:', error.message);
+        else {
+            // Also fetch to get IDs (or optimistically update for the current user)
+            if (userIds.includes(currentUser?.id)) fetchAllData();
+        }
+    };
+
+    const markNotificationAsRead = async (id) => {
+        setNotifications(p => p.map(n => n.id === id ? { ...n, isRead: true } : n));
+        
+        if (localStorage.getItem('fake_session_role')) {
+            const fakeNotifs = JSON.parse(localStorage.getItem('fake_notifications') || '[]');
+            const updated = fakeNotifs.map(n => n.id === id ? { ...n, isRead: true } : n);
+            localStorage.setItem('fake_notifications', JSON.stringify(updated));
+            return;
+        }
+        
+        await supabase.from('notifications').update({ is_read: true }).eq('id', id);
+    };
+
     // ──── Cycles CRUD ────
     const addCycle = async (cycle) => {
         if (localStorage.getItem('fake_session_role')) {
@@ -580,6 +640,12 @@ export function AppProvider({ children }) {
                 localStorage.setItem('fake_cycles', JSON.stringify(updated));
                 return updated;
             });
+            
+            // Notify all employees and managers
+            const allUserIds = users.filter(u => u.role === 'employee' || u.role === 'manager').map(u => u.id);
+            if (mapped.status === 'active') {
+                createNotification(allUserIds, 'New Appraisal Cycle', `The ${mapped.name} cycle has been launched.`, 'info');
+            }
             return mapped;
         }
 
@@ -597,6 +663,11 @@ export function AppProvider({ children }) {
         if (data) {
             const mapped = { id: data.id, name: data.name, startDate: data.start_date, endDate: data.end_date, status: data.status, createdBy: data.created_by };
             setCycles(p => [...p, mapped]);
+            
+            if (mapped.status === 'active') {
+                const allUserIds = users.filter(u => u.role === 'employee' || u.role === 'manager').map(u => u.id);
+                createNotification(allUserIds, 'New Appraisal Cycle', `The ${mapped.name} cycle has been launched.`, 'info');
+            }
             return mapped;
         }
         return null;
@@ -609,6 +680,11 @@ export function AppProvider({ children }) {
                 localStorage.setItem('fake_cycles', JSON.stringify(updated));
                 return updated;
             });
+            if (updates.status === 'active') {
+                const cName = cycles.find(c => c.id === id)?.name || updates.name || "A";
+                const allUserIds = users.filter(u => u.role === 'employee' || u.role === 'manager').map(u => u.id);
+                createNotification(allUserIds, 'Appraisal Cycle Active', `The ${cName} cycle is now active.`, 'info');
+            }
             return;
         }
 
@@ -619,7 +695,14 @@ export function AppProvider({ children }) {
         if (updates.status !== undefined) dbUpdates.status = updates.status;
 
         const { error } = await supabase.from('cycles').update(dbUpdates).eq('id', id);
-        if (!error) setCycles(p => p.map(c => c.id === id ? { ...c, ...updates } : c));
+        if (!error) {
+            setCycles(p => p.map(c => c.id === id ? { ...c, ...updates } : c));
+            if (updates.status === 'active') {
+                const cName = cycles.find(c => c.id === id)?.name || updates.name || "A";
+                const allUserIds = users.filter(u => u.role === 'employee' || u.role === 'manager').map(u => u.id);
+                createNotification(allUserIds, 'Appraisal Cycle Active', `The ${cName} cycle is now active.`, 'info');
+            }
+        }
     };
 
     const deleteCycle = async (id) => {
@@ -762,6 +845,17 @@ export function AppProvider({ children }) {
                 localStorage.setItem('fake_reviews', JSON.stringify(updated));
                 return updated;
             });
+            
+            // Notify Manager or HR fallback
+            const empManagerId = users.find(u => u.id === mapped.employeeId)?.managerId;
+            const empName = users.find(u => u.id === mapped.employeeId)?.name;
+            if (empManagerId) {
+                createNotification([empManagerId], 'Self-Review Submitted', `${empName} has submitted their self-review.`, 'success');
+            } else {
+                const hrIds = users.filter(u => u.role === 'admin' || u.role === 'hr').map(u => u.id);
+                if (hrIds.length > 0) createNotification(hrIds, 'Self-Review Submitted', `${empName} has submitted their self-review (no manager assigned).`, 'success');
+            }
+
             return mapped;
         }
 
@@ -794,6 +888,16 @@ export function AppProvider({ children }) {
                 submittedAt: r.submitted_at
             };
             setSelfReviews(p => existing ? p.map(x => x.id === existing.id ? mapped : x) : [...p, mapped]);
+            // Notify Manager or HR fallback
+            const empManagerId = users.find(u => u.id === mapped.employeeId)?.managerId;
+            const empName = users.find(u => u.id === mapped.employeeId)?.name;
+            if (empManagerId) {
+                createNotification([empManagerId], 'Self-Review Submitted', `${empName} has submitted their self-review.`, 'success');
+            } else {
+                const hrIds = users.filter(u => u.role === 'admin' || u.role === 'hr').map(u => u.id);
+                if (hrIds.length > 0) createNotification(hrIds, 'Self-Review Submitted', `${empName} has submitted their self-review (no manager assigned).`, 'success');
+            }
+
             return mapped;
         }
         return null;
@@ -844,6 +948,12 @@ export function AppProvider({ children }) {
                 localStorage.setItem('fake_evaluations', JSON.stringify(updated));
                 return updated;
             });
+            
+            // Notify Employee & HR
+            const hrIds = users.filter(u => u.role === 'admin' || u.role === 'hr').map(u => u.id);
+            createNotification([evaluation.employeeId], 'Evaluation Submitted', `Your manager has submitted your evaluation. Pending HR approval.`, 'success');
+            createNotification(hrIds, 'Pending HR Approval', `Evaluation for ${users.find(u => u.id === evaluation.employeeId)?.name} is awaiting your approval.`, 'warning');
+
             return mapped;
         }
 
@@ -852,8 +962,8 @@ export function AppProvider({ children }) {
             employee_id: evaluation.employeeId,
             manager_id: currentUser?.id,
             goal_ratings: evaluation.goalRatings,
-            work_performance_rating: evaluation.workPerformanceRating,
-            behavioral_rating: evaluation.behavioralRating,
+            work_performance_rating: Math.round(evaluation.workPerformanceRating),
+            behavioral_rating: Math.round(evaluation.behavioralRating),
             feedback: packedFeedback,
             status: 'pending_approval',
             submitted_at: new Date().toISOString().split('T')[0],
@@ -892,40 +1002,69 @@ export function AppProvider({ children }) {
             } else {
                 setEvaluations(p => [...p, mapped]);
             }
+            
+            const hrIds = users.filter(u => u.role === 'admin' || u.role === 'hr').map(u => u.id);
+            createNotification([evaluation.employeeId], 'Evaluation Submitted', `Your manager has submitted your evaluation. Pending HR approval.`, 'success');
+            createNotification(hrIds, 'Pending HR Approval', `Evaluation for ${users.find(u => u.id === evaluation.employeeId)?.name} is awaiting your approval.`, 'warning');
+
             return mapped;
         }
         return null;
     };
 
     // ──── Approvals ────
-    const approveEvaluation = async (evalId, comment = '') => {
+    const approveEvaluation = async (evalId, comment = '', hrRating = 0) => {
         if (localStorage.getItem('fake_session_role')) {
             setEvaluations(p => {
-                const updated = p.map(e => e.id === evalId ? { ...e, status: 'approved' } : e);
+                const updated = p.map(e => e.id === evalId ? { ...e, status: 'approved', hrRating } : e);
                 localStorage.setItem('fake_evaluations', JSON.stringify(updated));
                 return updated;
             });
             setApprovals(p => {
-                const updated = [...p, { evalId, approvedBy: currentUser?.id, comment, approvedAt: new Date().toISOString().split('T')[0] }];
+                const updated = [...p, { evalId, approvedBy: currentUser?.id, comment, hrRating, approvedAt: new Date().toISOString().split('T')[0] }];
                 localStorage.setItem('fake_approvals', JSON.stringify(updated));
                 return updated;
             });
+
+            // Notify Employee & Manager
+            const theEval = evaluations.find(e => e.id === evalId);
+            if (theEval) {
+                createNotification([theEval.employeeId], 'Evaluation Approved', 'Your appraisal results are now officially approved and available.', 'success');
+                createNotification([theEval.managerId], 'Evaluation Approved', `HR approved your evaluation for ${users.find(u => u.id === theEval.employeeId)?.name}.`, 'success');
+            }
             return;
         }
 
-        const { error: evalError } = await supabase.from('evaluations').update({ status: 'approved' }).eq('id', evalId);
-        if (!evalError) {
-            setEvaluations(p => p.map(e => e.id === evalId ? { ...e, status: 'approved' } : e));
-            const approval = {
-                eval_id: evalId,
-                approved_by: currentUser?.id,
-                comment,
-                approved_at: new Date().toISOString().split('T')[0],
-            };
-            const { data } = await supabase.from('approvals').insert(approval).select().single();
-            if (data) {
-                setApprovals(p => [...p, { evalId: data.eval_id, approvedBy: data.approved_by, comment: data.comment, approvedAt: data.approved_at }]);
-            }
+        // Insert approval record first (HR has INSERT on approvals)
+        const approval = {
+            eval_id: evalId,
+            approved_by: currentUser?.id,
+            comment: JSON.stringify({ comment, hrRating }),
+            approved_at: new Date().toISOString().split('T')[0],
+        };
+        const { data: approvalData, error: approvalError } = await supabase.from('approvals').insert(approval).select().single();
+        if (approvalError) {
+            console.error('Approvals insert error:', approvalError.message, approvalError.details, approvalError.hint);
+        } else if (approvalData) {
+            setApprovals(p => [...p, { evalId: approvalData.eval_id, approvedBy: approvalData.approved_by, comment, hrRating, approvedAt: approvalData.approved_at }]);
+        }
+
+        // Update evaluation: status + hr_rating (requires hr_rating column in DB — see SQL below)
+        const { error: evalError } = await supabase
+            .from('evaluations')
+            .update({ status: 'approved', hr_rating: hrRating })
+            .eq('id', evalId);
+        if (evalError) {
+            console.error('Evaluation update error:', evalError.message, evalError.details, evalError.hint);
+            // If hr_rating column missing, try status-only update as fallback
+            await supabase.from('evaluations').update({ status: 'approved' }).eq('id', evalId);
+        }
+        setEvaluations(p => p.map(e => e.id === evalId ? { ...e, status: 'approved', hrRating } : e));
+        
+        const theEval = evaluations.find(e => e.id === evalId);
+        if (theEval) {
+            createNotification([theEval.employeeId], 'Evaluation Approved', 'Your appraisal results are now officially approved and available.', 'success');
+            createNotification([theEval.managerId], 'Evaluation Approved', `HR approved your evaluation for ${users.find(u => u.id === theEval.employeeId)?.name}.`, 'success');
         }
     };
 
@@ -936,12 +1075,21 @@ export function AppProvider({ children }) {
                 localStorage.setItem('fake_evaluations', JSON.stringify(updated));
                 return updated;
             });
+            
+            const theEval = evaluations.find(e => e.id === evalId);
+            if (theEval) {
+                createNotification([theEval.managerId], 'Evaluation Rejected', `HR rejected your evaluation for ${users.find(u => u.id === theEval.employeeId)?.name}. Please review and resubmit.`, 'danger');
+            }
             return;
         }
 
         const { error } = await supabase.from('evaluations').update({ status: 'rejected', rejection_comment: comment }).eq('id', evalId);
         if (!error) {
             setEvaluations(p => p.map(e => e.id === evalId ? { ...e, status: 'rejected', rejectionComment: comment } : e));
+            const theEval = evaluations.find(e => e.id === evalId);
+            if (theEval) {
+                createNotification([theEval.managerId], 'Evaluation Rejected', `HR rejected your evaluation for ${users.find(u => u.id === theEval.employeeId)?.name}. Please review and resubmit.`, 'danger');
+            }
         }
     };
 
@@ -955,15 +1103,14 @@ export function AppProvider({ children }) {
     const getScore = (empId, cycleId) => {
         const ev = getEvaluation(empId, cycleId);
         if (!ev) return null;
-        const empGoals = getGoalsForEmployee(empId, cycleId);
-        const score = calculateScore(empGoals, ev.goalRatings, ev.workPerformanceRating, ev.behavioralRating);
+        const score = calculateScore(ev.workPerformanceRating, ev.behavioralRating, ev.hrRating || 0);
         return { score, category: getCategory(score) };
     };
 
 
     return (
         <AppContext.Provider value={{
-            currentUser, users, cycles, goals, selfReviews, evaluations, approvals,
+            currentUser, users, cycles, goals, selfReviews, evaluations, approvals, notifications,
             login, loginWithMicrosoft, logout, register, loginAsFake,
             addUser, updateUser, deleteUser,
             addCycle, updateCycle, deleteCycle,
@@ -975,6 +1122,7 @@ export function AppProvider({ children }) {
             getActiveCycle, getUserById, getGoalsForEmployee,
             getTeamEmployees, getSelfReview, getEvaluation, getScore,
             calculateScore, getCategory,
+            createNotification, markNotificationAsRead,
         }}>
             {children}
         </AppContext.Provider>

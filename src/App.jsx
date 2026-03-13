@@ -75,7 +75,7 @@ function AppRoutes() {
       <Route path="/hr/cycle/:cycleId" element={<ProtectedRoute allowedRoles={['hr']}><Layout><HRCycleDetail /></Layout></ProtectedRoute>} />
       <Route path="/hr/employees" element={<ProtectedRoute allowedRoles={['hr', 'manager']}><Layout><Employees /></Layout></ProtectedRoute>} />
       <Route path="/hr/cycles" element={<ProtectedRoute allowedRoles={['hr']}><Layout><Cycles /></Layout></ProtectedRoute>} />
-      <Route path="/hr/approvals" element={<ProtectedRoute allowedRoles={['hr']}><Layout><Approvals /></Layout></ProtectedRoute>} />
+      <Route path="/hr/approvals" element={<ProtectedRoute allowedRoles={['hr', 'admin']}><Layout><Approvals /></Layout></ProtectedRoute>} />
       <Route path="/hr/reports" element={<ProtectedRoute allowedRoles={['hr']}><Layout><Reports /></Layout></ProtectedRoute>} />
       <Route path="/hr/goals" element={<ProtectedRoute allowedRoles={['hr']}><Layout><HRGoals /></Layout></ProtectedRoute>} />
 
@@ -83,9 +83,9 @@ function AppRoutes() {
       <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={['admin']}><Layout><AdminSettings /></Layout></ProtectedRoute>} />
 
       {/* Manager Routes */}
-      <Route path="/manager" element={<ProtectedRoute allowedRoles={['manager']}><Layout><Evaluate /></Layout></ProtectedRoute>} />
-      <Route path="/manager/goals" element={<ProtectedRoute allowedRoles={['manager']}><Layout><TeamReport /></Layout></ProtectedRoute>} />
-      <Route path="/manager/evaluate/:employeeId" element={<ProtectedRoute allowedRoles={['manager']}><Layout><Evaluate /></Layout></ProtectedRoute>} />
+      <Route path="/manager" element={<ProtectedRoute allowedRoles={['manager', 'admin']}><Layout><Evaluate /></Layout></ProtectedRoute>} />
+      <Route path="/manager/goals" element={<ProtectedRoute allowedRoles={['manager', 'admin']}><Layout><TeamReport /></Layout></ProtectedRoute>} />
+      <Route path="/manager/evaluate/:employeeId" element={<ProtectedRoute allowedRoles={['manager', 'admin']}><Layout><Evaluate /></Layout></ProtectedRoute>} />
 
       {/* Employee (Baseline) Routes - Accessible by All */}
       <Route path="/employee/cycle/:cycleId" element={<ProtectedRoute allowedRoles={['all']}><Layout><CycleDetail /></Layout></ProtectedRoute>} />
@@ -96,7 +96,6 @@ function AppRoutes() {
       {/* Redirections for old dashboard links */}
       <Route path="/hr" element={<Navigate to="/dashboard" replace />} />
       <Route path="/admin" element={<Navigate to="/dashboard" replace />} />
-      <Route path="/manager" element={<Navigate to="/dashboard" replace />} />
       <Route path="/employee" element={<Navigate to="/dashboard" replace />} />
 
       {/* Default */}

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 
 export default function Results() {
-    const { currentUser, cycles, getGoalsForEmployee, getEvaluation, getSelfReview, getScore, getUserById } = useApp();
+    const { currentUser, cycles, getGoalsForEmployee, getEvaluation, getSelfReview, getScore, getUserById, approvals } = useApp();
 
     // Find all cycles that have evaluations
     const cyclesWithResults = cycles.filter(c => !!getEvaluation(currentUser.id, c.id))
@@ -40,6 +40,7 @@ export default function Results() {
     const goals = getGoalsForEmployee(currentUser.id, cycle.id);
     const selfReview = getSelfReview(currentUser.id, cycle.id);
     const manager = ev ? getUserById(ev.managerId) : null;
+    const approval = approvals.find(a => a.evalId === ev.id);
 
     if (!ev || !scoreData) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading result data...</div>;
 
@@ -102,34 +103,86 @@ export default function Results() {
             <div className="grid-2" style={{ marginBottom: '24px', gap: '24px' }}>
                 {/* Score Breakdown */}
                 <div className="card" style={{ gridColumn: '1 / -1' }}>
-                    <div className="card-title" style={{ marginBottom: '20px', color: 'var(--text-primary)' }}>Component Breakdown</div>
+                    <div className="card-title" style={{ marginBottom: '20px', color: 'var(--text-primary)' }}>Score Breakdown</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                        {/* Technical 45% */}
                         <div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
-                                <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Work Performance</span>
-                                <span style={{ fontWeight: 700, color: 'var(--indigo)' }}>{ev.workPerformanceRating}/5</span>
+                                <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Technical Performance <span style={{ color: 'var(--indigo)', fontSize: '11px', fontWeight: 700 }}>45%</span></span>
+                                <span style={{ fontWeight: 700, color: 'var(--indigo)' }}>{Math.round(ev.workPerformanceRating * 10) / 10}/5 → {Math.round((ev.workPerformanceRating / 5) * 45)} pts</span>
                             </div>
                             <div className="progress-bar" style={{ height: '8px' }}><div className="progress-fill" style={{ width: `${(ev.workPerformanceRating / 5) * 100}%`, background: 'var(--indigo)' }} /></div>
                         </div>
+                        {/* Behavioral 45% */}
                         <div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
-                                <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Professional Behavior</span>
-                                <span style={{ fontWeight: 700, color: 'var(--cyan)' }}>{ev.behavioralRating}/5</span>
+                                <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Behavioural Competency <span style={{ color: 'var(--cyan)', fontSize: '11px', fontWeight: 700 }}>45%</span></span>
+                                <span style={{ fontWeight: 700, color: 'var(--cyan)' }}>{Math.round(ev.behavioralRating * 10) / 10}/5 → {Math.round((ev.behavioralRating / 5) * 45)} pts</span>
                             </div>
                             <div className="progress-bar" style={{ height: '8px' }}><div className="progress-fill" style={{ width: `${(ev.behavioralRating / 5) * 100}%`, background: 'var(--cyan)' }} /></div>
+                        </div>
+                        {/* HR Rating 10% */}
+                        <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
+                                <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>HR Assessment & Compliance <span style={{ color: 'var(--yellow)', fontSize: '11px', fontWeight: 700 }}>10%</span></span>
+                                {ev.hrRating > 0 ? (
+                                    <span style={{ fontWeight: 700, color: 'var(--yellow)' }}>{Math.round(ev.hrRating * 10) / 10}/5 → {Math.round((ev.hrRating / 5) * 10)} pts</span>
+                                ) : (
+                                    <span style={{ fontWeight: 600, color: 'var(--text-muted)' }}>Not Evaluated</span>
+                                )}
+                            </div>
+                            <div className="progress-bar" style={{ height: '8px' }}>
+                                <div className="progress-fill" style={{ width: ev.hrRating > 0 ? `${(ev.hrRating / 5) * 100}%` : '0%', background: ev.hrRating > 0 ? 'var(--yellow)' : 'var(--border)' }} />
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Manager Feedback */}
-            <div className="card" style={{ marginBottom: '24px' }}>
-                <div className="card-title" style={{ marginBottom: '12px', color: 'var(--text-primary)' }}>3. Evaluator's Constructive Feedback</div>
-                <div style={{
-                    padding: '20px', background: 'var(--bg-secondary)', borderRadius: '12px',
-                    fontSize: '14px', lineHeight: '1.7', color: 'var(--text-secondary)', border: '1px solid var(--border)'
-                }}>
-                    {ev.feedback || 'Your manager has not provided detailed written feedback for this cycle.'}
+            {/* Feedback Section: Manager & HR side-by-side */}
+            <div className="grid-2" style={{ marginBottom: '24px', gap: '24px' }}>
+                {/* Manager Feedback */}
+                <div className="card">
+                    <div className="card-title" style={{ marginBottom: '12px', color: 'var(--text-primary)', fontSize: '15px' }}>
+                        👤 Manager Feedback
+                    </div>
+                    <div style={{
+                        padding: '16px', background: 'var(--bg-secondary)', borderRadius: '12px',
+                        fontSize: '13px', lineHeight: '1.7', color: 'var(--text-secondary)', border: '1px solid var(--border)',
+                        minHeight: '100px'
+                    }}>
+                        {ev.feedback || 'Your manager has not provided detailed written feedback for this cycle.'}
+                    </div>
+                </div>
+
+                {/* HR Feedback */}
+                <div className="card">
+                    <div className="card-title" style={{ marginBottom: '12px', color: 'var(--purple-light)', fontSize: '15px' }}>
+                        📋 HR Assessment Feedback
+                    </div>
+                    <div style={{
+                        padding: '16px', background: 'var(--bg-secondary)', borderRadius: '12px',
+                        fontSize: '13px', lineHeight: '1.7', color: 'var(--text-secondary)', border: '1px solid var(--border)',
+                        minHeight: '100px'
+                    }}>
+                        {(() => {
+                            if (!approval?.comment) {
+                                return ev.status === 'approved' 
+                                    ? 'Evaluation approved with no additional HR comments.' 
+                                    : <span style={{ fontStyle: 'italic', color: 'var(--text-muted)' }}>HR feedback will appear here once the evaluation is fully approved.</span>;
+                            }
+                            
+                            try {
+                                if (approval.comment.startsWith('{')) {
+                                    const parsed = JSON.parse(approval.comment);
+                                    return parsed.comment || approval.comment;
+                                }
+                                return approval.comment;
+                            } catch (e) {
+                                return approval.comment;
+                            }
+                        })()}
+                    </div>
                 </div>
             </div>
 

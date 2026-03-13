@@ -21,8 +21,11 @@ export default function Dashboard() {
     const hasSelfReview = selfReviews.some(sr => sr.employeeId === currentUser.id && sr.cycleId === activeCycle?.id);
     const myEvaluation = evaluations.find(e => e.employeeId === currentUser.id && e.cycleId === activeCycle?.id);
 
-    // -- Manager Stats
-    const teamMembers = useMemo(() => users.filter(u => u.managerId === currentUser.id), [users, currentUser]);
+    // -- Manager / Admin Stats
+    const teamMembers = useMemo(() => {
+        if (currentUser.role === 'admin') return users.filter(u => u.role === 'hr' || u.role === 'manager');
+        return users.filter(u => u.managerId === currentUser.id);
+    }, [users, currentUser]);
     const pendingEvaluations = useMemo(() => {
         if (!activeCycle) return [];
         return teamMembers.map(member => {
@@ -34,7 +37,7 @@ export default function Dashboard() {
     }, [teamMembers, evaluations, selfReviews, activeCycle]);
 
     // -- HR / Admin Stats
-    const totalEmployees = users.filter(u => u.role !== 'admin' && u.role !== 'hr').length;
+    const totalEmployees = users.filter(u => u.role !== 'admin').length;
     const pendingHRApprovals = approvals.filter(a => a.status === 'pending');
 
     const handleResetData = () => {

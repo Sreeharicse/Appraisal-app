@@ -8,9 +8,11 @@ import {
 const COLORS = ['#10b981', '#06b6d4', '#7c3aed', '#f59e0b', '#ef4444'];
 
 export default function Reports() {
-    const { users, cycles, evaluations, goals, getScore } = useApp();
+    const { users, cycles, evaluations, goals, getScore, currentUser } = useApp();
     const [selectedCycleId, setSelectedCycleId] = React.useState('');
-    const employees = users.filter(u => u.role === 'employee');
+    const employees = (currentUser?.role === 'admin' || currentUser?.role === 'hr')
+        ? users.filter(u => u.role !== 'admin')
+        : users.filter(u => u.role === 'employee');
 
     // Auto-select active cycle initially
     React.useEffect(() => {
@@ -102,14 +104,15 @@ export default function Reports() {
                         <div className="chart-card">
                             <div className="chart-title">🥧 Performance Category Distribution</div>
                             <ResponsiveContainer width="100%" height={220}>
-                                <PieChart>
-                                    <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={90}
-                                        dataKey="value" paddingAngle={3}>
+                                <BarChart data={pieData} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
+                                    <XAxis type="number" tick={{ fill: '#64748b', fontSize: 12 }} />
+                                    <YAxis type="category" dataKey="name" tick={{ fill: '#64748b', fontSize: 12 }} width={110} />
+                                    <Tooltip cursor={{ fill: 'rgba(255,255,255,0.02)' }} contentStyle={{ background: '#151731', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} />
+                                    <Bar dataKey="value" radius={[0, 4, 4, 0]} name="Employees" barSize={24}>
                                         {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                                    </Pie>
-                                    <Tooltip formatter={(v, n) => [v, n]} contentStyle={{ background: '#151731', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} />
-                                    <Legend wrapperStyle={{ fontSize: '12px', color: '#94a3b8' }} />
-                                </PieChart>
+                                    </Bar>
+                                </BarChart>
                             </ResponsiveContainer>
                         </div>
                     </div>
@@ -119,7 +122,7 @@ export default function Reports() {
                         <div className="table-header"><h3>Individual Reports</h3></div>
                         <table>
                             <thead>
-                                <tr><th>Employee</th><th>Department</th><th>Score</th><th>Category</th><th>Status</th></tr>
+                                <tr><th>Employee</th><th>Role</th><th>Department</th><th>Score</th><th>Category</th><th>Status</th></tr>
                             </thead>
                             <tbody>
                                 {employeeScores.map(emp => {
@@ -133,6 +136,7 @@ export default function Reports() {
                                                     <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{emp.name}</span>
                                                 </div>
                                             </td>
+                                            <td><span className={`badge ${emp.role === 'hr' ? 'badge-purple' : emp.role === 'manager' ? 'badge-blue' : 'badge-gray'}`} style={{ textTransform: 'capitalize' }}>{emp.role}</span></td>
                                             <td>{emp.department}</td>
 
                                             <td>

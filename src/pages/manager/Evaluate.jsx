@@ -6,7 +6,9 @@ export default function Evaluate() {
     const { employeeId } = useParams();
     const navigate = useNavigate();
     const { currentUser, users, cycles, getGoalsForEmployee, getEvaluation, selfReviews, evaluations, submitEvaluation, calculateScore, getCategory, refreshData } = useApp();
-    const team = users.filter(u => u.managerId === currentUser.id);
+    const team = currentUser.role === 'admin'
+        ? users.filter(u => u.role === 'hr' || u.role === 'manager')
+        : users.filter(u => u.managerId === currentUser.id);
     const activeCycles = cycles.filter(c => c.status === 'active');
 
     useEffect(() => {
@@ -18,6 +20,11 @@ export default function Evaluate() {
     const [saved, setSaved] = useState(false);
     const [activeTab, setActiveTab] = useState(1);
     const [hasEdited, setHasEdited] = useState(false);
+    const [showPopup, setShowPopup] = useState(false);
+    const [popupMessage, setPopupMessage] = useState({ title: '', body: '' });
+
+    // Once saved, the evaluation is permanently locked — manager cannot edit
+    const isLocked = saved && !hasEdited;
 
     const [goalRatings, setGoalRatings] = useState({});
     const [competencies, setCompetencies] = useState({});
@@ -117,31 +124,40 @@ export default function Evaluate() {
     const handleSubmit = async () => {
         if (!selectedCycleId || !selectedEmp) return;
 
-        // Calculate legacy ratings from competency average to satisfy DB constraints
-        const compValues = Object.values(competencies).map(c => c.rating).filter(r => r > 0);
-        const legacyRating = compValues.length > 0
-            ? Math.round(compValues.reduce((a, b) => a + b, 0) / compValues.length)
-            : 3; // Default to 3 (Meets Expectations) if no ratings
+        const getAvg = (start, end) => {
+            const vals = [];
+            for (let i = start; i <= end; i++) {
+                if (competencies[`q${i}`]?.rating > 0) vals.push(competencies[`q${i}`].rating);
+            }
+            return vals.length > 0 ? (vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
+        };
+
+        const workPerformanceRating = getAvg(1, 8) || 3;
+        const behavioralRating = getAvg(9, 15) || 3;
 
         await submitEvaluation({
             cycleId: selectedCycleId,
             employeeId: selectedEmp,
             competencies,
             feedback,
-            workPerformanceRating: legacyRating,
-            behavioralRating: legacyRating,
+            workPerformanceRating,
+            behavioralRating,
         });
+
         setSaved(true);
         setHasEdited(false);
-        alert('Evaluation submitted successfully!');
+        setPopupMessage({ title: '🎊 Evaluation Complete!', body: 'Your official performance evaluation has been submitted successfully.' });
+        setShowPopup(true);
     };
 
     const updateCompRating = (qid, val) => {
+        if (saved) return; // locked after submission
         setCompetencies(p => ({ ...p, [qid]: { ...p[qid], rating: val } }));
         setHasEdited(true);
     };
 
     const updateCompComment = (qid, val) => {
+        if (saved) return; // locked after submission
         setCompetencies(p => ({ ...p, [qid]: { ...p[qid], comment: val } }));
         setHasEdited(true);
     };
@@ -174,12 +190,16 @@ export default function Evaluate() {
                             </div>
                         </div>
 
-                        {/* Manager Part (Editable) */}
-                        <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(168, 85, 247, 0.05)', border: '1px solid rgba(168, 85, 247, 0.1)' }}>
-                            <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '12px', color: 'var(--purple)' }}>👨‍💼 Manager Perspective</div>
+                        {/* Manager Part (Editable / Locked) */}
+                        <div style={{ padding: '16px', borderRadius: '12px', background: saved ? 'rgba(100,116,139,0.06)' : 'rgba(168, 85, 247, 0.05)', border: saved ? '1px solid rgba(100,116,139,0.15)' : '1px solid rgba(168, 85, 247, 0.1)' }}>
+                            <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '12px', color: saved ? 'var(--text-muted)' : 'var(--purple)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                👨‍💼 Manager Perspective {saved && <span style={{ fontSize: '11px', background: 'rgba(100,116,139,0.15)', padding: '2px 8px', borderRadius: '20px', fontWeight: 600 }}>🔒 Locked</span>}
+                            </div>
                             <div style={{ marginBottom: '16px' }}>
-                                <label className="form-label" style={{ fontSize: '12px' }}>Rating</label>
+                                <label className="form-label" style={{ fontSize: '12px', color: saved ? 'var(--text-muted)' : undefined }}>Rating</label>
                                 <select className="form-select" value={competencies[q.id]?.rating || 0}
+                                    disabled={saved}
+                                    style={{ color: saved ? 'var(--text-muted)' : undefined, cursor: saved ? 'not-allowed' : 'pointer', opacity: saved ? 0.7 : 1 }}
                                     onChange={e => updateCompRating(q.id, parseInt(e.target.value))}>
                                     {RATING_OPTIONS.map(opt => (
                                         <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -187,9 +207,10 @@ export default function Evaluate() {
                                 </select>
                             </div>
                             <div>
-                                <label className="form-label" style={{ fontSize: '12px' }}>Feedback / Examples</label>
-                                <textarea className="form-input" placeholder="Manager feedback..." style={{ minHeight: '80px', fontSize: '13px' }}
+                                <label className="form-label" style={{ fontSize: '12px', color: saved ? 'var(--text-muted)' : undefined }}>Feedback / Examples</label>
+                                <textarea className="form-input" placeholder={saved ? 'Evaluation submitted.' : 'Manager feedback...'} style={{ minHeight: '80px', fontSize: '13px', color: saved ? 'var(--text-muted)' : undefined, cursor: saved ? 'not-allowed' : 'text', opacity: saved ? 0.7 : 1 }}
                                     value={competencies[q.id]?.comment || ''}
+                                    readOnly={saved}
                                     onChange={e => updateCompComment(q.id, e.target.value)}
                                 />
                             </div>
@@ -226,14 +247,30 @@ export default function Evaluate() {
             <div className="card" style={{ marginBottom: '32px', padding: '24px' }}>
                 <div className="card-title">Overall Summary Feedback</div>
                 <p className="section-subtitle" style={{ marginBottom: '16px' }}>Provide a final assessment of the employee's performance over this cycle.</p>
-                <textarea className="form-textarea" rows={8} placeholder="Final assessment, growth areas, and career pathing..."
-                    value={feedback} onChange={e => { setFeedback(e.target.value); setHasEdited(true); }} />
+                <textarea className="form-textarea" rows={8}
+                    placeholder={saved ? 'Evaluation has been submitted and locked.' : 'Final assessment, growth areas, and career pathing...'}
+                    value={feedback}
+                    readOnly={saved}
+                    style={{ color: saved ? 'var(--text-muted)' : undefined, cursor: saved ? 'not-allowed' : 'text', opacity: saved ? 0.75 : 1 }}
+                    onChange={e => { if (!saved) { setFeedback(e.target.value); setHasEdited(true); } }} />
             </div>
 
             <div style={{ textAlign: 'right', marginBottom: '40px' }}>
-                <button type="button" className="btn btn-primary" style={{ padding: '16px 64px', fontWeight: 700, fontSize: '16px' }} onClick={handleSubmit}>
-                    {saved ? 'Update Evaluation' : 'Complete Evaluation'}
-                </button>
+                {saved ? (
+                    <div style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '10px',
+                        padding: '12px 28px', borderRadius: '12px',
+                        background: 'rgba(16,185,129,0.08)',
+                        border: '1px solid rgba(16,185,129,0.25)',
+                        color: '#10b981', fontWeight: 700, fontSize: '15px'
+                    }}>
+                        ✅ Evaluation Submitted &amp; Locked
+                    </div>
+                ) : (
+                    <button type="button" className="btn btn-primary" style={{ padding: '16px 64px', fontWeight: 700, fontSize: '16px' }} onClick={handleSubmit}>
+                        Complete Evaluation
+                    </button>
+                )}
             </div>
         </div>
     );
@@ -288,7 +325,12 @@ export default function Evaluate() {
                 </div>
             </div>
 
-            {saved && !hasEdited && <div className="alert alert-success" style={{ marginBottom: '24px' }}>✨ Evaluation record synchronized successfully.</div>}
+            {saved && !hasEdited && <div style={{
+                marginBottom: '20px', padding: '12px 20px',
+                background: 'rgba(100,116,139,0.08)', border: '1px solid rgba(100,116,139,0.2)',
+                borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '10px',
+                fontSize: '13px', color: 'var(--text-muted)', fontWeight: 500
+            }}>🔒 This evaluation has been submitted and is now <strong style={{ color: 'var(--text-secondary)' }}>read-only</strong>. No further changes can be made.</div>}
             {hasEdited && <div className="alert alert-warning" style={{ marginBottom: '24px' }}>⚠️ You have unsaved changes. Click "Complete Evaluation" in the Final Assessment tab to save.</div>}
 
             <div style={{ display: 'flex', gap: '24px', position: 'relative' }}>
@@ -334,6 +376,24 @@ export default function Evaluate() {
                     </div>
                 </div>
             </div>
+
+            {/* Custom Popup Overlay */}
+            {showPopup && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0, 0, 0, 0.5)', zIndex: 9999, display: 'flex',
+                    alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)'
+                }}>
+                    <div className="card" style={{ maxWidth: '400px', width: '90%', padding: '32px', textAlign: 'center', animation: 'fadeIn 0.2s ease-out' }}>
+                        <div style={{ fontSize: '48px', marginBottom: '16px' }}>✨</div>
+                        <h3 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '12px' }}>{popupMessage.title}</h3>
+                        <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', lineHeight: '1.5' }}>{popupMessage.body}</p>
+                        <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => setShowPopup(false)}>
+                            Close
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

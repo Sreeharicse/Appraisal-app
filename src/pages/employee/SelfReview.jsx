@@ -25,6 +25,9 @@ export default function SelfReview() {
     const [submitted, setSubmitted] = useState(false); // Legacy flag for some UI
     const [status, setStatus] = useState('new'); // 'new', 'draft', 'submitted'
     const [loading, setLoading] = useState(true);
+    const [showPopup, setShowPopup] = useState(false);
+    const [popupMessage, setPopupMessage] = useState({ title: '', body: '' });
+    const [errors, setErrors] = useState({});
 
     const COMPETENCY_QUESTIONS = [
         { id: 'q1', label: '1. Quality of Work', desc: 'How consistently do you deliver high-quality work in your role? Describe how you ensure your tasks are completed accurately, efficiently, and meet the required standards.' },
@@ -119,6 +122,54 @@ export default function SelfReview() {
 
         const finalStatus = targetStatus || 'submitted';
 
+        // Validation only applies if they are trying to submit it fully
+        if (finalStatus === 'submitted') {
+            const newErrors = {};
+            let firstErrorTab = null;
+            let firstErrorId = null;
+
+            // Check competencies
+            const unratedCompetencies = COMPETENCY_QUESTIONS.filter(q => !competencies[q.id] || competencies[q.id].rating === 0);
+            if (unratedCompetencies.length > 0) {
+                unratedCompetencies.forEach(q => newErrors[`comp-${q.id}`] = 'Pls fill the field');
+                if (!firstErrorTab) {
+                    firstErrorTab = 1;
+                    firstErrorId = `comp-${unratedCompetencies[0].id}`;
+                }
+            }
+
+            if (!achievements.trim()) {
+                newErrors.achievements = 'Pls fill the field';
+                if (!firstErrorTab) { firstErrorTab = 2; firstErrorId = 'achievements-input'; }
+            }
+            if (!learning.trim()) {
+                newErrors.learning = 'Pls fill the field';
+                if (!firstErrorTab) { firstErrorTab = 3; firstErrorId = 'learning-input'; }
+            }
+            if (!feedback.trim()) {
+                newErrors.feedback = 'Pls fill the field';
+                if (!firstErrorTab) { firstErrorTab = 4; firstErrorId = 'feedback-input'; }
+            }
+            if (!comments.trim()) {
+                newErrors.comments = 'Pls fill the field';
+                if (!firstErrorTab) { firstErrorTab = 5; firstErrorId = 'comments-input'; }
+            }
+
+            setErrors(newErrors);
+
+            if (Object.keys(newErrors).length > 0) {
+                setActiveTab(firstErrorTab);
+                setTimeout(() => {
+                    const el = document.getElementById(firstErrorId);
+                    if (el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        el.focus();
+                    }
+                }, 100);
+                return;
+            }
+        }
+
         await submitSelfReview({
             cycleId: selectedCycleId,
             employeeId: currentUser.id,
@@ -135,7 +186,12 @@ export default function SelfReview() {
 
         setStatus(finalStatus);
         setSubmitted(true);
-        alert(finalStatus === 'submitted' ? 'Self-review submitted successfully!' : 'Draft saved successfully!');
+        if (finalStatus === 'submitted') {
+            setPopupMessage({ title: '🎊 Review Submitted!', body: 'Your self-review has been successfully submitted to your manager for evaluation.' });
+        } else {
+            setPopupMessage({ title: '💾 Draft Saved', body: 'Your progress has been saved securely.' });
+        }
+        setShowPopup(true);
     };
 
     const TABS = [
@@ -179,15 +235,22 @@ export default function SelfReview() {
                                         style={{ width: '100%' }}
                                         disabled={isReadOnly}
                                         value={competencies[q.id]?.rating || 0}
-                                        onChange={e => setCompetencies(p => ({
-                                            ...p,
-                                            [q.id]: { ...p[q.id], rating: parseInt(e.target.value) }
-                                        }))}
+                                        onChange={e => {
+                                            const val = parseInt(e.target.value);
+                                            setCompetencies(p => ({
+                                                ...p,
+                                                [q.id]: { ...p[q.id], rating: val }
+                                            }));
+                                            if (val > 0 && errors[`comp-${q.id}`]) {
+                                                setErrors(p => ({ ...p, [`comp-${q.id}`]: null }));
+                                            }
+                                        }}
                                     >
                                         {RATING_OPTIONS.map(opt => (
                                             <option key={opt.value} value={opt.value}>{opt.label}</option>
                                         ))}
                                     </select>
+                                    {errors[`comp-${q.id}`] && <div style={{ color: 'var(--red)', fontSize: '12px', marginTop: '4px', fontWeight: 600 }}>{errors[`comp-${q.id}`]}</div>}
                                 </div>
                                 <div>
                                     <label className="form-label" style={{ fontSize: '12px' }}>Comments / Examples</label>
@@ -250,8 +313,12 @@ export default function SelfReview() {
             <p className="section-subtitle" style={{ marginBottom: '16px' }}>Provide feedback about the team, your manager, or organizational processes.</p>
             <textarea className="form-textarea" rows={10} placeholder="Type your feedback here..."
                 disabled={isReadOnly}
-                style={{ color: isReadOnly ? 'var(--text-muted)' : 'inherit' }}
-                value={feedback} onChange={e => setFeedback(e.target.value)} />
+                style={{ color: isReadOnly ? 'var(--text-muted)' : 'inherit', border: errors.feedback ? '1px solid var(--red)' : undefined }}
+                value={feedback} onChange={e => {
+                    setFeedback(e.target.value);
+                    if (errors.feedback) setErrors({ ...errors, feedback: null });
+                }} />
+            {errors.feedback && <div style={{ color: 'var(--red)', fontSize: '12px', marginTop: '8px', fontWeight: 600 }}>{errors.feedback}</div>}
         </div>
     );
 
@@ -261,8 +328,12 @@ export default function SelfReview() {
             <p className="section-subtitle" style={{ marginBottom: '16px' }}>Significant accomplishments or evidence not covered by specific goals.</p>
             <textarea className="form-textarea" rows={10} placeholder="Document any extra wins..."
                 disabled={isReadOnly}
-                style={{ color: isReadOnly ? 'var(--text-muted)' : 'inherit' }}
-                value={achievements} onChange={e => setAchievements(e.target.value)} />
+                style={{ color: isReadOnly ? 'var(--text-muted)' : 'inherit', border: errors.achievements ? '1px solid var(--red)' : undefined }}
+                value={achievements} onChange={e => {
+                    setAchievements(e.target.value);
+                    if (errors.achievements) setErrors({ ...errors, achievements: null });
+                }} />
+            {errors.achievements && <div style={{ color: 'var(--red)', fontSize: '12px', marginTop: '8px', fontWeight: 600 }}>{errors.achievements}</div>}
         </div>
     );
 
@@ -272,8 +343,12 @@ export default function SelfReview() {
             <p className="section-subtitle" style={{ marginBottom: '16px' }}>Track completed training or define future developmental aspirations.</p>
             <textarea className="form-textarea" rows={10} placeholder="Training completed, certifications, or desired skills..."
                 disabled={isReadOnly}
-                style={{ color: isReadOnly ? 'var(--text-muted)' : 'inherit' }}
-                value={learning} onChange={e => setLearning(e.target.value)} />
+                style={{ color: isReadOnly ? 'var(--text-muted)' : 'inherit', border: errors.learning ? '1px solid var(--red)' : undefined }}
+                value={learning} onChange={e => {
+                    setLearning(e.target.value);
+                    if (errors.learning) setErrors({ ...errors, learning: null });
+                }} />
+            {errors.learning && <div style={{ color: 'var(--red)', fontSize: '12px', marginTop: '8px', fontWeight: 600 }}>{errors.learning}</div>}
         </div>
     );
 
@@ -290,8 +365,12 @@ export default function SelfReview() {
                 <label className="form-label">Final Thoughts / Career Aspirations</label>
                 <textarea className="form-textarea" rows={4} placeholder="Where do you see yourself in the next 12 months?"
                     disabled={isReadOnly}
-                    style={{ color: isReadOnly ? 'var(--text-muted)' : 'inherit' }}
-                    value={comments} onChange={e => setComments(e.target.value)} />
+                    style={{ color: isReadOnly ? 'var(--text-muted)' : 'inherit', border: errors.comments ? '1px solid var(--red)' : undefined }}
+                    value={comments} onChange={e => {
+                        setComments(e.target.value);
+                        if (errors.comments) setErrors({ ...errors, comments: null });
+                    }} />
+                {errors.comments && <div style={{ color: 'var(--red)', fontSize: '12px', marginTop: '8px', fontWeight: 600 }}>{errors.comments}</div>}
             </div>
 
             {evaluation && (
@@ -404,6 +483,24 @@ export default function SelfReview() {
                     </div>
                 </div>
             </div>
+
+            {/* Custom Popup Overlay */}
+            {showPopup && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0, 0, 0, 0.5)', zIndex: 9999, display: 'flex',
+                    alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)'
+                }}>
+                    <div className="card" style={{ maxWidth: '400px', width: '90%', padding: '32px', textAlign: 'center', animation: 'fadeIn 0.2s ease-out' }}>
+                        <div style={{ fontSize: '48px', marginBottom: '16px' }}>{popupMessage.title.includes('Draft') ? '💾' : '✨'}</div>
+                        <h3 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '12px' }}>{popupMessage.title}</h3>
+                        <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', lineHeight: '1.5' }}>{popupMessage.body}</p>
+                        <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => setShowPopup(false)}>
+                            Close
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
