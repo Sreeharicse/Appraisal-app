@@ -4,9 +4,11 @@ import { useApp } from '../../context/AppContext';
 export default function Results() {
     const { currentUser, cycles, getGoalsForEmployee, getEvaluation, getSelfReview, getScore, getUserById, approvals } = useApp();
 
-    // Find all cycles that have evaluations
-    const cyclesWithResults = cycles.filter(c => !!getEvaluation(currentUser.id, c.id))
-        .sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
+    // Only show results after HR has approved the evaluation
+    const cyclesWithResults = cycles.filter(c => {
+        const ev = getEvaluation(currentUser.id, c.id);
+        return ev && ev.status === 'approved';
+    }).sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
 
     const [selectedCycleId, setSelectedCycleId] = useState('');
 
@@ -17,6 +19,12 @@ export default function Results() {
     }, [cyclesWithResults, selectedCycleId]);
 
     if (cyclesWithResults.length === 0) {
+        // Check if there's a pending evaluation (manager submitted but not yet approved)
+        const hasPendingEval = cycles.some(c => {
+            const ev = getEvaluation(currentUser.id, c.id);
+            return ev && ev.status !== 'approved';
+        });
+
         return (
             <div style={{ maxWidth: '800px', margin: '0 auto' }}>
                 <div className="section-header">
@@ -26,9 +34,17 @@ export default function Results() {
                     </div>
                 </div>
                 <div className="card" style={{ textAlign: 'center', padding: '60px', background: '#f8fafc' }}>
-                    <div style={{ fontSize: '48px', marginBottom: '16px' }}>📊</div>
-                    <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)' }}>No results available yet</h3>
-                    <p style={{ color: 'var(--text-muted)', marginTop: '8px' }}>Once your manager completes your evaluation and it's approved, your results will appear here.</p>
+                    <div style={{ fontSize: '48px', marginBottom: '16px' }}>
+                        {hasPendingEval ? '⏳' : '📊'}
+                    </div>
+                    <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                        {hasPendingEval ? 'Awaiting HR Approval' : 'No results available yet'}
+                    </h3>
+                    <p style={{ color: 'var(--text-muted)', marginTop: '8px', maxWidth: '400px', margin: '8px auto 0' }}>
+                        {hasPendingEval
+                            ? 'Your manager has submitted your evaluation. Results will be visible here once HR officially approves it.'
+                            : 'Once your manager completes your evaluation and HR approves it, your results will appear here.'}
+                    </p>
                 </div>
             </div>
         );

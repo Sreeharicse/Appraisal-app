@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { PERFORMANCE_CATEGORIES } from '../data/constants';
-import { encrypt, decrypt } from '../utils/encryption';
+import { encrypt, decrypt, encryptJSON, decryptJSON, MASKED, AUTHORIZED_ROLES, logDecryptionAccess } from '../utils/encryption';
 
 const AppContext = createContext(null);
 
@@ -22,6 +22,8 @@ export function getCategory(score) {
 export function AppProvider({ children }) {
     const [currentUser, setCurrentUser] = useState(null);
     const [users, setUsers] = useState([]);
+    const [departments, setDepartments] = useState([]);
+    const [designations, setDesignations] = useState([]);
     const [cycles, setCycles] = useState([]);
     const [goals, setGoals] = useState([]);
     const [selfReviews, setSelfReviews] = useState([]);
@@ -31,6 +33,10 @@ export function AppProvider({ children }) {
     const [loading, setLoading] = useState(true);
     const [theme, setTheme] = useState(localStorage.getItem('app-theme') || 'dark');
     const [encryptionKey, _setEncryptionKey] = useState(localStorage.getItem('admin_encryption_key') || 'techxl-secure-2026');
+    const [showDecrypted, setShowDecrypted] = useState(false);
+
+    // Helper: check if current user can view decrypted data
+    const canDecrypt = (user) => user && AUTHORIZED_ROLES.includes(user.role);
 
     // ──── Fetch all data from Supabase ────
     const fetchAllData = useCallback(async () => {
@@ -67,6 +73,8 @@ export function AppProvider({ children }) {
             { data: evalsData },
             { data: approvalsData },
             { data: notificationsData },
+            { data: departmentsData },
+            { data: designationsData },
         ] = await Promise.all([
             supabase.from('profiles').select('*'),
             supabase.from('cycles').select('*').order('created_at', { ascending: false }),
@@ -75,6 +83,8 @@ export function AppProvider({ children }) {
             supabase.from('evaluations').select('*'),
             supabase.from('approvals').select('*'),
             supabase.from('notifications').select('*').order('created_at', { ascending: false }),
+            supabase.from('departments').select('*'),
+            supabase.from('designations').select('*'),
         ]);
 
         // Map snake_case DB columns → camelCase used by the UI
@@ -84,9 +94,12 @@ export function AppProvider({ children }) {
             email: p.email,
             role: p.role,
             department: p.department,
+            designation: p.designation,
             avatar: p.avatar,
             managerId: p.manager_id,
         })));
+        setDepartments((departmentsData || []).map(d => ({ id: d.id, name: d.name })));
+        setDesignations((designationsData || []).map(d => ({ id: d.id, name: d.name })));
         setCycles((cyclesData || []).map(c => ({
             id: c.id,
             name: c.name,
@@ -111,10 +124,12 @@ export function AppProvider({ children }) {
             try {
                 if (r.comments && r.comments.startsWith('{')) {
                     metadata = JSON.parse(r.comments);
+                    // Always decrypt — handles both AES: and [ENC] formats
                     if (metadata.comments) metadata.comments = decrypt(metadata.comments);
                     if (metadata.feedback) metadata.feedback = decrypt(metadata.feedback);
                     if (metadata.achievements) metadata.achievements = decrypt(metadata.achievements);
                     if (metadata.learning) metadata.learning = decrypt(metadata.learning);
+                    if (metadata.summary) metadata.summary = decrypt(metadata.summary);
                     if (metadata.competencies) {
                         Object.keys(metadata.competencies).forEach(qid => {
                             if (metadata.competencies[qid]?.comment) {
@@ -131,9 +146,9 @@ export function AppProvider({ children }) {
                 id: r.id,
                 cycleId: r.cycle_id,
                 employeeId: r.employee_id,
-                summary: r.summary,
+                summary: decrypt(r.summary) || metadata.summary,
                 goalRatings: r.goal_ratings || {},
-                comments: metadata.comments || r.comments,
+                comments: metadata.comments || decrypt(r.comments) || r.comments,
                 metadata: metadata,
                 submittedAt: r.submitted_at,
                 status: metadata.status || 'submitted'
@@ -157,28 +172,57 @@ export function AppProvider({ children }) {
                 console.error("Failed to parse evaluation metadata", err);
             }
 
+            // Decrypt numeric ratings if stored as encrypted strings
+            const workRating = typeof e.work_performance_rating === 'string'
+                ? parseFloat(decrypt(e.work_performance_rating)) || 0
+                : e.work_performance_rating;
+            const behavRating = typeof e.behavioral_rating === 'string'
+                ? parseFloat(decrypt(e.behavioral_rating)) || 0
+                : e.behavioral_rating;
+            // Decrypt rejection comment — handles both AES: and [ENC] formats
+            const rejComment = e.rejection_comment ? decrypt(e.rejection_comment) : e.rejection_comment;
+
             return {
                 id: e.id,
                 cycleId: e.cycle_id,
                 employeeId: e.employee_id,
                 managerId: e.manager_id,
                 goalRatings: e.goal_ratings || {},
-                workPerformanceRating: e.work_performance_rating,
-                behavioralRating: e.behavioral_rating,
+                workPerformanceRating: workRating,
+                behavioralRating: behavRating,
                 hrRating: e.hr_rating || 0,
-                feedback: metadata.feedback || e.feedback,
+                feedback: metadata.feedback || decrypt(e.feedback) || e.feedback,
                 metadata: metadata,
                 status: e.status,
-                rejectionComment: e.rejection_comment,
+                rejectionComment: rejComment,
                 submittedAt: e.submitted_at,
             };
         }));
-        setApprovals((approvalsData || []).map(a => ({
-            evalId: a.eval_id,
-            approvedBy: a.approved_by,
-            comment: a.comment,
-            approvedAt: a.approved_at,
-        })));
+        setApprovals((approvalsData || []).map(a => {
+            // Decrypt the comment field — stored as JSON {comment, hrRating}
+            let plainComment = a.comment || '';
+            let hrRatingFromApproval = 0;
+            try {
+                if (plainComment.startsWith('{')) {
+                    const parsed = JSON.parse(plainComment);
+                    plainComment = decrypt(parsed.comment || '') || parsed.comment || '';
+                    hrRatingFromApproval = parsed.hrRating || 0;
+                } else {
+                    // Might be a bare encrypted or plain string
+                    plainComment = decrypt(plainComment);
+                }
+            } catch (e) {
+                plainComment = decrypt(a.comment || '') || a.comment || '';
+            }
+            return {
+                evalId: a.eval_id,
+                approvedBy: a.approved_by,
+                comment: plainComment,
+                hrRating: hrRatingFromApproval,
+                approvedAt: a.approved_at,
+            };
+        }));
+
         setNotifications((notificationsData || []).map(n => ({
             id: n.id,
             userId: n.user_id,
@@ -532,6 +576,7 @@ export function AppProvider({ children }) {
             email: user.email,
             role: user.role,
             department: user.department,
+            designation: user.designation,
             avatar: user.avatar,
             manager_id: user.managerId || null,
         };
@@ -550,6 +595,7 @@ export function AppProvider({ children }) {
             email: data.email,
             role: data.role,
             department: data.department,
+            designation: data.designation,
             avatar: data.avatar,
             managerId: data.manager_id
         } : {
@@ -568,17 +614,22 @@ export function AppProvider({ children }) {
         if (updates.email !== undefined) dbUpdates.email = updates.email;
         if (updates.role !== undefined) dbUpdates.role = updates.role;
         if (updates.department !== undefined) dbUpdates.department = updates.department;
+        if (updates.designation !== undefined) dbUpdates.designation = updates.designation;
         if (updates.avatar !== undefined) dbUpdates.avatar = updates.avatar;
         if (updates.managerId !== undefined) dbUpdates.manager_id = updates.managerId || null;
 
         const { error } = await supabase.from('profiles').update(dbUpdates).eq('id', id);
 
         if (error) {
-            console.warn("Supabase update failed:", error.message);
+            console.error("Supabase updateUser failed:", error.message, error.details, error.hint);
+            // Still update local state so the UI reflects changes
+            setUsers(p => p.map(u => u.id === id ? { ...u, ...updates, managerId: updates.managerId !== undefined ? updates.managerId : u.managerId } : u));
+            return { success: false, error: error.message };
         }
 
-        // Always update local state
+        // Update local state on success
         setUsers(p => p.map(u => u.id === id ? { ...u, ...updates, managerId: updates.managerId !== undefined ? updates.managerId : u.managerId } : u));
+        return { success: true };
     };
 
     const deleteUser = async (id) => {
@@ -961,7 +1012,7 @@ export function AppProvider({ children }) {
             cycle_id: evaluation.cycleId,
             employee_id: evaluation.employeeId,
             manager_id: currentUser?.id,
-            goal_ratings: evaluation.goalRatings,
+            goal_ratings: encryptJSON(evaluation.goalRatings),
             work_performance_rating: Math.round(evaluation.workPerformanceRating),
             behavioral_rating: Math.round(evaluation.behavioralRating),
             feedback: packedFeedback,
@@ -1039,7 +1090,7 @@ export function AppProvider({ children }) {
         const approval = {
             eval_id: evalId,
             approved_by: currentUser?.id,
-            comment: JSON.stringify({ comment, hrRating }),
+            comment: JSON.stringify({ comment: encrypt(comment), hrRating }),
             approved_at: new Date().toISOString().split('T')[0],
         };
         const { data: approvalData, error: approvalError } = await supabase.from('approvals').insert(approval).select().single();
@@ -1093,6 +1144,47 @@ export function AppProvider({ children }) {
         }
     };
 
+    // ──── Departments & Designations CRUD ────
+    const addDepartment = async (name) => {
+        const { data, error } = await supabase.from('departments').insert({ name }).select().single();
+        if (error) {
+            console.error("Supabase addDepartment failed:", error.message);
+            return { success: false, error: error.message };
+        }
+        if (data) setDepartments(p => [...p, { id: data.id, name: data.name }]);
+        return { success: true };
+    };
+
+    const deleteDepartment = async (id) => {
+        const { error } = await supabase.from('departments').delete().eq('id', id);
+        if (error) {
+            console.error("Supabase deleteDepartment failed:", error.message);
+            return { success: false, error: error.message };
+        }
+        setDepartments(p => p.filter(d => d.id !== id));
+        return { success: true };
+    };
+
+    const addDesignation = async (name) => {
+        const { data, error } = await supabase.from('designations').insert({ name }).select().single();
+        if (error) {
+            console.error("Supabase addDesignation failed:", error.message);
+            return { success: false, error: error.message };
+        }
+        if (data) setDesignations(p => [...p, { id: data.id, name: data.name }]);
+        return { success: true };
+    };
+
+    const deleteDesignation = async (id) => {
+        const { error } = await supabase.from('designations').delete().eq('id', id);
+        if (error) {
+            console.error("Supabase deleteDesignation failed:", error.message);
+            return { success: false, error: error.message };
+        }
+        setDesignations(p => p.filter(d => d.id !== id));
+        return { success: true };
+    };
+
     // ──── Helpers (pure, not async — use local state) ────
     const getActiveCycle = () => cycles.find(c => c.status === 'active');
     const getUserById = (id) => users.find(u => u.id === id);
@@ -1110,9 +1202,11 @@ export function AppProvider({ children }) {
 
     return (
         <AppContext.Provider value={{
-            currentUser, users, cycles, goals, selfReviews, evaluations, approvals, notifications,
+            currentUser, users, departments, designations, cycles, goals, selfReviews, evaluations, approvals, notifications,
             login, loginWithMicrosoft, logout, register, loginAsFake,
             addUser, updateUser, deleteUser,
+            addDepartment, deleteDepartment,
+            addDesignation, deleteDesignation,
             addCycle, updateCycle, deleteCycle,
             addGoal, updateGoal, deleteGoal,
             submitSelfReview, submitEvaluation,
@@ -1123,6 +1217,7 @@ export function AppProvider({ children }) {
             getTeamEmployees, getSelfReview, getEvaluation, getScore,
             calculateScore, getCategory,
             createNotification, markNotificationAsRead,
+            showDecrypted, setShowDecrypted, canDecrypt,
         }}>
             {children}
         </AppContext.Provider>

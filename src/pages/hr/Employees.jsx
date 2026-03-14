@@ -42,15 +42,28 @@ const AlertCircle = () => (
     </svg>
 );
 
+const ROLE_BADGE = {
+    admin: 'badge-purple',
+    hr: 'badge-purple',
+    manager: 'badge-blue',
+    employee: 'badge-gray'
+};
+
 /* ═══════════════════════════════════════════════════════════ */
 export default function Employees() {
-    const { currentUser, users, addUser, updateUser, deleteUser } = useApp();
+    const { currentUser, users, addUser, updateUser, deleteUser, refreshData, departments, designations } = useApp();
     const isManager = currentUser.role === 'manager';
 
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
-    const [form, setForm] = useState({ name: '', email: '', role: 'employee', department: '', managerId: '' });
+    const [form, setForm] = useState({ name: '', email: '', role: 'employee', designation: '', department: '', managerId: '' });
     const [search, setSearch] = useState('');
+    const [toast, setToast] = useState(null); // { type: 'success'|'error', msg: string }
+
+    const showToast = (type, msg) => {
+        setToast({ type, msg });
+        setTimeout(() => setToast(null), 4000);
+    };
 
     const { instance, accounts } = useMsal();
     const [fetchState, setFetchState] = useState('idle'); // idle | loading | success | error
@@ -61,7 +74,8 @@ export default function Employees() {
     const filtered = users.filter(u =>
         u.name.toLowerCase().includes(search.toLowerCase()) ||
         u.email.toLowerCase().includes(search.toLowerCase()) ||
-        u.department?.toLowerCase().includes(search.toLowerCase())
+        u.department?.toLowerCase().includes(search.toLowerCase()) ||
+        u.designation?.toLowerCase().includes(search.toLowerCase())
     );
 
     const resetModal = () => {
@@ -72,14 +86,14 @@ export default function Employees() {
 
     const openAdd = () => {
         setEditing(null);
-        setForm({ name: '', email: '', role: 'employee', department: '', managerId: '' });
+        setForm({ name: '', email: '', role: 'employee', designation: '', department: '', managerId: '' });
         resetModal();
         setShowModal(true);
     };
 
     const openEdit = (u) => {
         setEditing(u);
-        setForm({ name: u.name, email: u.email, role: u.role, department: u.department || '', managerId: u.managerId || '' });
+        setForm({ name: u.name, email: u.email, role: u.role, designation: u.designation || '', department: u.department || '', managerId: u.managerId || '' });
         resetModal();
         setShowModal(true);
     };
@@ -129,6 +143,7 @@ export default function Employees() {
                 ...p,
                 name: userData.displayName || p.name,
                 department: userData.department || p.department,
+                designation: userData.jobTitle || p.designation,
             }));
             setFetchState('success');
         } catch (err) {
@@ -140,18 +155,46 @@ export default function Employees() {
     const handleSave = async () => {
         if (!form.name || !form.email) return;
         const avatar = form.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-        if (editing) await updateUser(editing.id, { ...form, avatar });
-        else await addUser({ ...form, avatar });
+        if (editing) {
+            const result = await updateUser(editing.id, { ...form, avatar });
+            if (result?.success) {
+                showToast('success', 'Employee updated successfully in Supabase.');
+                await refreshData();
+            } else {
+                showToast('error', `Supabase update failed: ${result?.error || 'Permission denied. Check HR RLS policy.'}`);
+            }
+        } else {
+            await addUser({ ...form, avatar });
+            showToast('success', 'Employee added successfully.');
+            await refreshData();
+        }
         setShowModal(false);
         resetModal();
     };
 
-    const ROLE_BADGE = { hr: 'badge-purple', manager: 'badge-blue', employee: 'badge-gray' };
 
     return (
         <div>
             {/* Spin keyframe */}
             <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+
+            {/* Toast */}
+            {toast && (
+                <div style={{
+                    position: 'fixed', bottom: '24px', right: '24px', zIndex: 999,
+                    padding: '12px 20px', borderRadius: '12px', fontSize: '13px', fontWeight: 600,
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                    background: toast.type === 'success' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
+                    border: `1px solid ${toast.type === 'success' ? 'rgba(16,185,129,0.4)' : 'rgba(239,68,68,0.4)'}`,
+                    color: toast.type === 'success' ? '#10b981' : '#ef4444',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                    maxWidth: '420px',
+                    animation: 'slideIn 0.3s ease',
+                }}
+                >
+                    {toast.type === 'success' ? '✅' : '❌'} {toast.msg}
+                </div>
+            )}
 
             <div className="section-header">
                 <div>
@@ -174,7 +217,8 @@ export default function Employees() {
                         <tr>
                             <th>Employee</th>
                             <th>Email</th>
-                            <th>Role</th>
+                            <th>Access Level</th>
+                            <th>Job Title</th>
                             <th>Department</th>
                             <th>Manager</th>
                             {!isManager && <th>Actions</th>}
@@ -192,8 +236,13 @@ export default function Employees() {
                                         </div>
                                     </td>
                                     <td>{u.email}</td>
-                                    <td><span className={`badge ${ROLE_BADGE[u.role]}`}>{u.role}</span></td>
-                                    <td>{u.department || '—'}</td>
+                                    <td>
+                                        <span className={`badge ${ROLE_BADGE[u.role]}`}>{u.role}</span>
+                                    </td>
+                                    <td>
+                                        {u.designation ? <span style={{ color: 'var(--text-primary)' }}>{u.designation}</span> : <span style={{ color: 'var(--text-muted)' }}>—</span>}
+                                    </td>
+                                    <td>{u.department || <span style={{ color: 'var(--text-muted)' }}>—</span>}</td>
                                     <td>{mgr ? mgr.name : '—'}</td>
                                     {!isManager && (
                                         <td>
@@ -342,12 +391,17 @@ export default function Employees() {
                                 </div>
                             )}
 
-                            {/* ── Edit mode: plain email field ── */}
+                            {/* ── Edit mode: read-only email field ── */}
                             {editing && (
                                 <div className="form-group">
                                     <label className="form-label">Email</label>
-                                    <input className="form-input" type="email" value={form.email}
-                                        onChange={e => setForm(p => ({ ...p, email: e.target.value }))} />
+                                    <input
+                                        className="form-input"
+                                        type="email"
+                                        value={form.email}
+                                        readOnly
+                                        style={{ color: 'var(--text-muted)', cursor: 'not-allowed', background: 'transparent' }}
+                                    />
                                 </div>
                             )}
 
@@ -360,17 +414,27 @@ export default function Employees() {
                                         onChange={e => setForm(p => ({ ...p, name: e.target.value }))} />
                                 </div>
                                 <div className="form-group">
-                                    <label className="form-label">Department</label>
-                                    <input className="form-input" placeholder="e.g. Engineering"
-                                        value={form.department}
-                                        onChange={e => setForm(p => ({ ...p, department: e.target.value }))} />
+                                    <label className="form-label">Job Title / Designation</label>
+                                    <select className="form-select" value={form.designation}
+                                        onChange={e => setForm(p => ({ ...p, designation: e.target.value }))}>
+                                        <option value="">-- Select Title --</option>
+                                        {designations.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+                                    </select>
                                 </div>
                             </div>
 
-                            {/* ── Row 2: Role + Reporting Manager ── */}
-                            <div className="form-grid" style={{ marginBottom: 0 }}>
-                                <div className="form-group" style={{ marginBottom: 0 }}>
-                                    <label className="form-label">Role</label>
+                            {/* ── Row 2: Department + Role ── */}
+                            <div className="form-grid">
+                                <div className="form-group">
+                                    <label className="form-label">Department</label>
+                                    <select className="form-select" value={form.department}
+                                        onChange={e => setForm(p => ({ ...p, department: e.target.value }))}>
+                                        <option value="">-- Select Department --</option>
+                                        {departments.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+                                    </select>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">System Access Level</label>
                                     <select className="form-select" value={form.role}
                                         onChange={e => setForm(p => ({ ...p, role: e.target.value }))}>
                                         <option value="employee">Employee</option>
@@ -378,14 +442,16 @@ export default function Employees() {
                                         <option value="hr">HR Admin</option>
                                     </select>
                                 </div>
-                                <div className="form-group" style={{ marginBottom: 0 }}>
-                                    <label className="form-label">Reporting Manager</label>
-                                    <select className="form-select" value={form.managerId}
-                                        onChange={e => setForm(p => ({ ...p, managerId: e.target.value }))}>
-                                        <option value="">None</option>
-                                        {managers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                                    </select>
-                                </div>
+                            </div>
+
+                            {/* ── Row 3: Reporting Manager ── */}
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label">Reporting Manager</label>
+                                <select className="form-select" value={form.managerId}
+                                    onChange={e => setForm(p => ({ ...p, managerId: e.target.value }))}>
+                                    <option value="">None</option>
+                                    {managers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                                </select>
                             </div>
                         </div>
 

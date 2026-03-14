@@ -29,11 +29,29 @@ export default function Reports() {
         return { ...emp, scoreData };
     }).filter(e => e.scoreData);
 
-    // Bar chart data
-    const barData = employeeScores.map(e => ({
-        name: e.name.split(' ')[0],
-        score: e.scoreData.score,
-        category: e.scoreData.category.label,
+    // Histogram chart data (Score Distribution)
+    const scoreBuckets = {
+        '0-49': 0,
+        '50-59': 0,
+        '60-69': 0,
+        '70-79': 0,
+        '80-89': 0,
+        '90-100': 0
+    };
+
+    employeeScores.forEach(e => {
+        const s = e.scoreData.score;
+        if (s < 50) scoreBuckets['0-49']++;
+        else if (s < 60) scoreBuckets['50-59']++;
+        else if (s < 70) scoreBuckets['60-69']++;
+        else if (s < 80) scoreBuckets['70-79']++;
+        else if (s < 90) scoreBuckets['80-89']++;
+        else scoreBuckets['90-100']++;
+    });
+
+    const histogramData = Object.entries(scoreBuckets).map(([range, count]) => ({
+        name: range,
+        count: count
     }));
 
     // Pie chart data
@@ -47,13 +65,50 @@ export default function Reports() {
     const CustomTooltip = ({ active, payload }) => {
         if (active && payload?.length) {
             return (
-                <div style={{ background: '#151731', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '10px 14px' }}>
-                    <div style={{ fontWeight: 700, fontSize: '14px' }}>{payload[0].payload.name}</div>
+                <div style={{ background: '#151731', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '10px 14px', color: '#fff' }}>
+                    <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '4px' }}>{payload[0].payload.name}</div>
                     <div style={{ color: '#a78bfa', fontSize: '20px', fontWeight: 800 }}>{payload[0].value}</div>
                 </div>
             );
         }
         return null;
+    };
+
+    const exportToCSV = () => {
+        if (employeeScores.length === 0) {
+            alert('No data to export for this cycle.');
+            return;
+        }
+
+        const headers = ['Employee Name', 'Role', 'Department', 'Score', 'Category', 'Status'];
+        
+        const rows = employeeScores.map(emp => {
+            const ev = evaluations.find(e => e.employeeId === emp.id && e.cycleId === activeCycle?.id);
+            const status = ev?.status?.replace('_', ' ') || 'pending';
+            return [
+                emp.name,
+                emp.role,
+                emp.department,
+                emp.scoreData.score,
+                emp.scoreData.category.label,
+                status
+            ];
+        });
+
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(r => r.map(field => `"${field}"`).join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `Reports_${activeCycle?.name || 'Cycle'}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
 
     return (
@@ -64,11 +119,16 @@ export default function Reports() {
                     <p className="section-subtitle">Cycle analytics, scores, and performance distribution</p>
                 </div>
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <button onClick={exportToCSV} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        Export CSV
+                    </button>
                     <select
                         className="form-select"
                         style={{ minWidth: '200px' }}
                         value={selectedCycleId}
                         onChange={(e) => setSelectedCycleId(e.target.value)}
+                        disabled={cycles.length === 0}
                     >
                         {cycles.map(c => (
                             <option key={c.id} value={c.id}>
@@ -87,15 +147,15 @@ export default function Reports() {
                 <>
                     <div className="charts-grid" style={{ marginBottom: '24px' }}>
                         <div className="chart-card">
-                            <div className="chart-title">📊 Individual Performance Scores</div>
+                            <div className="chart-title">📊 Score Distribution</div>
                             <ResponsiveContainer width="100%" height={220}>
-                                <BarChart data={barData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                                <BarChart data={histogramData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                                     <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 12 }} />
-                                    <YAxis domain={[0, 100]} tick={{ fill: '#64748b', fontSize: 12 }} />
+                                    <YAxis allowDecimals={false} tick={{ fill: '#64748b', fontSize: 12 }} />
                                     <Tooltip content={<CustomTooltip />} />
-                                    <Bar dataKey="score" radius={[6, 6, 0, 0]}>
-                                        {barData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                                    <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+                                        {histogramData.map((_, i) => <Cell key={i} fill={COLORS[1]} />)}
                                     </Bar>
                                 </BarChart>
                             </ResponsiveContainer>
@@ -104,15 +164,25 @@ export default function Reports() {
                         <div className="chart-card">
                             <div className="chart-title">🥧 Performance Category Distribution</div>
                             <ResponsiveContainer width="100%" height={220}>
-                                <BarChart data={pieData} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
-                                    <XAxis type="number" tick={{ fill: '#64748b', fontSize: 12 }} />
-                                    <YAxis type="category" dataKey="name" tick={{ fill: '#64748b', fontSize: 12 }} width={110} />
-                                    <Tooltip cursor={{ fill: 'rgba(255,255,255,0.02)' }} contentStyle={{ background: '#151731', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} />
-                                    <Bar dataKey="value" radius={[0, 4, 4, 0]} name="Employees" barSize={24}>
+                                <PieChart>
+                                    <Pie
+                                        data={pieData}
+                                        dataKey="value"
+                                        nameKey="name"
+                                        cx="50%"
+                                        cy="50%"
+                                        outerRadius={80}
+                                        innerRadius={40}
+                                        paddingAngle={2}
+                                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                    >
                                         {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                                    </Bar>
-                                </BarChart>
+                                    </Pie>
+                                    <Tooltip 
+                                        contentStyle={{ background: '#151731', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }}
+                                        itemStyle={{ color: '#fff' }}
+                                    />
+                                </PieChart>
                             </ResponsiveContainer>
                         </div>
                     </div>
