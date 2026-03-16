@@ -130,12 +130,13 @@ export function AppProvider({ children }) {
                 console.error("Failed to parse review metadata", e);
             }
 
+            const isJson = r.comments && r.comments.startsWith('{');
             return {
                 id: r.id,
                 cycleId: r.cycle_id,
                 employeeId: r.employee_id,
-                summary: decrypt(r.summary) || metadata.summary,
-                comments: metadata.comments || decrypt(r.comments) || r.comments,
+                summary: decrypt(r.summary) || (isJson ? (metadata.summary || '') : ''),
+                comments: isJson ? (metadata.comments || '') : (decrypt(r.comments) || r.comments),
                 metadata: metadata,
                 submittedAt: r.submitted_at,
                 status: metadata.status || 'submitted'
@@ -159,16 +160,19 @@ export function AppProvider({ children }) {
                 console.error("Failed to parse evaluation metadata", err);
             }
 
-            // Decrypt numeric ratings if stored as encrypted strings
-            const workRating = typeof e.work_performance_rating === 'string'
-                ? parseFloat(decrypt(e.work_performance_rating)) || 0
-                : e.work_performance_rating;
-            const behavRating = typeof e.behavioral_rating === 'string'
-                ? parseFloat(decrypt(e.behavioral_rating)) || 0
-                : e.behavioral_rating;
+            // Decrypt numeric ratings — column is now text (encrypted or plain string from migration)
+            const workRating = e.work_performance_rating
+                ? (parseFloat(decrypt(e.work_performance_rating)) || parseFloat(e.work_performance_rating) || 0)
+                : 0;
+            const behavRating = e.behavioral_rating
+                ? (parseFloat(decrypt(e.behavioral_rating)) || parseFloat(e.behavioral_rating) || 0)
+                : 0;
+            const hrRating = e.hr_rating
+                ? (parseFloat(decrypt(e.hr_rating)) || parseFloat(e.hr_rating) || 0)
+                : 0;
             // Decrypt rejection comment — handles both AES: and [ENC] formats
             const rejComment = e.rejection_comment ? decrypt(e.rejection_comment) : e.rejection_comment;
-
+            const isJson = e.feedback && e.feedback.startsWith('{');
             return {
                 id: e.id,
                 cycleId: e.cycle_id,
@@ -176,8 +180,8 @@ export function AppProvider({ children }) {
                 managerId: e.manager_id,
                 workPerformanceRating: workRating,
                 behavioralRating: behavRating,
-                hrRating: e.hr_rating || 0,
-                feedback: metadata.feedback || decrypt(e.feedback) || e.feedback,
+                hrRating: hrRating,
+                feedback: isJson ? (metadata.feedback || '') : (decrypt(e.feedback) || e.feedback),
                 metadata: metadata,
                 status: e.status,
                 rejectionComment: rejComment,
@@ -975,7 +979,7 @@ export function AppProvider({ children }) {
                 behavioralRating: evaluation.behavioralRating,
                 feedback: evaluation.feedback,
                 metadata: unencryptedMetadata,
-                status: 'pending_approval',
+                status: evaluation.status || 'draft',
                 rejectionComment: null,
                 submittedAt: new Date().toISOString().split('T')[0]
             };
@@ -985,10 +989,12 @@ export function AppProvider({ children }) {
                 return updated;
             });
             
-            // Notify Employee & HR
-            const hrIds = users.filter(u => u.role === 'admin' || u.role === 'hr').map(u => u.id);
-            createNotification([evaluation.employeeId], 'Evaluation Submitted', `Your manager has submitted your evaluation. Pending HR approval.`, 'success');
-            createNotification(hrIds, 'Pending HR Approval', `Evaluation for ${users.find(u => u.id === evaluation.employeeId)?.name} is awaiting your approval.`, 'warning');
+            // Only Notify Employee & HR if fully submitted
+            if (mapped.status === 'pending_approval') {
+                const hrIds = users.filter(u => u.role === 'admin' || u.role === 'hr').map(u => u.id);
+                createNotification([evaluation.employeeId], 'Evaluation Submitted', `Your manager has submitted your evaluation. Pending HR approval.`, 'success');
+                createNotification(hrIds, 'Pending HR Approval', `Evaluation for ${users.find(u => u.id === evaluation.employeeId)?.name} is awaiting your approval.`, 'warning');
+            }
 
             return mapped;
         }
@@ -997,10 +1003,10 @@ export function AppProvider({ children }) {
             cycle_id: evaluation.cycleId,
             employee_id: evaluation.employeeId,
             manager_id: currentUser?.id,
-            work_performance_rating: Math.round(evaluation.workPerformanceRating),
-            behavioral_rating: Math.round(evaluation.behavioralRating),
+            work_performance_rating: encrypt(String(Math.round(evaluation.workPerformanceRating))),
+            behavioral_rating: encrypt(String(Math.round(evaluation.behavioralRating))),
             feedback: packedFeedback,
-            status: 'pending_approval',
+            status: evaluation.status || 'draft',
             submitted_at: new Date().toISOString().split('T')[0],
         };
 
@@ -1014,7 +1020,10 @@ export function AppProvider({ children }) {
         const { data, error } = result;
 
         if (error) {
-            console.error('Supabase error submitting evaluation:', error.message);
+            console.error('Supabase error submitting evaluation:', error);
+            console.error('Full error details:', JSON.stringify(error));
+            console.error('Payload sent:', JSON.stringify(payload));
+            alert(`Evaluation save failed: ${error.message || JSON.stringify(error)}`);
             return null;
         }
         if (data) {
@@ -1037,9 +1046,12 @@ export function AppProvider({ children }) {
                 setEvaluations(p => [...p, mapped]);
             }
             
-            const hrIds = users.filter(u => u.role === 'admin' || u.role === 'hr').map(u => u.id);
-            createNotification([evaluation.employeeId], 'Evaluation Submitted', `Your manager has submitted your evaluation. Pending HR approval.`, 'success');
-            createNotification(hrIds, 'Pending HR Approval', `Evaluation for ${users.find(u => u.id === evaluation.employeeId)?.name} is awaiting your approval.`, 'warning');
+            // Only Notify Employee & HR if fully submitted
+            if (mapped.status === 'pending_approval') {
+                const hrIds = users.filter(u => u.role === 'admin' || u.role === 'hr').map(u => u.id);
+                createNotification([evaluation.employeeId], 'Evaluation Submitted', `Your manager has submitted your evaluation. Pending HR approval.`, 'success');
+                createNotification(hrIds, 'Pending HR Approval', `Evaluation for ${users.find(u => u.id === evaluation.employeeId)?.name} is awaiting your approval.`, 'warning');
+            }
 
             return mapped;
         }
@@ -1083,14 +1095,27 @@ export function AppProvider({ children }) {
             setApprovals(p => [...p, { evalId: approvalData.eval_id, approvedBy: approvalData.approved_by, comment, hrRating, approvedAt: approvalData.approved_at }]);
         }
 
-        // Update evaluation: status + hr_rating (requires hr_rating column in DB — see SQL below)
+        // Update evaluation: status + all ratings encrypted (re-encrypt existing ratings too)
+        const theEvalToApprove = evaluations.find(e => e.id === evalId);
+        const updatePayload = {
+            status: 'approved',
+            hr_rating: encrypt(String(hrRating)),
+        };
+        // Re-encrypt work/behavioral ratings if they exist (handles previously plain-integer rows)
+        if (theEvalToApprove?.workPerformanceRating) {
+            updatePayload.work_performance_rating = encrypt(String(Math.round(theEvalToApprove.workPerformanceRating)));
+        }
+        if (theEvalToApprove?.behavioralRating) {
+            updatePayload.behavioral_rating = encrypt(String(Math.round(theEvalToApprove.behavioralRating)));
+        }
+
         const { error: evalError } = await supabase
             .from('evaluations')
-            .update({ status: 'approved', hr_rating: hrRating })
+            .update(updatePayload)
             .eq('id', evalId);
         if (evalError) {
             console.error('Evaluation update error:', evalError.message, evalError.details, evalError.hint);
-            // If hr_rating column missing, try status-only update as fallback
+            // Fallback: try updating status only
             await supabase.from('evaluations').update({ status: 'approved' }).eq('id', evalId);
         }
         setEvaluations(p => p.map(e => e.id === evalId ? { ...e, status: 'approved', hrRating } : e));

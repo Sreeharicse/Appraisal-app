@@ -731,6 +731,16 @@ tr:hover td {
   box-shadow: none;
 }
 
+textarea.form-input {
+  resize: none;
+  min-height: 80px;
+  max-height: 160px;
+  overflow-y: auto;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
+}
+
 .form-select {
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
@@ -762,8 +772,12 @@ tr:hover td {
 }
 
 .form-textarea {
-  resize: vertical;
-  min-height: 90px;
+  resize: none;
+  min-height: 80px;
+  max-height: 200px;
+  overflow-y: auto;
+  word-break: break-word;
+  white-space: pre-wrap;
 }
 
 .form-grid {

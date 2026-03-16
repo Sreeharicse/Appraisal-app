@@ -13,8 +13,9 @@ const StarRating = ({ value, onChange, readonly = false }) => {
                     onClick={() => !readonly && onChange(star)}
                     style={{
                         background: 'none', border: 'none', cursor: readonly ? 'default' : 'pointer',
-                        padding: '4px', color: star <= value ? '#f59e0b' : 'rgba(255,255,255,0.1)',
-                        transition: 'color 0.2s', fontSize: '20px', lineHeight: 1
+                        padding: '4px', color: star <= value ? 'var(--yellow)' : 'var(--text-muted)',
+                        opacity: star <= value ? 1 : 0.3,
+                        transition: 'all 0.2s', fontSize: '20px', lineHeight: 1
                     }}
                 >
                     ★
@@ -152,7 +153,7 @@ export default function Approvals() {
                             
                             <div style={{ display: 'grid', gap: '16px' }}>
                                 {HR_QUESTIONS.map(q => (
-                                    <div key={q.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '8px' }}>
+                                    <div key={q.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-primary)', padding: '12px', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: 'var(--nm-shadow-out-sm)' }}>
                                         <div>
                                             <div style={{ fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>{q.label}</div>
                                             <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{q.desc}</div>
@@ -170,7 +171,7 @@ export default function Approvals() {
                                 <textarea 
                                     className="form-input" 
                                     placeholder="HR feedback..." 
-                                    style={{ minHeight: '60px', fontSize: '13px' }}
+                                    style={{ minHeight: '60px', maxHeight: '120px', resize: 'none', overflowY: 'auto', fontSize: '13px' }}
                                     value={comment[ev.id] || ''}
                                     onChange={e => setComment(prev => ({ ...prev, [ev.id]: e.target.value }))}
                                 />
@@ -178,9 +179,9 @@ export default function Approvals() {
                         </div>
 
                         {/* Manager Feedback */}
-                        <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '8px', padding: '12px', marginBottom: '20px' }}>
+                        <div style={{ background: 'var(--bg-primary)', borderRadius: '12px', padding: '12px', marginBottom: '20px', border: '1px solid var(--border)', boxShadow: 'var(--nm-shadow-out-sm)' }}>
                             <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>Manager Feedback</div>
-                            <p style={{ fontSize: '13px', lineHeight: '1.6' }}>{ev.feedback || 'No feedback provided.'}</p>
+                            <p style={{ fontSize: '13px', lineHeight: '1.6', wordBreak: 'break-word', overflowWrap: 'break-word', maxHeight: '120px', overflowY: 'auto' }}>{ev.feedback || 'No feedback provided.'}</p>
                         </div>
 
                         <div style={{ display: 'flex', gap: '10px' }}>

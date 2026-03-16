@@ -17,14 +17,14 @@ export default function Evaluate() {
 
     const [selectedCycleId, setSelectedCycleId] = useState('');
     const [selectedEmp, setSelectedEmp] = useState(employeeId || team[0]?.id || '');
-    const [saved, setSaved] = useState(false);
+    const [status, setStatus] = useState('draft');
     const [activeTab, setActiveTab] = useState(1);
     const [hasEdited, setHasEdited] = useState(false);
     const [showPopup, setShowPopup] = useState(false);
     const [popupMessage, setPopupMessage] = useState({ title: '', body: '' });
 
-    // Once saved, the evaluation is permanently locked — manager cannot edit
-    const isLocked = saved && !hasEdited;
+    // Once saved as 'pending_approval' or 'approved', the evaluation is permanently locked
+    const isReadOnly = status === 'pending_approval' || status === 'approved';
 
     const [goalRatings, setGoalRatings] = useState({});
     const [competencies, setCompetencies] = useState({});
@@ -105,8 +105,8 @@ export default function Evaluate() {
         setFeedback(ev?.feedback || '');
         setWorkRating(ev?.workPerformanceRating || 0);
         setBehaviorRating(ev?.behavioralRating || 0);
-        setSaved(!!ev);
-    }, [selectedEmp, selectedCycleId, empGoals.length, evaluations?.length, selfReviews?.length]);
+        setStatus(ev?.status || 'draft');
+    }, [selectedEmp, selectedCycleId, evaluations, selfReviews]);
 
     useEffect(() => {
         if (employeeId) {
@@ -117,11 +117,11 @@ export default function Evaluate() {
 
     const handleEmpChange = (id) => {
         setSelectedEmp(id);
-        setSaved(false);
+        setStatus('draft');
         setHasEdited(false);
     };
 
-    const handleSubmit = async () => {
+    const handleSubmit = async (finalStatus = 'pending_approval') => {
         if (!selectedCycleId || !selectedEmp) return;
 
         const getAvg = (start, end) => {
@@ -142,22 +142,28 @@ export default function Evaluate() {
             feedback,
             workPerformanceRating,
             behavioralRating,
+            status: finalStatus
         });
 
-        setSaved(true);
+        setStatus(finalStatus);
         setHasEdited(false);
-        setPopupMessage({ title: '🎊 Evaluation Complete!', body: 'Your official performance evaluation has been submitted successfully.' });
+
+        if (finalStatus === 'pending_approval') {
+            setPopupMessage({ title: '🎊 Evaluation Complete!', body: 'Your official performance evaluation has been submitted successfully.' });
+        } else {
+            setPopupMessage({ title: '💾 Draft Saved', body: 'Your evaluation progress has been saved securely as a draft.' });
+        }
         setShowPopup(true);
     };
 
     const updateCompRating = (qid, val) => {
-        if (saved) return; // locked after submission
+        if (isReadOnly) return; // locked after submission
         setCompetencies(p => ({ ...p, [qid]: { ...p[qid], rating: val } }));
         setHasEdited(true);
     };
 
     const updateCompComment = (qid, val) => {
-        if (saved) return; // locked after submission
+        if (isReadOnly) return; // locked after submission
         setCompetencies(p => ({ ...p, [qid]: { ...p[qid], comment: val } }));
         setHasEdited(true);
     };
@@ -184,22 +190,22 @@ export default function Evaluate() {
                             </div>
                             <div>
                                 <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Self-Comments</div>
-                                <div style={{ padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px', fontSize: '13px', minHeight: '60px', fontStyle: 'italic', lineHeight: '1.5' }}>
+                                <div style={{ padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px', fontSize: '13px', minHeight: '60px', maxHeight: '140px', overflowY: 'auto', fontStyle: 'italic', lineHeight: '1.5', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                                     {empComps[q.id]?.comment || 'No comments provided.'}
                                 </div>
                             </div>
                         </div>
 
                         {/* Manager Part (Editable / Locked) */}
-                        <div style={{ padding: '16px', borderRadius: '12px', background: saved ? 'rgba(100,116,139,0.06)' : 'rgba(168, 85, 247, 0.05)', border: saved ? '1px solid rgba(100,116,139,0.15)' : '1px solid rgba(168, 85, 247, 0.1)' }}>
-                            <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '12px', color: saved ? 'var(--text-muted)' : 'var(--purple)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                👨‍💼 Manager Perspective {saved && <span style={{ fontSize: '11px', background: 'rgba(100,116,139,0.15)', padding: '2px 8px', borderRadius: '20px', fontWeight: 600 }}>🔒 Locked</span>}
+                        <div style={{ padding: '16px', borderRadius: '12px', background: isReadOnly ? 'rgba(100,116,139,0.06)' : 'rgba(168, 85, 247, 0.05)', border: isReadOnly ? '1px solid rgba(100,116,139,0.15)' : '1px solid rgba(168, 85, 247, 0.1)' }}>
+                            <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '12px', color: isReadOnly ? 'var(--text-muted)' : 'var(--purple)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                👨‍💼 Manager Perspective {isReadOnly && <span style={{ fontSize: '11px', background: 'rgba(100,116,139,0.15)', padding: '2px 8px', borderRadius: '20px', fontWeight: 600 }}>🔒 Locked</span>}
                             </div>
                             <div style={{ marginBottom: '16px' }}>
-                                <label className="form-label" style={{ fontSize: '12px', color: saved ? 'var(--text-muted)' : undefined }}>Rating</label>
+                                <label className="form-label" style={{ fontSize: '12px', color: isReadOnly ? 'var(--text-muted)' : undefined }}>Rating</label>
                                 <select className="form-select" value={competencies[q.id]?.rating || 0}
-                                    disabled={saved}
-                                    style={{ color: saved ? 'var(--text-muted)' : undefined, cursor: saved ? 'not-allowed' : 'pointer', opacity: saved ? 0.7 : 1 }}
+                                    disabled={isReadOnly}
+                                    style={{ color: isReadOnly ? 'var(--text-muted)' : undefined, cursor: isReadOnly ? 'not-allowed' : 'pointer', opacity: isReadOnly ? 0.7 : 1 }}
                                     onChange={e => updateCompRating(q.id, parseInt(e.target.value))}>
                                     {RATING_OPTIONS.map(opt => (
                                         <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -207,10 +213,10 @@ export default function Evaluate() {
                                 </select>
                             </div>
                             <div>
-                                <label className="form-label" style={{ fontSize: '12px', color: saved ? 'var(--text-muted)' : undefined }}>Feedback / Examples</label>
-                                <textarea className="form-input" placeholder={saved ? 'Evaluation submitted.' : 'Manager feedback...'} style={{ minHeight: '80px', fontSize: '13px', color: saved ? 'var(--text-muted)' : undefined, cursor: saved ? 'not-allowed' : 'text', opacity: saved ? 0.7 : 1 }}
+                                <label className="form-label" style={{ fontSize: '12px', color: isReadOnly ? 'var(--text-muted)' : undefined }}>Feedback / Examples</label>
+                                <textarea className="form-input" placeholder={isReadOnly ? 'Evaluation submitted.' : 'Manager feedback...'} style={{ minHeight: '80px', maxHeight: '140px', resize: 'none', overflowY: 'auto', fontSize: '13px', color: isReadOnly ? 'var(--text-muted)' : undefined, cursor: isReadOnly ? 'not-allowed' : 'text', opacity: isReadOnly ? 0.7 : 1 }}
                                     value={competencies[q.id]?.comment || ''}
-                                    readOnly={saved}
+                                    readOnly={isReadOnly}
                                     onChange={e => updateCompComment(q.id, e.target.value)}
                                 />
                             </div>
@@ -247,16 +253,16 @@ export default function Evaluate() {
             <div className="card" style={{ marginBottom: '32px', padding: '24px' }}>
                 <div className="card-title">Overall Summary Feedback</div>
                 <p className="section-subtitle" style={{ marginBottom: '16px' }}>Provide a final assessment of the employee's performance over this cycle.</p>
-                <textarea className="form-textarea" rows={8}
-                    placeholder={saved ? 'Evaluation has been submitted and locked.' : 'Final assessment, growth areas, and career pathing...'}
+                <textarea className="form-textarea"
+                    placeholder={isReadOnly ? 'Evaluation has been submitted and locked.' : 'Final assessment, growth areas, and career pathing...'}
                     value={feedback}
-                    readOnly={saved}
-                    style={{ color: saved ? 'var(--text-muted)' : undefined, cursor: saved ? 'not-allowed' : 'text', opacity: saved ? 0.75 : 1 }}
-                    onChange={e => { if (!saved) { setFeedback(e.target.value); setHasEdited(true); } }} />
+                    readOnly={isReadOnly}
+                    style={{ color: isReadOnly ? 'var(--text-muted)' : undefined, cursor: isReadOnly ? 'not-allowed' : 'text', opacity: isReadOnly ? 0.75 : 1, minHeight: '120px', maxHeight: '220px', resize: 'none', overflowY: 'auto' }}
+                    onChange={e => { if (!isReadOnly) { setFeedback(e.target.value); setHasEdited(true); } }} />
             </div>
 
             <div style={{ textAlign: 'right', marginBottom: '40px' }}>
-                {saved ? (
+                {isReadOnly ? (
                     <div style={{
                         display: 'inline-flex', alignItems: 'center', gap: '10px',
                         padding: '12px 28px', borderRadius: '12px',
@@ -267,9 +273,14 @@ export default function Evaluate() {
                         ✅ Evaluation Submitted &amp; Locked
                     </div>
                 ) : (
-                    <button type="button" className="btn btn-primary" style={{ padding: '16px 64px', fontWeight: 700, fontSize: '16px' }} onClick={handleSubmit}>
-                        Complete Evaluation
-                    </button>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px' }}>
+                        <button type="button" className="btn btn-secondary" style={{ padding: '16px 32px', fontWeight: 600 }} onClick={() => handleSubmit('draft')}>
+                            💾 Save Draft
+                        </button>
+                        <button type="button" className="btn btn-primary" style={{ padding: '16px 64px', fontWeight: 700, fontSize: '16px' }} onClick={() => handleSubmit('pending_approval')}>
+                            Complete Evaluation
+                        </button>
+                    </div>
                 )}
             </div>
         </div>
@@ -306,7 +317,7 @@ export default function Evaluate() {
                             value={selectedCycleId}
                             onChange={(e) => {
                                 setSelectedCycleId(e.target.value);
-                                setSaved(false);
+                                setStatus('draft');
                                 setHasEdited(false);
                             }}
                         >
@@ -325,7 +336,7 @@ export default function Evaluate() {
                 </div>
             </div>
 
-            {saved && !hasEdited && <div style={{
+            {isReadOnly && !hasEdited && <div style={{
                 marginBottom: '20px', padding: '12px 20px',
                 background: 'rgba(100,116,139,0.08)', border: '1px solid rgba(100,116,139,0.2)',
                 borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '10px',
