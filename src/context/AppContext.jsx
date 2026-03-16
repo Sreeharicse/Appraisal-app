@@ -68,7 +68,6 @@ export function AppProvider({ children }) {
         const [
             { data: profilesData },
             { data: cyclesData },
-            { data: goalsData },
             { data: reviewsData },
             { data: evalsData },
             { data: approvalsData },
@@ -78,7 +77,6 @@ export function AppProvider({ children }) {
         ] = await Promise.all([
             supabase.from('profiles').select('*'),
             supabase.from('cycles').select('*').order('created_at', { ascending: false }),
-            supabase.from('goals').select('*'),
             supabase.from('self_reviews').select('*'),
             supabase.from('evaluations').select('*'),
             supabase.from('approvals').select('*'),
@@ -108,17 +106,7 @@ export function AppProvider({ children }) {
             status: c.status,
             createdBy: c.created_by,
         })));
-        setGoals((goalsData || []).map(g => ({
-            id: g.id,
-            cycleId: g.cycle_id,
-            employeeId: g.employee_id,
-            managerId: g.manager_id,
-            title: g.title,
-            description: g.description,
-            weightage: g.weightage,
-            deadline: g.deadline,
-            status: g.status,
-        })));
+
         setSelfReviews((reviewsData || []).map(r => {
             let metadata = { status: 'draft' };
             try {
@@ -147,7 +135,6 @@ export function AppProvider({ children }) {
                 cycleId: r.cycle_id,
                 employeeId: r.employee_id,
                 summary: decrypt(r.summary) || metadata.summary,
-                goalRatings: r.goal_ratings || {},
                 comments: metadata.comments || decrypt(r.comments) || r.comments,
                 metadata: metadata,
                 submittedAt: r.submitted_at,
@@ -187,7 +174,6 @@ export function AppProvider({ children }) {
                 cycleId: e.cycle_id,
                 employeeId: e.employee_id,
                 managerId: e.manager_id,
-                goalRatings: e.goal_ratings || {},
                 workPerformanceRating: workRating,
                 behavioralRating: behavRating,
                 hrRating: e.hr_rating || 0,
@@ -886,7 +872,6 @@ export function AppProvider({ children }) {
                 cycleId: review.cycleId,
                 employeeId: review.employeeId,
                 summary: review.summary,
-                goalRatings: review.goalRatings,
                 comments: review.comments,
                 metadata: unencryptedMetadata,
                 submittedAt: new Date().toISOString().split('T')[0]
@@ -913,8 +898,7 @@ export function AppProvider({ children }) {
         const payload = {
             cycle_id: review.cycleId,
             employee_id: review.employeeId,
-            summary: review.summary,
-            goal_ratings: review.goalRatings,
+            summary: encrypt(review.summary),
             comments: packedComments,
             submitted_at: new Date().toISOString()
         };
@@ -932,11 +916,11 @@ export function AppProvider({ children }) {
                 id: r.id,
                 cycleId: r.cycle_id,
                 employeeId: r.employee_id,
-                summary: r.summary,
-                goalRatings: r.goal_ratings,
+                summary: review.summary,
                 comments: review.comments,
                 metadata: unencryptedMetadata,
-                submittedAt: r.submitted_at
+                submittedAt: r.submitted_at,
+                status: review.status || 'draft'
             };
             setSelfReviews(p => existing ? p.map(x => x.id === existing.id ? mapped : x) : [...p, mapped]);
             // Notify Manager or HR fallback
@@ -950,6 +934,8 @@ export function AppProvider({ children }) {
             }
 
             return mapped;
+        } else if (result.error) {
+            console.error('Supabase error submitting self review:', result.error);
         }
         return null;
     };
@@ -985,7 +971,6 @@ export function AppProvider({ children }) {
                 cycleId: evaluation.cycleId,
                 employeeId: evaluation.employeeId,
                 managerId: currentUser?.id,
-                goalRatings: evaluation.goalRatings || {},
                 workPerformanceRating: evaluation.workPerformanceRating,
                 behavioralRating: evaluation.behavioralRating,
                 feedback: evaluation.feedback,
@@ -1012,7 +997,6 @@ export function AppProvider({ children }) {
             cycle_id: evaluation.cycleId,
             employee_id: evaluation.employeeId,
             manager_id: currentUser?.id,
-            goal_ratings: encryptJSON(evaluation.goalRatings),
             work_performance_rating: Math.round(evaluation.workPerformanceRating),
             behavioral_rating: Math.round(evaluation.behavioralRating),
             feedback: packedFeedback,
@@ -1039,7 +1023,6 @@ export function AppProvider({ children }) {
                 cycleId: data.cycle_id,
                 employeeId: data.employee_id,
                 managerId: data.manager_id,
-                goalRatings: data.goal_ratings || {},
                 workPerformanceRating: data.work_performance_rating,
                 behavioralRating: data.behavioral_rating,
                 feedback: evaluation.feedback,
