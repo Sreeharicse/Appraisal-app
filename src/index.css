@@ -719,6 +719,7 @@ tr:hover td {
 .form-select,
 .form-textarea {
   width: 100%;
+  box-sizing: border-box;
   background: var(--bg-secondary);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -726,19 +727,17 @@ tr:hover td {
   color: var(--text-primary);
   font-size: 14px;
   font-family: inherit;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s, transform 0.2s;
   outline: none;
   box-shadow: none;
 }
 
-textarea.form-input {
-  resize: none;
-  min-height: 80px;
-  max-height: 160px;
-  overflow-y: auto;
+.read-only-text {
   word-break: break-word;
-  overflow-wrap: break-word;
   white-space: pre-wrap;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  font-size: 14px;
 }
 
 .form-select {
@@ -771,13 +770,73 @@ textarea.form-input {
   padding: 12px;
 }
 
+textarea.form-input,
 .form-textarea {
-  resize: none;
-  min-height: 80px;
-  max-height: 200px;
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  resize: none !important;
   overflow-y: auto;
   word-break: break-word;
   white-space: pre-wrap;
+  line-height: 1.6;
+  padding: 16px 40px 16px 16px; /* Extra padding for scrollbar visibility */
+  background: var(--bg-secondary);
+  box-shadow: var(--nm-shadow-in-sm);
+  border: 1px solid var(--border);
+  font-family: inherit;
+}
+
+textarea.form-input {
+  min-height: 120px;
+  max-height: 400px;
+}
+
+.form-textarea {
+  min-height: 150px;
+  max-height: 500px;
+}
+
+/* Custom High-Visibility Scrollbar */
+textarea.form-input::-webkit-scrollbar,
+.form-textarea::-webkit-scrollbar {
+  width: 10px;
+}
+
+textarea.form-input::-webkit-scrollbar-track,
+.form-textarea::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.05);
+  border-radius: 5px;
+  margin: 4px;
+}
+
+textarea.form-input::-webkit-scrollbar-thumb,
+.form-textarea::-webkit-scrollbar-thumb {
+  background: var(--purple-light);
+  border: 2px solid var(--bg-secondary);
+  border-radius: 5px;
+}
+
+textarea.form-input::-webkit-scrollbar-thumb:hover,
+.form-textarea::-webkit-scrollbar-thumb:hover,
+.read-only-text::-webkit-scrollbar-thumb:hover {
+  background: var(--purple);
+}
+
+.read-only-text::-webkit-scrollbar {
+  width: 10px;
+}
+
+.read-only-text::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.05);
+  border-radius: 5px;
+  margin: 4px;
+}
+
+.read-only-text::-webkit-scrollbar-thumb {
+  background: var(--purple-light);
+  border: 2px solid var(--bg-secondary);
+  border-radius: 5px;
 }
 
 .form-grid {

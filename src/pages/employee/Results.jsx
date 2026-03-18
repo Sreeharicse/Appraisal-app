@@ -120,23 +120,16 @@ export default function Results() {
                 <div className="card" style={{ gridColumn: '1 / -1' }}>
                     <div className="card-title" style={{ marginBottom: '20px', color: 'var(--text-primary)' }}>Score Breakdown</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                        {/* Technical 45% */}
+                        {/* Manager Rating (Sub-Rating) 90% */}
                         <div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
-                                <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Technical Performance <span style={{ color: 'var(--indigo)', fontSize: '11px', fontWeight: 700 }}>45%</span></span>
-                                <span style={{ fontWeight: 700, color: 'var(--indigo)' }}>{Math.round(ev.workPerformanceRating * 10) / 10}/5 → {Math.round((ev.workPerformanceRating / 5) * 45)} pts</span>
+                                <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Manager Evaluation <span style={{ color: 'var(--purple-light)', fontSize: '11px', fontWeight: 700 }}>90%</span></span>
+                                <span style={{ fontWeight: 700, color: 'var(--purple)' }}>{ev.subRating || 0}/5 → {Math.round(((ev.subRating || 0) / 5) * 90)} pts</span>
                             </div>
-                            <div className="progress-bar" style={{ height: '8px' }}><div className="progress-fill" style={{ width: `${(ev.workPerformanceRating / 5) * 100}%`, background: 'var(--indigo)' }} /></div>
+                            <div className="progress-bar" style={{ height: '8px' }}><div className="progress-fill" style={{ width: `${((ev.subRating || 0) / 5) * 100}%`, background: 'var(--purple)' }} /></div>
                         </div>
-                        {/* Behavioral 45% */}
-                        <div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
-                                <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Behavioural Competency <span style={{ color: 'var(--cyan)', fontSize: '11px', fontWeight: 700 }}>45%</span></span>
-                                <span style={{ fontWeight: 700, color: 'var(--cyan)' }}>{Math.round(ev.behavioralRating * 10) / 10}/5 → {Math.round((ev.behavioralRating / 5) * 45)} pts</span>
-                            </div>
-                            <div className="progress-bar" style={{ height: '8px' }}><div className="progress-fill" style={{ width: `${(ev.behavioralRating / 5) * 100}%`, background: 'var(--cyan)' }} /></div>
-                        </div>
-                        {/* HR Rating 10% */}
+                        
+                        {/* HR Assessment 10% */}
                         <div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
                                 <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>HR Assessment & Compliance <span style={{ color: 'var(--yellow)', fontSize: '11px', fontWeight: 700 }}>10%</span></span>
@@ -161,10 +154,10 @@ export default function Results() {
                     <div className="card-title" style={{ marginBottom: '12px', color: 'var(--text-primary)', fontSize: '15px' }}>
                         👤 Manager Feedback
                     </div>
-                    <div style={{
+                    <div className="custom-scrollbar" style={{
                         padding: '16px', background: 'var(--bg-secondary)', borderRadius: '12px',
                         fontSize: '13px', lineHeight: '1.7', color: 'var(--text-secondary)', border: '1px solid var(--border)',
-                        minHeight: '100px'
+                        minHeight: '100px', maxHeight: '250px', overflowY: 'auto'
                     }}>
                         {ev.feedback || 'Your manager has not provided detailed written feedback for this cycle.'}
                     </div>
@@ -175,10 +168,10 @@ export default function Results() {
                     <div className="card-title" style={{ marginBottom: '12px', color: 'var(--purple-light)', fontSize: '15px' }}>
                         📋 HR Assessment Feedback
                     </div>
-                    <div style={{
+                    <div className="custom-scrollbar" style={{
                         padding: '16px', background: 'var(--bg-secondary)', borderRadius: '12px',
                         fontSize: '13px', lineHeight: '1.7', color: 'var(--text-secondary)', border: '1px solid var(--border)',
-                        minHeight: '100px'
+                        minHeight: '100px', maxHeight: '250px', overflowY: 'auto'
                     }}>
                         {(() => {
                             if (!approval?.comment) {

@@ -8,6 +8,13 @@ export default function Dashboard() {
     const navigate = useNavigate();
     const activeCycle = getActiveCycle();
 
+    const getGreeting = () => {
+        const hour = new Date().getHours();
+        if (hour < 12) return 'Good Morning';
+        if (hour < 18) return 'Good Afternoon';
+        return 'Good Evening';
+    };
+
     const getStatusBadge = (status) => {
         switch (status) {
             case 'active': return 'badge-blue';
@@ -49,13 +56,12 @@ export default function Dashboard() {
 
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-            <div className="section-header">
-                <div>
-                    <h2 className="section-title">Welcome back, {currentUser.name.split(' ')[0]}</h2>
-                    <p className="section-subtitle">Here's what is happening with your appraisals today.</p>
-                </div>
+            <div className="section-header" style={{ marginBottom: '32px', textAlign: 'left' }}>
+                <h2 className="section-title" style={{ fontSize: '28px', fontWeight: 700, marginBottom: '8px', letterSpacing: '-0.5px' }}>
+                    {getGreeting()}, <span style={{ color: 'var(--purple)' }}>{currentUser.name}</span>
+                </h2>
                 {(currentUser.role === 'hr' || currentUser.role === 'admin') && (
-                    <div style={{ display: 'flex', gap: '12px' }}>
+                    <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
                         <button className="btn btn-primary" onClick={() => navigate('/hr/cycles')}>
                             <Icons.Cycles style={{ width: '16px', height: '16px', marginRight: '8px' }} />
                             Manage Cycles
@@ -66,27 +72,29 @@ export default function Dashboard() {
 
             {/* ----- ALL ROLES: Personal Dashboard ----- */}
             <div className="grid grid-3" style={{ marginBottom: '24px' }}>
-                <div className="kpi-card" style={{ '--accent-color': 'var(--blue-light)' }}>
-                    <div className="kpi-icon"><Icons.Cycles /></div>
+                <div className="kpi-card" style={{ '--accent-color': 'var(--blue-light)', cursor: 'pointer' }} onClick={() => activeCycle && navigate(`/employee/cycle/${activeCycle.id}`)}>
+                    <div className="kpi-icon"><Icons.Calendar /></div>
                     <div className="kpi-label">Active Cycle</div>
                     <div className="kpi-value" style={{ fontSize: '22px', marginTop: '8px' }}>
                         {activeCycle ? activeCycle.name : 'None'}
                     </div>
                     <div className="kpi-change">
-                        {activeCycle ? `Ends ${activeCycle.endDate}` : 'No active cycle'}
+                        {activeCycle ? `Ends ${new Date(activeCycle.endDate).toLocaleDateString()}` : 'No active cycle'}
                     </div>
                 </div>
-                <div className="kpi-card" style={{ '--accent-color': 'var(--green)' }}>
-                    <div className="kpi-icon"><Icons.Check /></div>
-                    <div className="kpi-label">Manager Eval</div>
-                    <div className="kpi-value">{myEvaluation ? 'Completed' : 'Pending'}</div>
-                    <div className="kpi-change">Current status</div>
-                </div>
-                <div className="kpi-card" style={{ '--accent-color': 'var(--purple)' }}>
+                {/* Self Review Card - Now First after Active Cycle */}
+                <div className="kpi-card" style={{ '--accent-color': 'var(--purple)', cursor: 'pointer' }} onClick={() => navigate('/employee/self-review')}>
                     <div className="kpi-icon"><Icons.FileText /></div>
                     <div className="kpi-label">Self Review</div>
                     <div className="kpi-value">{hasSelfReview ? 'Submitted' : 'Pending'}</div>
-                    <div className="kpi-change">Current status</div>
+                    <div className="kpi-change">Your submission</div>
+                </div>
+                {/* Manager Evaluation Card - Now Last */}
+                <div className="kpi-card" style={{ '--accent-color': 'var(--green)', cursor: 'pointer' }} onClick={() => navigate('/employee/results')}>
+                    <div className="kpi-icon"><Icons.Check /></div>
+                    <div className="kpi-label">Manager Evaluation</div>
+                    <div className="kpi-value">{myEvaluation ? 'Completed' : 'Pending'}</div>
+                    <div className="kpi-change">Final results</div>
                 </div>
             </div>
 
@@ -217,7 +225,7 @@ export default function Dashboard() {
                     </div>
                     <div style={{ display: 'flex', gap: '12px' }}>
                         <button className="btn btn-danger btn-sm" onClick={handleResetData}>
-                            <Icons.Refresh style={{ width: '14px', height: '14px', marginRight: '6px' }} />
+                            <Icons.Database style={{ width: '14px', height: '14px', marginRight: '6px' }} />
                             Seed Local Fake Data
                         </button>
                     </div>

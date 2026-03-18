@@ -72,18 +72,15 @@ export default function Approvals() {
 
     return (
         <div>
-            <div className="section-header">
+            <div className="section-header" style={{ textAlign: 'left', marginBottom: '32px' }}>
                 <div>
-                    <h2 className="section-title">Approval Queue</h2>
-                    <p className="section-subtitle">
+                    <h2 className="section-title" style={{ fontSize: '28px', fontWeight: 700, marginBottom: '8px', letterSpacing: '-0.5px' }}>Approval Queue</h2>
+                    <p className="section-subtitle" style={{ fontSize: '14px', color: 'var(--text-muted)', fontWeight: 500 }}>
                         {currentUser.role === 'admin'
                             ? 'Review and approve HR & Manager evaluations'
                             : 'Review and approve manager evaluations'}
                     </p>
                 </div>
-                <span className="badge badge-yellow">
-                    <Icons.Clock style={{ width: '14px', height: '14px', marginRight: '4px' }} /> {pending.length} Pending
-                </span>
             </div>
 
             {pending.length === 0 && (
@@ -103,8 +100,8 @@ export default function Approvals() {
                 const avgHr = getAvgHrRating(ev.id);
                 const allRated = avgHr > 0;
                 
-                // Calculate live preview score
-                const previewScoreMath = Math.round(((ev.workPerformanceRating || 0) / 5 * 45) + ((ev.behavioralRating || 0) / 5 * 45) + (avgHr / 5 * 10));
+                // Calculate live preview score: 90% Sub-Rating (Manager) + 10% HR Assessment
+                const previewScoreMath = Math.round(((ev.subRating || 0) / 5 * 90) + (avgHr / 5 * 10));
                 const previewCategory = getCategory(previewScoreMath);
 
                 return (
@@ -129,15 +126,11 @@ export default function Approvals() {
                             </div>
                         </div>
 
-                        {/* Manager Score Breakdown */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '16px' }}>
-                            <div style={{ background: 'rgba(99,102,241,0.08)', borderRadius: '10px', padding: '12px 16px', border: '1px solid rgba(99,102,241,0.15)' }}>
-                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '2px' }}>Technical <span style={{ color: 'var(--indigo)' }}>(45%)</span></div>
-                                <div style={{ fontWeight: 700 }}>{Math.round((ev.workPerformanceRating || 0) * 10) / 10}/5</div>
-                            </div>
-                            <div style={{ background: 'rgba(6,182,212,0.08)', borderRadius: '10px', padding: '12px 16px', border: '1px solid rgba(6,182,212,0.15)' }}>
-                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '2px' }}>Behavioural <span style={{ color: 'var(--cyan)' }}>(45%)</span></div>
-                                <div style={{ fontWeight: 700 }}>{Math.round((ev.behavioralRating || 0) * 10) / 10}/5</div>
+                        {/* Manager Rating Summary */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+                            <div style={{ background: 'rgba(168, 85, 247, 0.08)', borderRadius: '10px', padding: '12px 16px', border: '1px solid rgba(168, 85, 247, 0.15)' }}>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '2px' }}>Manager Rating <span style={{ color: 'var(--purple)' }}>(90%)</span></div>
+                                <div style={{ fontWeight: 700 }}>{ev.subRating || '0'}/5</div>
                             </div>
                             <div style={{ background: 'rgba(245,158,11,0.08)', borderRadius: '10px', padding: '12px 16px', border: '1px solid rgba(245,158,11,0.15)' }}>
                                 <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '2px' }}>HR Assessment <span style={{ color: 'var(--yellow)' }}>(10%)</span></div>
@@ -171,17 +164,43 @@ export default function Approvals() {
                                 <textarea 
                                     className="form-input" 
                                     placeholder="HR feedback..." 
-                                    style={{ minHeight: '60px', maxHeight: '120px', resize: 'none', overflowY: 'auto', fontSize: '13px' }}
+                                    style={{ minHeight: '80px', fontSize: '13px' }}
                                     value={comment[ev.id] || ''}
                                     onChange={e => setComment(prev => ({ ...prev, [ev.id]: e.target.value }))}
+                                    onInput={e => {
+                                        e.target.style.height = 'auto';
+                                        e.target.style.height = e.target.scrollHeight + 'px';
+                                    }}
                                 />
                             </div>
                         </div>
 
+                        {/* Manager Final Rating Block */}
+                        <div className="card" style={{ padding: '24px', marginBottom: '20px', border: '1px solid var(--border)', boxShadow: 'var(--nm-shadow-out-sm)' }}>
+                            <div className="card-title" style={{ fontSize: '13px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>FINAL RATING CLASSIFICATION</div>
+                            <p className="section-subtitle" style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '16px' }}>Manager's assigned overall final rating and sub-rating.</p>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                                <div>
+                                    <label className="form-label" style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>FINAL RATING</label>
+                                    <div className="form-input" style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center' }}>
+                                        {ev.finalRating || 'Not Classified'}
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="form-label" style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>SUB-RATING (1-5, HIDDEN FROM EMPLOYEE)</label>
+                                    <div className="form-input" style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center' }}>
+                                        {ev.subRating ? ev.subRating : 'N/A'}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         {/* Manager Feedback */}
-                        <div style={{ background: 'var(--bg-primary)', borderRadius: '12px', padding: '12px', marginBottom: '20px', border: '1px solid var(--border)', boxShadow: 'var(--nm-shadow-out-sm)' }}>
-                            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>Manager Feedback</div>
-                            <p style={{ fontSize: '13px', lineHeight: '1.6', wordBreak: 'break-word', overflowWrap: 'break-word', maxHeight: '120px', overflowY: 'auto' }}>{ev.feedback || 'No feedback provided.'}</p>
+                        <div className="card" style={{ padding: '24px', marginBottom: '20px', border: '1px solid var(--border)', boxShadow: 'var(--nm-shadow-out-sm)' }}>
+                            <div className="card-title" style={{ fontSize: '13px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px' }}>MANAGER SUMMARY FEEDBACK</div>
+                            <p className="read-only-text" style={{ fontSize: '13px', lineHeight: '1.6', wordBreak: 'break-word', overflowWrap: 'break-word', maxHeight: '150px', overflowY: 'auto' }}>
+                                {ev.feedback || 'No feedback provided.'}
+                            </p>
                         </div>
 
                         <div style={{ display: 'flex', gap: '10px' }}>

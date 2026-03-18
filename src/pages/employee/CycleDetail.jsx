@@ -36,7 +36,7 @@ export default function CycleDetail() {
 
     const statusSteps = [
         { label: 'Self Review', done: !!selfReview },
-        { label: 'Manager Eval', done: !!evaluation },
+        { label: 'Manager Evaluation', done: !!evaluation },
         { label: 'HR Approved', done: evaluation?.status === 'approved' },
     ];
 

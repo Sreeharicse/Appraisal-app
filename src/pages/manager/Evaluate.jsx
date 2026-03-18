@@ -18,16 +18,20 @@ export default function Evaluate() {
     const [selectedCycleId, setSelectedCycleId] = useState('');
     const [selectedEmp, setSelectedEmp] = useState(employeeId || team[0]?.id || '');
     const [status, setStatus] = useState('draft');
+    const [isLocked, setIsLocked] = useState(true);
     const [activeTab, setActiveTab] = useState(1);
     const [hasEdited, setHasEdited] = useState(false);
     const [showPopup, setShowPopup] = useState(false);
     const [popupMessage, setPopupMessage] = useState({ title: '', body: '' });
 
     // Once saved as 'pending_approval' or 'approved', the evaluation is permanently locked
-    const isReadOnly = status === 'pending_approval' || status === 'approved';
+    const isSubmitted = status === 'pending_approval' || status === 'approved';
+    const isReadOnly = isSubmitted || (status === 'draft' && isLocked);
 
     const [competencies, setCompetencies] = useState({});
     const [feedback, setFeedback] = useState('');
+    const [finalRating, setFinalRating] = useState('');
+    const [subRating, setSubRating] = useState('');
 
     // Fallback for old fields
     const [workRating, setWorkRating] = useState(0);
@@ -78,6 +82,7 @@ export default function Evaluate() {
     const emp = users.find(u => String(u.id) === String(selectedEmp));
     const selfReview = cycle && emp ? selfReviews.find(r => String(r.employeeId) === String(selectedEmp) && String(r.cycleId) === String(cycle.id)) : null;
     const empComps = selfReview?.metadata?.competencies || {};
+    const isSelfReviewSubmitted = selfReview?.status === 'submitted' || selfReview?.status === 'approved';
 
     useEffect(() => {
         if (!selectedCycleId || !selectedEmp) return;
@@ -97,9 +102,18 @@ export default function Evaluate() {
         setCompetencies(initialComps);
 
         setFeedback(ev?.feedback || '');
+        setFinalRating(ev?.finalRating || '');
+        setSubRating(ev?.subRating || '');
         setWorkRating(ev?.workPerformanceRating || 0);
         setBehaviorRating(ev?.behavioralRating || 0);
-        setStatus(ev?.status || 'draft');
+        
+        if (ev) {
+            setStatus(ev.status);
+            setIsLocked(true);
+        } else {
+            setStatus('new');
+            setIsLocked(false);
+        }
     }, [selectedEmp, selectedCycleId, evaluations, selfReviews]);
 
     useEffect(() => {
@@ -111,41 +125,65 @@ export default function Evaluate() {
 
     const handleEmpChange = (id) => {
         setSelectedEmp(id);
-        setStatus('draft');
         setHasEdited(false);
     };
 
     const handleSubmit = async (finalStatus = 'pending_approval') => {
         if (!selectedCycleId || !selectedEmp) return;
 
-        const getAvg = (start, end) => {
-            const vals = [];
-            for (let i = start; i <= end; i++) {
-                if (competencies[`q${i}`]?.rating > 0) vals.push(competencies[`q${i}`].rating);
+        if (finalStatus === 'pending_approval') {
+            // Validate all manager competencies have rating and comment
+            const unrated = COMPETENCY_QUESTIONS.filter(q => !competencies[q.id] || competencies[q.id].rating === 0);
+            if (unrated.length > 0) {
+                alert('Please provide a rating for all competencies before submitting.');
+                setActiveTab(1);
+                return;
             }
-            return vals.length > 0 ? (vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
-        };
+            const poorComments = COMPETENCY_QUESTIONS.filter(q => !competencies[q.id]?.comment || competencies[q.id].comment.trim().length < 20);
+            if (poorComments.length > 0) {
+                alert('Please provide a detailed comment (min 20 chars) for all competencies.');
+                setActiveTab(1);
+                return;
+            }
 
-        const workPerformanceRating = getAvg(1, 8) || 3;
-        const behavioralRating = getAvg(9, 15) || 3;
+            // Validate overall feedback
+            if (!feedback || feedback.trim().length < 20) {
+                alert('Please provide a detailed final assessment (min 20 chars).');
+                setActiveTab(5);
+                return;
+            }
+
+            // Validate Final Rating
+            if (!finalRating) {
+                alert('Please select a Final Rating Classification.');
+                setActiveTab(5);
+                return;
+            }
+            if (!subRating || parseFloat(subRating) < 1 || parseFloat(subRating) > 5) {
+                alert('Please provide a valid Sub-Rating between 1 and 5.');
+                setActiveTab(5);
+                return;
+            }
+        }
 
         await submitEvaluation({
             cycleId: selectedCycleId,
             employeeId: selectedEmp,
             competencies,
             feedback,
-            workPerformanceRating,
-            behavioralRating,
+            finalRating,
+            subRating: parseFloat(subRating) || 0,
             status: finalStatus
         });
 
         setStatus(finalStatus);
         setHasEdited(false);
+        setIsLocked(true);
 
         if (finalStatus === 'pending_approval') {
             setPopupMessage({ title: '🎊 Evaluation Complete!', body: 'Your official performance evaluation has been submitted successfully.' });
         } else {
-            setPopupMessage({ title: '💾 Draft Saved', body: 'Your evaluation progress has been saved securely as a draft.' });
+            setPopupMessage({ title: '💾 Draft Saved', body: 'Your evaluation progress has been saved securely and locked. Click "Edit" to continue later.' });
         }
         setShowPopup(true);
     };
@@ -184,22 +222,29 @@ export default function Evaluate() {
                             </div>
                             <div>
                                 <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Self-Comments</div>
-                                <div style={{ padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px', fontSize: '13px', minHeight: '60px', maxHeight: '140px', overflowY: 'auto', fontStyle: 'italic', lineHeight: '1.5', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                                <div className="read-only-text" style={{ padding: '12px', paddingRight: '36px', background: 'var(--bg-secondary)', borderRadius: '8px', fontSize: '13px', minHeight: '60px', maxHeight: '200px', overflowY: 'auto', fontStyle: empComps[q.id]?.comment ? 'normal' : 'italic' }}>
                                     {empComps[q.id]?.comment || 'No comments provided.'}
                                 </div>
                             </div>
                         </div>
 
                         {/* Manager Part (Editable / Locked) */}
-                        <div style={{ padding: '16px', borderRadius: '12px', background: isReadOnly ? 'rgba(100,116,139,0.06)' : 'rgba(168, 85, 247, 0.05)', border: isReadOnly ? '1px solid rgba(100,116,139,0.15)' : '1px solid rgba(168, 85, 247, 0.1)' }}>
-                            <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '12px', color: isReadOnly ? 'var(--text-muted)' : 'var(--purple)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                👨‍💼 Manager Perspective {isReadOnly && <span style={{ fontSize: '11px', background: 'rgba(100,116,139,0.15)', padding: '2px 8px', borderRadius: '20px', fontWeight: 600 }}>🔒 Locked</span>}
+                        <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(168, 85, 247, 0.05)', border: '1px solid rgba(168, 85, 247, 0.1)' }}>
+                            <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '12px', color: 'var(--purple)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                👨‍💼 Manager Perspective 
+                                {isSubmitted && <span style={{ fontSize: '11px', background: 'rgba(10, 185, 129, 0.1)', color: '#10b981', padding: '2px 8px', borderRadius: '20px', fontWeight: 600 }}>✅ Submitted</span>}
+                                {!isSubmitted && isLocked && status === 'draft' && <span style={{ fontSize: '11px', background: 'rgba(100,116,139,0.15)', color: 'var(--text-muted)', padding: '2px 8px', borderRadius: '20px', fontWeight: 600 }}>🔒 Draft Locked</span>}
                             </div>
                             <div style={{ marginBottom: '16px' }}>
                                 <label className="form-label" style={{ fontSize: '12px', color: isReadOnly ? 'var(--text-muted)' : undefined }}>Rating</label>
                                 <select className="form-select" value={competencies[q.id]?.rating || 0}
                                     disabled={isReadOnly}
-                                    style={{ color: isReadOnly ? 'var(--text-muted)' : undefined, cursor: isReadOnly ? 'not-allowed' : 'pointer', opacity: isReadOnly ? 0.7 : 1 }}
+                                    style={{ 
+                                        color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)', 
+                                        background: 'var(--bg-secondary)',
+                                        opacity: 1,
+                                        cursor: isReadOnly ? 'not-allowed' : 'pointer'
+                                    }}
                                     onChange={e => updateCompRating(q.id, parseInt(e.target.value))}>
                                     {RATING_OPTIONS.map(opt => (
                                         <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -208,10 +253,22 @@ export default function Evaluate() {
                             </div>
                             <div>
                                 <label className="form-label" style={{ fontSize: '12px', color: isReadOnly ? 'var(--text-muted)' : undefined }}>Feedback / Examples</label>
-                                <textarea className="form-input" placeholder={isReadOnly ? 'Evaluation submitted.' : 'Manager feedback...'} style={{ minHeight: '80px', maxHeight: '140px', resize: 'none', overflowY: 'auto', fontSize: '13px', color: isReadOnly ? 'var(--text-muted)' : undefined, cursor: isReadOnly ? 'not-allowed' : 'text', opacity: isReadOnly ? 0.7 : 1 }}
+                                <textarea id={`comp-${q.id}`} className="form-input" placeholder={isSubmitted ? 'Evaluation submitted.' : (isLocked ? 'Draft locked. Click Edit to continue...' : 'Manager feedback (min 20 chars)...')} 
+                                    style={{ 
+                                        minHeight: '120px', 
+                                        fontSize: '14px', 
+                                        color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)', 
+                                        background: 'var(--bg-secondary)',
+                                        cursor: isReadOnly ? 'not-allowed' : 'text'
+                                    }}
                                     value={competencies[q.id]?.comment || ''}
                                     readOnly={isReadOnly}
-                                    onChange={e => updateCompComment(q.id, e.target.value)}
+                                    onChange={e => { if (!isReadOnly) updateCompComment(q.id, e.target.value); }}
+                                    onInput={e => {
+                                        if (isReadOnly) return;
+                                        e.target.style.height = 'auto';
+                                        e.target.style.height = e.target.scrollHeight + 'px';
+                                    }}
                                 />
                             </div>
                         </div>
@@ -225,17 +282,16 @@ export default function Evaluate() {
         <div className="card" style={{ marginBottom: '32px', padding: '24px' }}>
             <div className="card-title" style={{ marginBottom: '8px', color: 'var(--blue-light)' }}>👤 Employee's {title}</div>
             <p className="section-subtitle" style={{ marginBottom: '24px' }}>{subtitle}</p>
-            <div style={{
+            <div className={`read-only-text ${content ? '' : 'italic'}`} style={{
                 padding: '20px',
                 background: 'rgba(56, 189, 248, 0.05)',
                 border: '1px solid rgba(56, 189, 248, 0.1)',
                 borderRadius: '12px',
                 minHeight: '120px',
-                fontSize: '14px',
-                lineHeight: '1.6',
-                color: content ? 'var(--text-primary)' : 'var(--text-muted)',
-                fontStyle: content ? 'normal' : 'italic',
-                whiteSpace: 'pre-wrap'
+                maxHeight: '400px',
+                overflowY: 'auto',
+                paddingRight: '36px',
+                color: content ? 'var(--text-primary)' : 'var(--text-muted)'
             }}>
                 {content || placeholder}
             </div>
@@ -251,12 +307,55 @@ export default function Evaluate() {
                     placeholder={isReadOnly ? 'Evaluation has been submitted and locked.' : 'Final assessment, growth areas, and career pathing...'}
                     value={feedback}
                     readOnly={isReadOnly}
-                    style={{ color: isReadOnly ? 'var(--text-muted)' : undefined, cursor: isReadOnly ? 'not-allowed' : 'text', opacity: isReadOnly ? 0.75 : 1, minHeight: '120px', maxHeight: '220px', resize: 'none', overflowY: 'auto' }}
-                    onChange={e => { if (!isReadOnly) { setFeedback(e.target.value); setHasEdited(true); } }} />
+                    style={{ 
+                        color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)', 
+                        background: 'var(--bg-secondary)',
+                        cursor: isReadOnly ? 'not-allowed' : 'text',
+                        minHeight: '150px' 
+                    }}
+                    onChange={e => { if (!isReadOnly) { setFeedback(e.target.value); setHasEdited(true); } }}
+                    onInput={e => {
+                        e.target.style.height = 'auto';
+                        e.target.style.height = e.target.scrollHeight + 'px';
+                    }} />
+            </div>
+
+            <div className="card" style={{ marginBottom: '32px', padding: '24px' }}>
+                <div className="card-title">Final Rating Classification</div>
+                <p className="section-subtitle" style={{ marginBottom: '16px' }}>Assign an overall final rating and sub-rating.</p>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                    <div>
+                        <label className="form-label" style={{ fontSize: '12px', color: isReadOnly ? 'var(--text-muted)' : undefined }}>Final Rating</label>
+                        <select className="form-select" value={finalRating} disabled={isReadOnly} onChange={(e) => { setFinalRating(e.target.value); setHasEdited(true); }} 
+                            style={{ 
+                                color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)', 
+                                background: 'var(--bg-secondary)',
+                                opacity: 1,
+                                cursor: isReadOnly ? 'not-allowed' : 'pointer'
+                            }}>
+                            <option value="">Select a rating...</option>
+                            <option value="Outstanding">Outstanding</option>
+                            <option value="Exceeded">Exceeded Expectations</option>
+                            <option value="Met">Met Expectations</option>
+                            <option value="Below">Below Expectations</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="form-label" style={{ fontSize: '12px', color: isReadOnly ? 'var(--text-muted)' : undefined }}>Sub-Rating (1-5, hidden from employee)</label>
+                        <input type="number" step="0.1" min="1" max="5" className="form-input" placeholder="e.g. 4.2" value={subRating} disabled={isReadOnly} onChange={(e) => { setSubRating(e.target.value); setHasEdited(true); }} 
+                            style={{ 
+                                color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)', 
+                                background: 'var(--bg-secondary)',
+                                opacity: 1,
+                                cursor: isReadOnly ? 'not-allowed' : 'text'
+                            }} />
+                    </div>
+                </div>
             </div>
 
             <div style={{ textAlign: 'right', marginBottom: '40px' }}>
-                {isReadOnly ? (
+                {isSubmitted ? (
                     <div style={{
                         display: 'inline-flex', alignItems: 'center', gap: '10px',
                         padding: '12px 28px', borderRadius: '12px',
@@ -268,12 +367,20 @@ export default function Evaluate() {
                     </div>
                 ) : (
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px' }}>
-                        <button type="button" className="btn btn-secondary" style={{ padding: '16px 32px', fontWeight: 600 }} onClick={() => handleSubmit('draft')}>
-                            💾 Save Draft
-                        </button>
-                        <button type="button" className="btn btn-primary" style={{ padding: '16px 64px', fontWeight: 700, fontSize: '16px' }} onClick={() => handleSubmit('pending_approval')}>
-                            Complete Evaluation
-                        </button>
+                        {status === 'draft' && isLocked ? (
+                            <button type="button" className="btn btn-secondary" style={{ padding: '16px 32px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }} onClick={() => setIsLocked(false)}>
+                                ✏️ Edit Evaluation
+                            </button>
+                        ) : (
+                            <>
+                                <button type="button" className="btn btn-secondary" style={{ padding: '16px 32px', fontWeight: 600 }} onClick={() => handleSubmit('draft')}>
+                                    💾 Save Draft
+                                </button>
+                                <button type="button" className="btn btn-primary" style={{ padding: '16px 64px', fontWeight: 700, fontSize: '16px' }} onClick={() => handleSubmit('pending_approval')}>
+                                    Complete Evaluation
+                                </button>
+                            </>
+                        )}
                     </div>
                 )}
             </div>
@@ -282,10 +389,10 @@ export default function Evaluate() {
 
     return (
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-            <div className="section-header">
+            <div className="section-header" style={{ textAlign: 'left', marginBottom: '32px' }}>
                 <div>
-                    <h2 className="section-title">Performance Evaluation</h2>
-                    <p className="section-subtitle">Reviewing performance for a specific cycle.</p>
+                    <h2 className="section-title" style={{ fontSize: '28px', fontWeight: 700, marginBottom: '8px', letterSpacing: '-0.5px' }}>Performance Evaluation</h2>
+                    <p className="section-subtitle" style={{ fontSize: '14px', color: 'var(--text-muted)', fontWeight: 500 }}>Reviewing performance for a specific cycle.</p>
                 </div>
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -330,46 +437,61 @@ export default function Evaluate() {
                 </div>
             </div>
 
-            {isReadOnly && !hasEdited && <div style={{
+            {isReadOnly && !hasEdited && isSelfReviewSubmitted && <div style={{
                 marginBottom: '20px', padding: '12px 20px',
                 background: 'rgba(100,116,139,0.08)', border: '1px solid rgba(100,116,139,0.2)',
                 borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '10px',
                 fontSize: '13px', color: 'var(--text-muted)', fontWeight: 500
-            }}>🔒 This evaluation has been submitted and is now <strong style={{ color: 'var(--text-secondary)' }}>read-only</strong>. No further changes can be made.</div>}
+            }}>
+                {isSubmitted ? (
+                    <>🔒 This evaluation has been submitted and is now <strong style={{ color: 'var(--text-secondary)' }}>read-only</strong>. No further changes can be made.</>
+                ) : (
+                    <>🔒 This evaluation is saved as a <strong style={{ color: 'var(--text-secondary)' }}>draft</strong> and locked. Click "Edit Evaluation" to continue.</>
+                )}
+            </div>}
             {hasEdited && <div className="alert alert-warning" style={{ marginBottom: '24px' }}>⚠️ You have unsaved changes. Click "Complete Evaluation" in the Final Assessment tab to save.</div>}
 
-            <div style={{ display: 'flex', gap: '24px', position: 'relative' }}>
-                {/* Tabs Sidebar */}
-                <div style={{ width: '240px', flexShrink: 0 }}>
-                    <div className="card" style={{ padding: '8px', position: 'sticky', top: '24px' }}>
-                        {TABS.map(t => (
-                            <button key={t.id}
-                                onClick={() => setActiveTab(t.id)}
-                                style={{
-                                    display: 'block',
-                                    width: '100%',
-                                    textAlign: 'left',
-                                    padding: '12px 16px',
-                                    borderRadius: '8px',
-                                    border: 'none',
-                                    background: activeTab === t.id ? 'var(--bg-primary)' : 'transparent',
-                                    boxShadow: activeTab === t.id ? 'var(--nm-shadow-in-sm)' : 'none',
-                                    color: activeTab === t.id ? 'var(--purple)' : 'var(--text-secondary)',
-                                    fontWeight: activeTab === t.id ? 700 : 500,
-                                    cursor: 'pointer',
-                                    marginBottom: '4px',
-                                    transition: 'all 0.2s',
-                                    fontSize: '14px'
-                                }}>
-                                {t.label}
-                            </button>
-                        ))}
-                    </div>
+            {!isSelfReviewSubmitted ? (
+                <div className="card" style={{ padding: '64px 24px', textAlign: 'center', marginTop: '24px', background: 'var(--bg-secondary)' }}>
+                    <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏳</div>
+                    <h3 style={{ color: 'var(--text-primary)', marginBottom: '8px', fontSize: '20px', fontWeight: 700 }}>Waiting for Employee</h3>
+                    <p style={{ color: 'var(--text-muted)', maxWidth: '400px', margin: '0 auto', lineHeight: '1.6' }}>
+                        This employee has not yet submitted their self-review. You cannot begin your evaluation until their review is completed and submitted.
+                    </p>
                 </div>
+            ) : (
+                <div style={{ display: 'flex', gap: '24px', position: 'relative' }}>
+                    {/* Tabs Sidebar */}
+                    <div style={{ width: '240px', flexShrink: 0 }}>
+                        <div className="card" style={{ padding: '8px', position: 'sticky', top: '24px' }}>
+                            {TABS.map(t => (
+                                <button key={t.id}
+                                    onClick={() => setActiveTab(t.id)}
+                                    style={{
+                                        display: 'block',
+                                        width: '100%',
+                                        textAlign: 'left',
+                                        padding: '12px 16px',
+                                        borderRadius: '8px',
+                                        border: 'none',
+                                        background: activeTab === t.id ? 'var(--bg-primary)' : 'transparent',
+                                        boxShadow: activeTab === t.id ? 'var(--nm-shadow-in-sm)' : 'none',
+                                        color: activeTab === t.id ? 'var(--purple)' : 'var(--text-secondary)',
+                                        fontWeight: activeTab === t.id ? 700 : 500,
+                                        cursor: 'pointer',
+                                        marginBottom: '4px',
+                                        transition: 'all 0.2s',
+                                        fontSize: '14px'
+                                    }}>
+                                    {t.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
 
-                {/* Content Area */}
-                <div style={{ flexGrow: 1 }}>
-                    {activeTab === 1 && renderCompetenciesTab()}
+                    {/* Content Area */}
+                    <div style={{ flexGrow: 1 }}>
+                        {activeTab === 1 && renderCompetenciesTab()}
                     {activeTab === 2 && renderEmployeeReadOnlyTab('Achievements', 'Significant accomplishments or evidence provided by the employee not covered by specific goals.', selfReview?.metadata?.achievements, 'No additional achievements provided.')}
                     {activeTab === 3 && renderEmployeeReadOnlyTab('Learning & Development', 'Training completed or developmental aspirations noted by the employee.', selfReview?.metadata?.learning, 'No learning and development notes provided.')}
                     {activeTab === 4 && renderEmployeeReadOnlyTab('Feedback', 'Feedback about the team, manager, or organizational processes.', selfReview?.metadata?.feedback, 'No feedback provided.')}
@@ -381,6 +503,7 @@ export default function Evaluate() {
                     </div>
                 </div>
             </div>
+            )}
 
             {/* Custom Popup Overlay */}
             {showPopup && (

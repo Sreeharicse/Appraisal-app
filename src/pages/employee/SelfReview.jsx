@@ -22,6 +22,7 @@ export default function SelfReview() {
 
     const [submitted, setSubmitted] = useState(false); // Legacy flag for some UI
     const [status, setStatus] = useState('new'); // 'new', 'draft', 'submitted'
+    const [isLocked, setIsLocked] = useState(true);
     const [loading, setLoading] = useState(true);
     const [showPopup, setShowPopup] = useState(false);
     const [popupMessage, setPopupMessage] = useState({ title: '', body: '' });
@@ -62,7 +63,8 @@ export default function SelfReview() {
     }, [activeCycles, selectedCycleId]);
 
     const cycle = cycles.find(c => c.id === selectedCycleId);
-    const isReadOnly = status === 'submitted';
+    const isSubmitted = status !== 'new' && status !== 'draft';
+    const isReadOnly = isSubmitted || (status === 'draft' && isLocked);
 
     // Load existing data when cycle or employee changes
     useEffect(() => {
@@ -91,6 +93,7 @@ export default function SelfReview() {
 
             setStatus(meta.status || 'submitted');
             setSubmitted(true);
+            setIsLocked(true);
         } else {
             setSummary('');
             setComments('');
@@ -106,6 +109,7 @@ export default function SelfReview() {
             setLearning('');
             setStatus('new');
             setSubmitted(false);
+            setIsLocked(false);
         }
         setLoading(false);
     }, [selectedCycleId]);
@@ -124,27 +128,37 @@ export default function SelfReview() {
             // Check competencies
             const unratedCompetencies = COMPETENCY_QUESTIONS.filter(q => !competencies[q.id] || competencies[q.id].rating === 0);
             if (unratedCompetencies.length > 0) {
-                unratedCompetencies.forEach(q => newErrors[`comp-${q.id}`] = 'Pls fill the field');
+                unratedCompetencies.forEach(q => newErrors[`comp-${q.id}`] = 'Please select a rating.');
                 if (!firstErrorTab) {
                     firstErrorTab = 1;
                     firstErrorId = `comp-${unratedCompetencies[0].id}`;
                 }
             }
+            const poorCompetencyComments = COMPETENCY_QUESTIONS.filter(q => !competencies[q.id]?.comment || competencies[q.id].comment.trim().length < 20);
+            if (poorCompetencyComments.length > 0) {
+                poorCompetencyComments.forEach(q => {
+                    if (!newErrors[`comp-${q.id}`]) newErrors[`comp-${q.id}`] = 'Please provide a detailed explanation (min 20 chars).';
+                });
+                if (!firstErrorTab) {
+                    firstErrorTab = 1;
+                    firstErrorId = `comp-${poorCompetencyComments[0].id}`;
+                }
+            }
 
-            if (!achievements.trim()) {
-                newErrors.achievements = 'Pls fill the field';
+            if (!achievements.trim() || achievements.trim().length < 20) {
+                newErrors.achievements = 'Please provide a detailed explanation (min 20 chars).';
                 if (!firstErrorTab) { firstErrorTab = 2; firstErrorId = 'achievements-input'; }
             }
-            if (!learning.trim()) {
-                newErrors.learning = 'Pls fill the field';
+            if (!learning.trim() || learning.trim().length < 20) {
+                newErrors.learning = 'Please provide a detailed explanation (min 20 chars).';
                 if (!firstErrorTab) { firstErrorTab = 3; firstErrorId = 'learning-input'; }
             }
-            if (!feedback.trim()) {
-                newErrors.feedback = 'Pls fill the field';
+            if (!feedback.trim() || feedback.trim().length < 20) {
+                newErrors.feedback = 'Please provide a detailed explanation (min 20 chars).';
                 if (!firstErrorTab) { firstErrorTab = 4; firstErrorId = 'feedback-input'; }
             }
-            if (!comments.trim()) {
-                newErrors.comments = 'Pls fill the field';
+            if (!comments.trim() || comments.trim().length < 20) {
+                newErrors.comments = 'Please provide a detailed explanation (min 20 chars).';
                 if (!firstErrorTab) { firstErrorTab = 5; firstErrorId = 'comments-input'; }
             }
 
@@ -177,10 +191,11 @@ export default function SelfReview() {
 
         setStatus(finalStatus);
         setSubmitted(true);
+        setIsLocked(true);
         if (finalStatus === 'submitted') {
             setPopupMessage({ title: '🎊 Review Submitted!', body: 'Your self-review has been successfully submitted to your manager for evaluation.' });
         } else {
-            setPopupMessage({ title: '💾 Draft Saved', body: 'Your progress has been saved securely.' });
+            setPopupMessage({ title: '💾 Draft Saved', body: 'Your progress has been saved securely and locked. Click "Edit" if you need to make more changes.' });
         }
         setShowPopup(true);
     };
@@ -223,8 +238,15 @@ export default function SelfReview() {
                                     <label className="form-label" style={{ fontSize: '12px' }}>Rating</label>
                                     <select
                                         className="form-select"
-                                        style={{ width: '100%' }}
-                                        disabled={isReadOnly}
+                                        style={{ 
+                                            width: '100%', 
+                                            color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)', 
+                                            background: 'var(--bg-secondary)',
+                                            opacity: 1,
+                                            pointerEvents: isReadOnly ? 'none' : 'auto',
+                                            cursor: isReadOnly ? 'not-allowed' : 'pointer'
+                                        }}
+                                        tabIndex={isReadOnly ? -1 : 0}
                                         value={competencies[q.id]?.rating || 0}
                                         onChange={e => {
                                             const val = parseInt(e.target.value);
@@ -246,15 +268,33 @@ export default function SelfReview() {
                                 <div>
                                     <label className="form-label" style={{ fontSize: '12px' }}>Comments / Examples</label>
                                     <textarea
+                                        id={`comp-${q.id}`}
                                         className="form-input"
-                                        placeholder="Supporting evidence..."
-                                        style={{ minHeight: '80px', width: '100%', fontSize: '13px', color: isReadOnly ? 'var(--text-muted)' : 'inherit' }}
-                                        disabled={isReadOnly}
+                                        placeholder="Provide detailed explanation with examples and achievements..."
+                                        style={{ 
+                                            minHeight: '120px', 
+                                            width: '100%', 
+                                            fontSize: '14px', 
+                                            color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)', 
+                                            background: 'var(--bg-secondary)',
+                                            cursor: isReadOnly ? 'not-allowed' : 'text',
+                                            border: errors[`comp-${q.id}`]?.includes('chars') ? '1px solid var(--red)' : undefined 
+                                        }}
+                                        readOnly={isReadOnly}
                                         value={competencies[q.id]?.comment || ''}
-                                        onChange={e => setCompetencies(p => ({
-                                            ...p,
-                                            [q.id]: { ...p[q.id], comment: e.target.value }
-                                        }))}
+                                        onChange={e => {
+                                            if (isReadOnly) return;
+                                            setCompetencies(p => ({
+                                                ...p,
+                                                [q.id]: { ...p[q.id], comment: e.target.value }
+                                            }));
+                                            if (errors[`comp-${q.id}`]) setErrors(p => ({ ...p, [`comp-${q.id}`]: null }));
+                                        }}
+                                        onInput={e => {
+                                            if (isReadOnly) return;
+                                            e.target.style.height = 'auto';
+                                            e.target.style.height = e.target.scrollHeight + 'px';
+                                        }}
                                     />
                                 </div>
                             </div>
@@ -301,13 +341,25 @@ export default function SelfReview() {
     const renderFeedbackTab = () => (
         <div className="card">
             <div className="card-title" style={{ marginBottom: '16px' }}>Additional Feedback</div>
-            <p className="section-subtitle" style={{ marginBottom: '16px' }}>Provide feedback about the team, your manager, or organizational processes.</p>
-            <textarea className="form-textarea" rows={10} placeholder="Type your feedback here..."
-                disabled={isReadOnly}
-                style={{ color: isReadOnly ? 'var(--text-muted)' : 'inherit', border: errors.feedback ? '1px solid var(--red)' : undefined }}
+            <p className="section-subtitle" style={{ marginBottom: '16px' }}>Provide feedback about the team, your manager, or organizational processes. Provide detailed explanation with examples and achievements.</p>
+            <textarea id="feedback-input" className="form-textarea" rows={10} placeholder="Type your feedback here..."
+                readOnly={isReadOnly}
+                style={{ 
+                    color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)', 
+                    background: 'var(--bg-secondary)',
+                    cursor: isReadOnly ? 'not-allowed' : 'text',
+                    border: errors.feedback ? '1px solid var(--red)' : undefined, 
+                    minHeight: '150px' 
+                }}
                 value={feedback} onChange={e => {
+                    if (isReadOnly) return;
                     setFeedback(e.target.value);
                     if (errors.feedback) setErrors({ ...errors, feedback: null });
+                }}
+                onInput={e => {
+                    if (isReadOnly) return;
+                    e.target.style.height = 'auto';
+                    e.target.style.height = e.target.scrollHeight + 'px';
                 }} />
             {errors.feedback && <div style={{ color: 'var(--red)', fontSize: '12px', marginTop: '8px', fontWeight: 600 }}>{errors.feedback}</div>}
         </div>
@@ -316,13 +368,25 @@ export default function SelfReview() {
     const renderAchievementsTab = () => (
         <div className="card">
             <div className="card-title" style={{ marginBottom: '16px' }}>Additional Highlights</div>
-            <p className="section-subtitle" style={{ marginBottom: '16px' }}>Significant accomplishments or evidence not covered by specific goals.</p>
-            <textarea className="form-textarea" rows={10} placeholder="Document any extra wins..."
-                disabled={isReadOnly}
-                style={{ color: isReadOnly ? 'var(--text-muted)' : 'inherit', border: errors.achievements ? '1px solid var(--red)' : undefined }}
+            <p className="section-subtitle" style={{ marginBottom: '16px' }}>Significant accomplishments or evidence not covered by specific goals. Provide detailed explanation with examples and achievements.</p>
+            <textarea id="achievements-input" className="form-textarea" rows={10} placeholder="Document any extra wins..."
+                readOnly={isReadOnly}
+                style={{ 
+                    color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)', 
+                    background: 'var(--bg-secondary)',
+                    cursor: isReadOnly ? 'not-allowed' : 'text',
+                    border: errors.achievements ? '1px solid var(--red)' : undefined, 
+                    minHeight: '150px' 
+                }}
                 value={achievements} onChange={e => {
+                    if (isReadOnly) return;
                     setAchievements(e.target.value);
                     if (errors.achievements) setErrors({ ...errors, achievements: null });
+                }}
+                onInput={e => {
+                    if (isReadOnly) return;
+                    e.target.style.height = 'auto';
+                    e.target.style.height = e.target.scrollHeight + 'px';
                 }} />
             {errors.achievements && <div style={{ color: 'var(--red)', fontSize: '12px', marginTop: '8px', fontWeight: 600 }}>{errors.achievements}</div>}
         </div>
@@ -331,13 +395,25 @@ export default function SelfReview() {
     const renderLearningTab = () => (
         <div className="card">
             <div className="card-title" style={{ marginBottom: '16px' }}>Learning & Development</div>
-            <p className="section-subtitle" style={{ marginBottom: '16px' }}>Track completed training or define future developmental aspirations.</p>
-            <textarea className="form-textarea" rows={10} placeholder="Training completed, certifications, or desired skills..."
-                disabled={isReadOnly}
-                style={{ color: isReadOnly ? 'var(--text-muted)' : 'inherit', border: errors.learning ? '1px solid var(--red)' : undefined }}
+            <p className="section-subtitle" style={{ marginBottom: '16px' }}>Track completed training or define future developmental aspirations. Provide detailed explanation with examples and achievements.</p>
+            <textarea id="learning-input" className="form-textarea" rows={10} placeholder="Training completed, certifications, or desired skills..."
+                readOnly={isReadOnly}
+                style={{ 
+                    color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)', 
+                    background: 'var(--bg-secondary)',
+                    cursor: isReadOnly ? 'not-allowed' : 'text',
+                    border: errors.learning ? '1px solid var(--red)' : undefined, 
+                    minHeight: '150px' 
+                }}
                 value={learning} onChange={e => {
+                    if (isReadOnly) return;
                     setLearning(e.target.value);
                     if (errors.learning) setErrors({ ...errors, learning: null });
+                }}
+                onInput={e => {
+                    if (isReadOnly) return;
+                    e.target.style.height = 'auto';
+                    e.target.style.height = e.target.scrollHeight + 'px';
                 }} />
             {errors.learning && <div style={{ color: 'var(--red)', fontSize: '12px', marginTop: '8px', fontWeight: 600 }}>{errors.learning}</div>}
         </div>
@@ -348,18 +424,30 @@ export default function SelfReview() {
             <div className="card" style={{ marginBottom: '24px', borderLeft: '4px solid var(--purple)' }}>
                 <div className="card-title" style={{ marginBottom: '8px' }}>Final Overview</div>
                 <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                    {isReadOnly ? 'This review has been submitted and is now read-only.' : 'Review all sections before submitting your self-appraisal.'}
+                    {isSubmitted ? 'This review has been submitted and is now read-only.' : (isLocked ? 'This review is saved as a draft and locked. Click "Edit Review" to continue.' : 'Review all sections before submitting your self-appraisal.')}
                 </p>
             </div>
 
             <div className="card" style={{ marginBottom: '24px' }}>
                 <label className="form-label">Final Thoughts / Career Aspirations</label>
-                <textarea className="form-textarea" rows={4} placeholder="Where do you see yourself in the next 12 months?"
-                    disabled={isReadOnly}
-                    style={{ color: isReadOnly ? 'var(--text-muted)' : 'inherit', border: errors.comments ? '1px solid var(--red)' : undefined }}
+                <textarea id="comments-input" className="form-textarea" rows={6} placeholder="Where do you see yourself in the next 12 months? Please provide detailed explanation."
+                    readOnly={isReadOnly}
+                    style={{ 
+                        color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)', 
+                        background: 'var(--bg-secondary)',
+                        cursor: isReadOnly ? 'not-allowed' : 'text',
+                        border: errors.comments ? '1px solid var(--red)' : undefined, 
+                        minHeight: '120px' 
+                    }}
                     value={comments} onChange={e => {
+                        if (isReadOnly) return;
                         setComments(e.target.value);
                         if (errors.comments) setErrors({ ...errors, comments: null });
+                    }}
+                    onInput={e => {
+                        if (isReadOnly) return;
+                        e.target.style.height = 'auto';
+                        e.target.style.height = e.target.scrollHeight + 'px';
                     }} />
                 {errors.comments && <div style={{ color: 'var(--red)', fontSize: '12px', marginTop: '8px', fontWeight: 600 }}>{errors.comments}</div>}
             </div>
@@ -374,31 +462,39 @@ export default function SelfReview() {
                             </span>
                         )}
                     </div>
-                    <div style={{ fontSize: '13px', color: 'var(--text-secondary)', fontStyle: 'italic', background: 'var(--bg-secondary)', padding: '16px', borderRadius: '8px', lineHeight: '1.6' }}>
+                    <div className="read-only-text" style={{ fontSize: '13px', fontStyle: evaluation.feedback ? 'normal' : 'italic', background: 'var(--bg-secondary)', padding: '16px', borderRadius: '8px' }}>
                         {evaluation.feedback || 'No summary feedback provided.'}
                     </div>
                 </div>
             )}
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '32px' }}>
-                {!isReadOnly && (
+                {!isSubmitted && (
                     <>
-                        {status === 'new' && (
-                            <button type="button" className="btn btn-secondary" onClick={() => handleSubmit('draft')} style={{ padding: '12px 24px' }}>
-                                💾 Save Draft
+                        {status === 'draft' && isLocked ? (
+                            <button type="button" className="btn btn-secondary" onClick={() => setIsLocked(false)} style={{ padding: '12px 24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                ✏️ Edit Review
                             </button>
+                        ) : (
+                            <>
+                                {status === 'new' && (
+                                    <button type="button" className="btn btn-secondary" onClick={() => handleSubmit('draft')} style={{ padding: '12px 24px' }}>
+                                        💾 Save Draft
+                                    </button>
+                                )}
+                                {status === 'draft' && !isLocked && (
+                                    <button type="button" className="btn btn-secondary" onClick={() => handleSubmit('draft')} style={{ padding: '12px 24px' }}>
+                                        🔄 Update Draft
+                                    </button>
+                                )}
+                                <button type="button" className="btn btn-primary" onClick={() => handleSubmit('submitted')} style={{ padding: '12px 32px', fontWeight: 700 }}>
+                                    🚀 Submit Full Appraisal
+                                </button>
+                            </>
                         )}
-                        {status === 'draft' && (
-                            <button type="button" className="btn btn-secondary" onClick={() => handleSubmit('draft')} style={{ padding: '12px 24px' }}>
-                                🔄 Update Draft
-                            </button>
-                        )}
-                        <button type="button" className="btn btn-primary" onClick={() => handleSubmit('submitted')} style={{ padding: '12px 32px', fontWeight: 700 }}>
-                            🚀 Submit Full Appraisal
-                        </button>
                     </>
                 )}
-                {isReadOnly && (
+                {isSubmitted && (
                     <button type="button" className="btn btn-primary" disabled style={{ padding: '12px 32px', fontWeight: 700, opacity: 0.7 }}>
                         ✅ Submitted
                     </button>

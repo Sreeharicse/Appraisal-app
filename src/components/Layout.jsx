@@ -109,7 +109,7 @@ export default function Layout({ children }) {
     return (
         <div className="app-shell">
             <aside className="sidebar">
-                <div className="sidebar-logo">
+                <div className="sidebar-logo" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
                     {theme === 'dark' ? (
                         // Dark mode: clip whitespace — image is wide with padding, show just the logo content
                         <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
@@ -122,13 +122,13 @@ export default function Layout({ children }) {
                             </div>
                         </div>
                     ) : (
-                        // Light mode: compact inline logo + text
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-                            <img src={logo} alt="Techxl Logo" style={{ height: '32px', width: 'auto' }} />
-                            <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.3px' }}></span>
+                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+                            <img src={logo} alt="Techxl Logo" style={{ height: '36px', width: 'auto' }} />
                         </div>
                     )}
-                    <span>{ROLE_LABELS[currentUser?.role]}</span>
+                    <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '6px' }}>
+                        {ROLE_LABELS[currentUser?.role]}
+                    </div>
                 </div>
                 <nav className="sidebar-nav">
                     {links.map((link, index) => (
