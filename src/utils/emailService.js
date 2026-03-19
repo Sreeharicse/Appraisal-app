@@ -65,4 +65,13 @@ export const cycleCreatedEmail = (employeeName, cycleName, startDate, endDate) =
         <p>Please log in to the portal to start your self-review process.</p>
     `;
 };
-
+export const hrEvaluationSubmittedEmail = (employeeName, managerName) => {
+    return `
+        <h2>New Evaluation for Approval</h2>
+        <p>Hi HR Team,</p>
+        <p>A new performance evaluation has been submitted and is awaiting your review.</p>
+        <p><strong>Employee:</strong> ${employeeName}</p>
+        <p><strong>Evaluated By:</strong> ${managerName}</p>
+        <p>Please log in to the Appraisals portal to review and finalize this evaluation.</p>
+    `;
+};
