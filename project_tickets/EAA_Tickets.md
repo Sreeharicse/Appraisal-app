@@ -134,3 +134,65 @@ This document contains a comprehensive list of all completed tasks and features 
 - Generated a `Dockerfile` utilizing Node.js and Nginx for production serving.
 - Created `.dockerignore` to streamline build sizes.
 - Detailed the process of connecting the GitHub repo to Render and setting up environment variables via `render_deployment_guide.md`.
+
+---
+
+## UI Polish & Presentation
+
+### Ticket 21: Cap Maximum Height for Results Feedback
+**Description**:
+- Identified an issue where long manager or HR feedback would cause the "My Results" dashboard to expand infinitely downwards.
+- Appended a 250px maximum height and enforced custom stylized vertical scrollbars on the feedback display boxes.
+
+### Ticket 22: Fix Native Browser Font Distortion on Locked Selects
+**Description**:
+- Browsers inherently alter the visual weight/rendering of fonts inside elements with the HTML `disabled` attribute.
+- Migrated standard `disabled` functionality on employee competency `<select>` drop-downs to use robust CSS-based locking (`pointer-events: none` and `tabIndex: -1`) to enforce pure visual consistency across states.
+
+### Ticket 23: Remove Hardcoded Italics for Submitted Text
+**Description**:
+- Corrected `.read-only-text` containers inside Manager Evaluations and Employee Self-Reviews that were unconditionally enforcing an italicized font style.
+- Updated to dynamically render standard normal fonts for submitted answers, preserving italic fonts strictly for empty/placeholder fallback text.
+
+### Ticket 24: Replicate "Final Classification" Card to HR View
+**Description**:
+- Refactored the HR mapping so that the exact standalone visual card component for the manager's "Final Rating Classification" (including side-by-side metric boxes) renders identically inside the `Approvals.jsx` dashboard, enabling precise visual continuity for HR reviews.
+
+---
+
+## Logic & Runtime Bug Fixes
+
+### Ticket 25: Prevent Premature Form Locking on Instantiation
+**Description**:
+- Fixed a state initialization bug where navigating to a completely distinct/new employee evaluation instantly triggered an `isLocked: true` flag, forcing managers and employees to press "Edit" before typing a single character.
+- Fixed React hooks to conditionally initialize `new` status and fully unlocked capabilities upon instantiation.
+
+### Ticket 26: Rectify Dashboard Render Crash (Missing SVGs)
+**Description**:
+- Resolved a critical UI crash returning `Uncaught Error: Element type is invalid: expected a string... but got undefined` on the main Dashboard.
+- Audited dashboard imports and injected several missing dynamic SVG objects (`PieChart`, `Calendar`, `FileText`, `Clock`, `Database`) directly into the unified `Icons.jsx` dependency repository.
+
+---
+
+## Automated Notifications & Alerts
+
+### Ticket 27: Implement Real-Time Notification Center
+**Description**:
+- Developed a robust notification dropdown within the `Layout.jsx` topbar.
+- Implemented state-based logic to categorize notifications into "New (Unread)" and "Read" sections.
+- Added a "Mark all as read" utility and individual "✓" read markers for each alert.
+- Implemented background polling (`10s` interval) to automatically fetch new notifications without page refreshes.
+
+### Ticket 28: Workflow-Triggered System Notifications
+**Description**:
+- Integrated `createNotification` calls across the `AppContext.jsx` state machine.
+- Automatically trigger browser-based alerts for critical workflow events:
+    - **Employees**: Receive alerts when a new cycle is launched or an evaluation is approved.
+    - **Managers**: Receive alerts when a direct report submits their self-review.
+    - **HR**: Receive "Warning" level alerts for evaluations awaiting final approval.
+
+### Ticket 29: Mock Email Notification Service
+**Description**:
+- Developed `emailService.js` to simulate outbound SMTP communications.
+- Integrated email triggers alongside system notifications to ensure multi-channel alerting.
+- Set up formatted HTML templates for "Self-Review Received," "Evaluation Assessed," and "Cycle Finalized" communications.

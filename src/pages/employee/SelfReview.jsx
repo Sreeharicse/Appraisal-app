@@ -13,11 +13,9 @@ export default function SelfReview() {
     const [activeTab, setActiveTab] = useState(1);
 
     // Form State
-    const [summary, setSummary] = useState('');
-    const [comments, setComments] = useState('');
     const [competencies, setCompetencies] = useState({});
+
     const [feedback, setFeedback] = useState('');
-    const [achievements, setAchievements] = useState('');
     const [learning, setLearning] = useState('');
 
     const [submitted, setSubmitted] = useState(false); // Legacy flag for some UI
@@ -36,14 +34,9 @@ export default function SelfReview() {
         { id: 'q5', label: '5. Communication Skills', desc: 'Evaluate how clearly and effectively you communicate with your team, manager, and other stakeholders. Include examples of how communication helped improve project outcomes or teamwork.' },
         { id: 'q6', label: '6. Team Collaboration', desc: 'How well do you collaborate with colleagues and contribute to team goals? Describe how you support team members and participate in collective problem solving.' },
         { id: 'q7', label: '7. Initiative and Ownership', desc: 'Describe situations where you took initiative beyond your assigned responsibilities. How do you demonstrate ownership of tasks, projects, or issues that arise?' },
-        { id: 'q8', label: '8. Learning and Skill Development', desc: 'How have you improved your skills during this appraisal cycle? Mention any new technologies, tools, or practices you have learned and applied in your work.' },
-        { id: 'q9', label: '9. Adaptability', desc: 'How well do you adapt to changes in priorities, technologies, or project requirements? Provide examples where you successfully handled change or uncertainty.' },
-        { id: 'q10', label: '10. Time Management', desc: 'How effectively do you manage your time while balancing multiple responsibilities? Describe strategies you use to stay organized and meet deadlines.' },
-        { id: 'q11', label: '11. Contribution to Project Success', desc: 'Explain how your work contributed to the success of your projects or team objectives. Highlight any measurable results or improvements you helped achieve.' },
-        { id: 'q12', label: '12. Innovation and Improvement', desc: 'Have you suggested or implemented any improvements in processes, tools, or workflows? Describe how these improvements benefited your team or organization.' },
-        { id: 'q13', label: '13. Accountability', desc: 'How do you handle mistakes or challenges in your work? Explain how you take responsibility and work toward resolving issues effectively.' },
-        { id: 'q14', label: '14. Professional Behavior', desc: 'Evaluate how you demonstrate professionalism in the workplace. This includes reliability, respect for colleagues, and maintaining a positive work attitude.' },
-        { id: 'q15', label: '15. Overall Self Assessment', desc: 'Reflect on your overall performance during this appraisal cycle. What are your key achievements, and what areas do you believe need further improvement?' }
+        { id: 'q10', label: '8. Time Management', desc: 'How effectively do you manage your time while balancing multiple responsibilities? Describe strategies you use to stay organized and meet deadlines.' },
+        { id: 'q11', label: '9. Contribution to Project Success', desc: 'Explain how your work contributed to the success of your projects or team objectives. Highlight any measurable results or improvements you helped achieve.' },
+        { id: 'q14', label: '10. Professional Behavior', desc: 'Evaluate how you demonstrate professionalism in the workplace. This includes reliability, respect for colleagues, and maintaining a positive work attitude.' }
     ];
 
     const RATING_OPTIONS = [
@@ -74,12 +67,11 @@ export default function SelfReview() {
         const existing = getSelfReview(currentUser.id, selectedCycleId);
 
         if (existing) {
-            setSummary(existing.summary || '');
-            setComments(existing.comments || '');
+
 
             const meta = existing.metadata || {};
 
-            // Initialize competencies with 15 questions if not present
+            // Initialize competencies with 10 questions if not present
             const loadedComps = meta.competencies || {};
             const initialComps = {};
             COMPETENCY_QUESTIONS.forEach(q => {
@@ -88,15 +80,13 @@ export default function SelfReview() {
             setCompetencies(initialComps);
 
             setFeedback(meta.feedback || '');
-            setAchievements(meta.achievements || '');
             setLearning(meta.learning || '');
 
             setStatus(meta.status || 'submitted');
             setSubmitted(true);
             setIsLocked(true);
         } else {
-            setSummary('');
-            setComments('');
+
 
             const initialComps = {};
             COMPETENCY_QUESTIONS.forEach(q => {
@@ -105,7 +95,6 @@ export default function SelfReview() {
             setCompetencies(initialComps);
 
             setFeedback('');
-            setAchievements('');
             setLearning('');
             setStatus('new');
             setSubmitted(false);
@@ -145,22 +134,16 @@ export default function SelfReview() {
                 }
             }
 
-            if (!achievements.trim() || achievements.trim().length < 20) {
-                newErrors.achievements = 'Please provide a detailed explanation (min 20 chars).';
-                if (!firstErrorTab) { firstErrorTab = 2; firstErrorId = 'achievements-input'; }
-            }
+            // Learning tab (Tab 2)
             if (!learning.trim() || learning.trim().length < 20) {
                 newErrors.learning = 'Please provide a detailed explanation (min 20 chars).';
-                if (!firstErrorTab) { firstErrorTab = 3; firstErrorId = 'learning-input'; }
+                if (!firstErrorTab) { firstErrorTab = 2; firstErrorId = 'learning-input'; }
             }
             if (!feedback.trim() || feedback.trim().length < 20) {
                 newErrors.feedback = 'Please provide a detailed explanation (min 20 chars).';
-                if (!firstErrorTab) { firstErrorTab = 4; firstErrorId = 'feedback-input'; }
+                if (!firstErrorTab) { firstErrorTab = 3; firstErrorId = 'feedback-input'; }
             }
-            if (!comments.trim() || comments.trim().length < 20) {
-                newErrors.comments = 'Please provide a detailed explanation (min 20 chars).';
-                if (!firstErrorTab) { firstErrorTab = 5; firstErrorId = 'comments-input'; }
-            }
+
 
             setErrors(newErrors);
 
@@ -180,11 +163,9 @@ export default function SelfReview() {
         await submitSelfReview({
             cycleId: selectedCycleId,
             employeeId: currentUser.id,
-            summary,
-            comments,
+
             competencies,
             feedback,
-            achievements,
             learning,
             status: finalStatus
         });
@@ -202,10 +183,8 @@ export default function SelfReview() {
 
     const TABS = [
         { id: 1, label: '🧩 Competencies' },
-        { id: 2, label: '🏆 Achievements' },
-        { id: 3, label: '📚 Learning' },
-        { id: 4, label: '💬 Feedback' },
-        { id: 5, label: '🏁 Summary' }
+        { id: 2, label: '📚 Learning' },
+        { id: 3, label: '💬 Feedback' },
     ];
 
     if (loading && selectedCycleId) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading review data...</div>;
@@ -225,7 +204,7 @@ export default function SelfReview() {
 
                 {COMPETENCY_QUESTIONS.map((q, index) => (
                     <div key={q.id} className="card" style={{ marginBottom: '32px', padding: '24px' }}>
-                        <div style={{ fontWeight: 700, fontSize: '18px', color: 'var(--blue-light)', marginBottom: '8px' }}>{q.label}</div>
+                        <div style={{ fontWeight: 700, fontSize: '18px', color: 'var(--blue-light)', marginBottom: '8px' }}>{q.label} <span style={{ color: '#ef4444', fontSize: '15px' }}>*</span></div>
                         <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '24px', lineHeight: '1.5' }}>{q.desc}</div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
@@ -238,9 +217,9 @@ export default function SelfReview() {
                                     <label className="form-label" style={{ fontSize: '12px' }}>Rating</label>
                                     <select
                                         className="form-select"
-                                        style={{ 
-                                            width: '100%', 
-                                            color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)', 
+                                        style={{
+                                            width: '100%',
+                                            color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)',
                                             background: 'var(--bg-secondary)',
                                             opacity: 1,
                                             pointerEvents: isReadOnly ? 'none' : 'auto',
@@ -271,15 +250,15 @@ export default function SelfReview() {
                                         id={`comp-${q.id}`}
                                         className="form-input"
                                         placeholder="Provide detailed explanation with examples and achievements..."
-                                        style={{ 
-                                            height: '180px', 
+                                        style={{
+                                            height: '180px',
                                             overflowY: 'scroll',
-                                            width: '100%', 
-                                            fontSize: '14px', 
-                                            color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)', 
+                                            width: '100%',
+                                            fontSize: '14px',
+                                            color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)',
                                             background: 'var(--bg-secondary)',
                                             cursor: isReadOnly ? 'not-allowed' : 'text',
-                                            border: errors[`comp-${q.id}`]?.includes('chars') ? '1px solid var(--red)' : undefined 
+                                            border: errors[`comp-${q.id}`]?.includes('chars') ? '1px solid var(--red)' : undefined
                                         }}
                                         readOnly={isReadOnly}
                                         value={competencies[q.id]?.comment || ''}
@@ -334,119 +313,50 @@ export default function SelfReview() {
             </div>
         );
     };
-
-    const renderFeedbackTab = () => (
-        <div className="card">
-            <div className="card-title" style={{ marginBottom: '16px' }}>Additional Feedback</div>
-            <p className="section-subtitle" style={{ marginBottom: '16px' }}>Provide feedback about the team, your manager, or organizational processes. Provide detailed explanation with examples and achievements.</p>
-            <textarea id="feedback-input" className="form-textarea" rows={10} placeholder="Type your feedback here..."
-                readOnly={isReadOnly}
-                style={{ 
-                    color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)', 
-                    background: 'var(--bg-secondary)',
-                    cursor: isReadOnly ? 'not-allowed' : 'text',
-                    border: errors.feedback ? '1px solid var(--red)' : undefined, 
-                    minHeight: '150px' 
-                }}
-                value={feedback} onChange={e => {
-                    if (isReadOnly) return;
-                    setFeedback(e.target.value);
-                    if (errors.feedback) setErrors({ ...errors, feedback: null });
-                }}
-                onInput={e => {
-                    if (isReadOnly) return;
-                    e.target.style.height = 'auto';
-                    e.target.style.height = e.target.scrollHeight + 'px';
-                }} />
-            {errors.feedback && <div style={{ color: 'var(--red)', fontSize: '12px', marginTop: '8px', fontWeight: 600 }}>{errors.feedback}</div>}
-        </div>
-    );
-
-    const renderAchievementsTab = () => (
-        <div className="card">
-            <div className="card-title" style={{ marginBottom: '16px' }}>Additional Highlights</div>
-            <p className="section-subtitle" style={{ marginBottom: '16px' }}>Significant accomplishments or evidence not covered by specific goals. Provide detailed explanation with examples and achievements.</p>
-            <textarea id="achievements-input" className="form-textarea" rows={10} placeholder="Document any extra wins..."
-                readOnly={isReadOnly}
-                style={{ 
-                    color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)', 
-                    background: 'var(--bg-secondary)',
-                    cursor: isReadOnly ? 'not-allowed' : 'text',
-                    border: errors.achievements ? '1px solid var(--red)' : undefined, 
-                    minHeight: '150px' 
-                }}
-                value={achievements} onChange={e => {
-                    if (isReadOnly) return;
-                    setAchievements(e.target.value);
-                    if (errors.achievements) setErrors({ ...errors, achievements: null });
-                }}
-                onInput={e => {
-                    if (isReadOnly) return;
-                    e.target.style.height = 'auto';
-                    e.target.style.height = e.target.scrollHeight + 'px';
-                }} />
-            {errors.achievements && <div style={{ color: 'var(--red)', fontSize: '12px', marginTop: '8px', fontWeight: 600 }}>{errors.achievements}</div>}
-        </div>
-    );
-
     const renderLearningTab = () => (
         <div className="card">
             <div className="card-title" style={{ marginBottom: '16px' }}>Learning & Development</div>
-            <p className="section-subtitle" style={{ marginBottom: '16px' }}>Track completed training or define future developmental aspirations. Provide detailed explanation with examples and achievements.</p>
+            <p className="section-subtitle" style={{ marginBottom: '16px' }}>Track completed training or define future developmental aspirations.</p>
             <textarea id="learning-input" className="form-textarea" rows={10} placeholder="Training completed, certifications, or desired skills..."
                 readOnly={isReadOnly}
-                style={{ 
-                    color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)', 
+                style={{
+                    color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)',
                     background: 'var(--bg-secondary)',
                     cursor: isReadOnly ? 'not-allowed' : 'text',
-                    border: errors.learning ? '1px solid var(--red)' : undefined, 
-                    minHeight: '150px' 
+                    border: errors.learning ? '1px solid var(--red)' : undefined,
+                    height: '180px',
+                    overflowY: 'scroll'
                 }}
                 value={learning} onChange={e => {
                     if (isReadOnly) return;
                     setLearning(e.target.value);
                     if (errors.learning) setErrors({ ...errors, learning: null });
-                }}
-                onInput={e => {
-                    if (isReadOnly) return;
-                    e.target.style.height = 'auto';
-                    e.target.style.height = e.target.scrollHeight + 'px';
                 }} />
             {errors.learning && <div style={{ color: 'var(--red)', fontSize: '12px', marginTop: '8px', fontWeight: 600 }}>{errors.learning}</div>}
         </div>
     );
 
-    const renderSummaryTab = () => (
+    const renderFeedbackTab = () => (
         <div>
-            <div className="card" style={{ marginBottom: '24px', borderLeft: '4px solid var(--purple)' }}>
-                <div className="card-title" style={{ marginBottom: '8px' }}>Final Overview</div>
-                <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                    {isSubmitted ? 'This review has been submitted and is now read-only.' : (isLocked ? 'This review is saved as a draft and locked. Click "Edit Review" to continue.' : 'Review all sections before submitting your self-appraisal.')}
-                </p>
-            </div>
-
             <div className="card" style={{ marginBottom: '24px' }}>
-                <label className="form-label">Final Thoughts / Career Aspirations</label>
-                <textarea id="comments-input" className="form-textarea" rows={6} placeholder="Where do you see yourself in the next 12 months? Please provide detailed explanation."
+                <div className="card-title" style={{ marginBottom: '16px' }}>Employee Feedback</div>
+                <p className="section-subtitle" style={{ marginBottom: '16px' }}>Feedback about the team, manager, or organizational processes.</p>
+                <textarea id="feedback-input" className="form-textarea" rows={8} placeholder="Provide your feedback..."
                     readOnly={isReadOnly}
-                    style={{ 
-                        color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)', 
+                    style={{
+                        color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)',
                         background: 'var(--bg-secondary)',
                         cursor: isReadOnly ? 'not-allowed' : 'text',
-                        border: errors.comments ? '1px solid var(--red)' : undefined, 
-                        minHeight: '120px' 
+                        border: errors.feedback ? '1px solid var(--red)' : undefined,
+                        height: '150px',
+                        overflowY: 'scroll'
                     }}
-                    value={comments} onChange={e => {
+                    value={feedback} onChange={e => {
                         if (isReadOnly) return;
-                        setComments(e.target.value);
-                        if (errors.comments) setErrors({ ...errors, comments: null });
-                    }}
-                    onInput={e => {
-                        if (isReadOnly) return;
-                        e.target.style.height = 'auto';
-                        e.target.style.height = e.target.scrollHeight + 'px';
+                        setFeedback(e.target.value);
+                        if (errors.feedback) setErrors({ ...errors, feedback: null });
                     }} />
-                {errors.comments && <div style={{ color: 'var(--red)', fontSize: '12px', marginTop: '8px', fontWeight: 600 }}>{errors.comments}</div>}
+                {errors.feedback && <div style={{ color: 'var(--red)', fontSize: '12px', marginTop: '8px', fontWeight: 600 }}>{errors.feedback}</div>}
             </div>
 
             {evaluation && (
@@ -459,7 +369,7 @@ export default function SelfReview() {
                             </span>
                         )}
                     </div>
-                    <div className="read-only-text" style={{ fontSize: '13px', fontStyle: evaluation.feedback ? 'normal' : 'italic', background: 'var(--bg-secondary)', padding: '16px', borderRadius: '8px' }}>
+                    <div className="read-only-text" style={{ fontSize: '13px', fontStyle: evaluation.feedback ? 'normal' : 'italic', background: 'var(--bg-secondary)', padding: '12px 16px', borderRadius: '8px', height: '160px', maxHeight: '160px', overflowY: 'scroll', lineHeight: '1.6' }}>
                         {evaluation.feedback || 'No summary feedback provided.'}
                     </div>
                 </div>
@@ -503,68 +413,75 @@ export default function SelfReview() {
     const renderTabContent = () => {
         switch (activeTab) {
             case 1: return renderCompetenciesTab();
-            case 2: return renderAchievementsTab();
-            case 3: return renderLearningTab();
-            case 4: return renderFeedbackTab();
-            case 5: return renderSummaryTab();
+            case 2: return renderLearningTab();
+            case 3: return renderFeedbackTab();
             default: return null;
         }
     };
 
     return (
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px' }}>
-            <div className="section-header" style={{ marginBottom: '24px' }}>
-                <div>
-                    <h2 className="section-title">Comprehensive Self Review</h2>
-                    <p className="section-subtitle">{cycle?.name || 'Loading cycle...'}</p>
+        <div style={{ margin: '0 auto', padding: '0' }}>
+            {/* Top Nav Bar — sticks at top of scrollable content */}
+            <div style={{
+                position: 'sticky', top: 0, zIndex: 100,
+                margin: '0 -32px',
+                padding: '12px 32px',
+                background: 'var(--bg-primary)',
+                borderBottom: '1px solid var(--border)',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                gap: '16px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+            }}>
+                {/* Left: Tabs only */}
+                <div style={{ display: 'flex', gap: '6px', background: 'var(--bg-secondary)', padding: '4px', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                    {TABS.map(t => (
+                        <button key={t.id}
+                            onClick={() => setActiveTab(t.id)}
+                            style={{
+                                padding: '8px 16px',
+                                borderRadius: '8px',
+                                border: 'none',
+                                background: activeTab === t.id ? 'var(--bg-primary)' : 'transparent',
+                                boxShadow: activeTab === t.id ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                                color: activeTab === t.id ? 'var(--blue-light)' : 'var(--text-secondary)',
+                                fontWeight: activeTab === t.id ? 700 : 600,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                fontSize: '13px',
+                                whiteSpace: 'nowrap'
+                            }}>
+                            {t.label}
+                        </button>
+                    ))}
                 </div>
-                <div style={{ display: 'flex', gap: '12px' }}>
-                    <select className="form-select" value={selectedCycleId} onChange={e => setSelectedCycleId(e.target.value)} style={{ width: '220px' }}>
-                        {activeCycles.map(c => (
-                            <option key={c.id} value={c.id}>{c.name}</option>
-                        ))}
-                    </select>
-                </div>
+
+                {/* Right: Cycle dropdown only */}
+                <select className="form-select" value={selectedCycleId} onChange={e => setSelectedCycleId(e.target.value)}
+                    style={{ background: 'var(--bg-secondary)', fontWeight: 600, fontSize: '13px', minWidth: '180px', padding: '8px 12px' }}>
+                    {activeCycles.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                </select>
             </div>
 
-            <div style={{ display: 'flex', gap: '32px', position: 'relative' }}>
-                {/* Tabs Sidebar */}
-                <div style={{ width: '240px', flexShrink: 0 }}>
-                    <div className="card" style={{ padding: '8px', position: 'sticky', top: '24px' }}>
-                        {TABS.map(t => (
-                            <button key={t.id}
-                                onClick={() => setActiveTab(t.id)}
-                                style={{
-                                    display: 'block',
-                                    width: '100%',
-                                    textAlign: 'left',
-                                    padding: '12px 16px',
-                                    borderRadius: '8px',
-                                    border: 'none',
-                                    background: activeTab === t.id ? 'var(--bg-primary)' : 'transparent',
-                                    boxShadow: activeTab === t.id ? 'var(--nm-shadow-in-sm)' : 'none',
-                                    color: activeTab === t.id ? 'var(--blue-light)' : 'var(--text-secondary)',
-                                    fontWeight: activeTab === t.id ? 700 : 500,
-                                    cursor: 'pointer',
-                                    marginBottom: '4px',
-                                    transition: 'all 0.2s',
-                                    fontSize: '14px'
-                                }}>
-                                {t.label}
-                            </button>
-                        ))}
-                    </div>
+            {/* Full-width Content Area */}
+            <div style={{ maxWidth: '1400px', margin: '0 auto', paddingTop: '24px' }}>
+                {isReadOnly && <div style={{
+                    marginBottom: '20px', padding: '12px 20px',
+                    background: 'rgba(100,116,139,0.08)', border: '1px solid rgba(100,116,139,0.2)',
+                    borderRadius: '12px', fontSize: '13px', color: 'var(--text-muted)'
+                }}>
+                    🔒 This review is {isSubmitted ? 'submitted and' : 'saved as a draft and'} <strong>read-only</strong>.
+                </div>}
+
+                <div style={{ minHeight: '400px' }}>
+                    {!selectedCycleId && <div className="alert alert-warning">⚠️ No active appraisal cycle found.</div>}
+                    {selectedCycleId && renderTabContent()}
                 </div>
 
-                {/* Content Area */}
-                <div style={{ flexGrow: 1 }}>
-                    {!selectedCycleId && <div className="alert alert-warning">⚠️ Select an Appraisal Cycle.</div>}
-                    {selectedCycleId && renderTabContent()}
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '24px' }}>
-                        <button className="btn btn-secondary" disabled={activeTab === 1} onClick={() => setActiveTab(p => p - 1)}>← Previous</button>
-                        {activeTab < 5 && <button className="btn btn-primary" onClick={() => setActiveTab(p => p + 1)}>Next →</button>}
-                    </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '32px', marginBottom: '40px' }}>
+                    <button className="btn btn-secondary" disabled={activeTab === 1} onClick={() => setActiveTab(p => p - 1)}>← Previous</button>
+                    {activeTab < 3 && <button className="btn btn-primary" onClick={() => setActiveTab(p => p + 1)}>Next Section →</button>}
                 </div>
             </div>
 

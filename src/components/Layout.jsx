@@ -214,8 +214,8 @@ export default function Layout({ children }) {
                                                                 {unread.map(notif => {
                                                                     const parsed = parseNotification(notif);
                                                                     return (
-                                                                        <div 
-                                                                            key={notif.id} 
+                                                                        <div
+                                                                            key={notif.id}
                                                                             className="notif-item unread"
                                                                             onClick={() => handleNotifClick(notif, parsed)}
                                                                             style={{ cursor: parsed.link ? 'pointer' : 'default' }}
@@ -264,9 +264,9 @@ export default function Layout({ children }) {
                                                                 {read.map(notif => {
                                                                     const parsed = parseNotification(notif);
                                                                     return (
-                                                                        <div 
-                                                                            key={notif.id} 
-                                                                            className="notif-item" 
+                                                                        <div
+                                                                            key={notif.id}
+                                                                            className="notif-item"
                                                                             onClick={() => handleNotifClick(notif, parsed)}
                                                                             style={{ opacity: 0.6, cursor: parsed.link ? 'pointer' : 'default' }}
                                                                         >

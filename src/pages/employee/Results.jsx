@@ -157,7 +157,7 @@ export default function Results() {
                     <div className="custom-scrollbar" style={{
                         padding: '16px', background: 'var(--bg-secondary)', borderRadius: '12px',
                         fontSize: '13px', lineHeight: '1.7', color: 'var(--text-secondary)', border: '1px solid var(--border)',
-                        minHeight: '100px', maxHeight: '250px', overflowY: 'auto'
+                        height: '180px', overflowY: 'scroll'
                     }}>
                         {ev.feedback || 'Your manager has not provided detailed written feedback for this cycle.'}
                     </div>
@@ -171,7 +171,7 @@ export default function Results() {
                     <div className="custom-scrollbar" style={{
                         padding: '16px', background: 'var(--bg-secondary)', borderRadius: '12px',
                         fontSize: '13px', lineHeight: '1.7', color: 'var(--text-secondary)', border: '1px solid var(--border)',
-                        minHeight: '100px', maxHeight: '250px', overflowY: 'auto'
+                        height: '180px', overflowY: 'scroll'
                     }}>
                         {(() => {
                             if (!approval?.comment) {

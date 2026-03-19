@@ -22,6 +22,8 @@ export default function Evaluate() {
     const [activeTab, setActiveTab] = useState(1);
     const [hasEdited, setHasEdited] = useState(false);
     const [showPopup, setShowPopup] = useState(false);
+    const [showEmpPicker, setShowEmpPicker] = useState(false);
+    const [showRatingModal, setShowRatingModal] = useState(false);
     const [popupMessage, setPopupMessage] = useState({ title: '', body: '' });
 
     // Once saved as 'pending_approval' or 'approved', the evaluation is permanently locked
@@ -39,10 +41,8 @@ export default function Evaluate() {
 
     const TABS = [
         { id: 1, label: '🧩 Competencies' },
-        { id: 2, label: '🏆 Achievements' },
-        { id: 3, label: '📚 Learning & Dev' },
-        { id: 4, label: '💬 Employee Feedback' },
-        { id: 5, label: '🏁 Final Assessment' }
+        { id: 2, label: '📚 Learning & Dev' },
+        { id: 3, label: '💬 Feedback & Summary' }
     ];
 
     const COMPETENCY_QUESTIONS = [
@@ -53,14 +53,9 @@ export default function Evaluate() {
         { id: 'q5', label: '5. Communication Skills', desc: 'Evaluate how clearly and effectively you communicate with your team, manager, and other stakeholders. Include examples of how communication helped improve project outcomes or teamwork.' },
         { id: 'q6', label: '6. Team Collaboration', desc: 'How well do you collaborate with colleagues and contribute to team goals? Describe how you support team members and participate in collective problem solving.' },
         { id: 'q7', label: '7. Initiative and Ownership', desc: 'Describe situations where you took initiative beyond your assigned responsibilities. How do you demonstrate ownership of tasks, projects, or issues that arise?' },
-        { id: 'q8', label: '8. Learning and Skill Development', desc: 'How have you improved your skills during this appraisal cycle? Mention any new technologies, tools, or practices you have learned and applied in your work.' },
-        { id: 'q9', label: '9. Adaptability', desc: 'How well do you adapt to changes in priorities, technologies, or project requirements? Provide examples where you successfully handled change or uncertainty.' },
-        { id: 'q10', label: '10. Time Management', desc: 'How effectively do you manage your time while balancing multiple responsibilities? Describe strategies you use to stay organized and meet deadlines.' },
-        { id: 'q11', label: '11. Contribution to Project Success', desc: 'Explain how your work contributed to the success of your projects or team objectives. Highlight any measurable results or improvements you helped achieve.' },
-        { id: 'q12', label: '12. Innovation and Improvement', desc: 'Have you suggested or implemented any improvements in processes, tools, or workflows? Describe how these improvements benefited your team or organization.' },
-        { id: 'q13', label: '13. Accountability', desc: 'How do you handle mistakes or challenges in your work? Explain how you take responsibility and work toward resolving issues effectively.' },
-        { id: 'q14', label: '14. Professional Behavior', desc: 'Evaluate how you demonstrate professionalism in the workplace. This includes reliability, respect for colleagues, and maintaining a positive work attitude.' },
-        { id: 'q15', label: '15. Overall Self Assessment', desc: 'Reflect on your overall performance during this appraisal cycle. What are your key achievements, and what areas do you believe need further improvement?' }
+        { id: 'q10', label: '8. Time Management', desc: 'How effectively do you manage your time while balancing multiple responsibilities? Describe strategies you use to stay organized and meet deadlines.' },
+        { id: 'q11', label: '9. Contribution to Project Success', desc: 'Explain how your work contributed to the success of your projects or team objectives. Highlight any measurable results or improvements you helped achieve.' },
+        { id: 'q14', label: '10. Professional Behavior', desc: 'Evaluate how you demonstrate professionalism in the workplace. This includes reliability, respect for colleagues, and maintaining a positive work attitude.' }
     ];
 
     const RATING_OPTIONS = [
@@ -106,7 +101,7 @@ export default function Evaluate() {
         setSubRating(ev?.subRating || '');
         setWorkRating(ev?.workPerformanceRating || 0);
         setBehaviorRating(ev?.behavioralRating || 0);
-        
+
         if (ev) {
             setStatus(ev.status);
             setIsLocked(true);
@@ -156,12 +151,12 @@ export default function Evaluate() {
             // Validate Final Rating
             if (!finalRating) {
                 alert('Please select a Final Rating Classification.');
-                setActiveTab(5);
+                setActiveTab(3); // Changed from 5 to 3
                 return;
             }
             if (!subRating || parseFloat(subRating) < 1 || parseFloat(subRating) > 5) {
                 alert('Please provide a valid Sub-Rating between 1 and 5.');
-                setActiveTab(5);
+                setActiveTab(3); // Changed from 5 to 3
                 return;
             }
         }
@@ -203,46 +198,48 @@ export default function Evaluate() {
 
     const renderCompetenciesTab = () => (
         <div>
-            <div className="card-title" style={{ marginBottom: '16px' }}>Competency Evaluation</div>
-            <p className="section-subtitle" style={{ marginBottom: '24px' }}>Compare employee self-ratings with your own assessment.</p>
+            <div className="card-title" style={{ marginBottom: '8px' }}>Competency Evaluation</div>
+            <p className="section-subtitle" style={{ marginBottom: '16px' }}>Compare employee self-ratings with your own assessment.</p>
             {COMPETENCY_QUESTIONS.map((q) => (
-                <div key={q.id} className="card" style={{ marginBottom: '32px', padding: '24px' }}>
-                    <div style={{ fontWeight: 700, fontSize: '18px', color: 'var(--blue-light)', marginBottom: '8px' }}>{q.label}</div>
-                    <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '24px', lineHeight: '1.5' }}>{q.desc}</div>
+                <div key={q.id} className="card" style={{ marginBottom: '12px', padding: '14px' }}>
+                    <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--blue-light)', marginBottom: '4px' }}>{q.label} <span style={{ color: '#ef4444', fontSize: '13px' }}>*</span></div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px', lineHeight: '1.4', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{q.desc}</div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                         {/* Employee Part (Read-only) */}
-                        <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(56, 189, 248, 0.05)', border: '1px solid rgba(56, 189, 248, 0.1)' }}>
-                            <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '12px', color: 'var(--blue-light)' }}>👤 Employee Perspective</div>
-                            <div style={{ marginBottom: '12px' }}>
-                                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Self-Rating</div>
-                                <div style={{ padding: '8px', background: 'var(--bg-secondary)', borderRadius: '8px', fontSize: '13px', fontWeight: 600 }}>
+                        <div style={{ padding: '10px', borderRadius: '10px', background: 'rgba(56, 189, 248, 0.05)', border: '1px solid rgba(56, 189, 248, 0.1)' }}>
+                            <div style={{ fontWeight: 700, fontSize: '12px', marginBottom: '8px', color: 'var(--blue-light)' }}>👤 Employee Perspective</div>
+                            <div style={{ marginBottom: '8px' }}>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '3px' }}>Self-Rating</div>
+                                <div style={{ padding: '5px 8px', background: 'var(--bg-secondary)', borderRadius: '6px', fontSize: '12px', fontWeight: 600 }}>
                                     {RATING_OPTIONS.find(o => o.value === (empComps[q.id]?.rating || 0))?.label || 'Not rated'}
                                 </div>
                             </div>
                             <div>
-                                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Self-Comments</div>
-                                <div className="read-only-text" style={{ padding: '12px', paddingRight: '36px', background: 'var(--bg-secondary)', borderRadius: '8px', fontSize: '13px', height: '180px', overflowY: 'scroll', fontStyle: empComps[q.id]?.comment ? 'normal' : 'italic' }}>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '3px' }}>Self-Comments</div>
+                                <div className="read-only-text" style={{ padding: '8px', paddingRight: '24px', background: 'var(--bg-secondary)', borderRadius: '6px', fontSize: '12px', height: '90px', maxHeight: '90px', overflowY: 'scroll', fontStyle: empComps[q.id]?.comment ? 'normal' : 'italic' }}>
                                     {empComps[q.id]?.comment || 'No comments provided.'}
                                 </div>
                             </div>
                         </div>
 
                         {/* Manager Part (Editable / Locked) */}
-                        <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(168, 85, 247, 0.05)', border: '1px solid rgba(168, 85, 247, 0.1)' }}>
-                            <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '12px', color: 'var(--purple)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                👨‍💼 Manager Perspective 
-                                {isSubmitted && <span style={{ fontSize: '11px', background: 'rgba(10, 185, 129, 0.1)', color: '#10b981', padding: '2px 8px', borderRadius: '20px', fontWeight: 600 }}>✅ Submitted</span>}
-                                {!isSubmitted && isLocked && status === 'draft' && <span style={{ fontSize: '11px', background: 'rgba(100,116,139,0.15)', color: 'var(--text-muted)', padding: '2px 8px', borderRadius: '20px', fontWeight: 600 }}>🔒 Draft Locked</span>}
+                        <div style={{ padding: '10px', borderRadius: '10px', background: 'rgba(168, 85, 247, 0.05)', border: '1px solid rgba(168, 85, 247, 0.1)' }}>
+                            <div style={{ fontWeight: 700, fontSize: '12px', marginBottom: '8px', color: 'var(--purple)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                👨‍💼 Manager Perspective
+                                {isSubmitted && <span style={{ fontSize: '10px', background: 'rgba(10, 185, 129, 0.1)', color: '#10b981', padding: '1px 6px', borderRadius: '20px', fontWeight: 600 }}>✅ Submitted</span>}
+                                {!isSubmitted && isLocked && status === 'draft' && <span style={{ fontSize: '10px', background: 'rgba(100,116,139,0.15)', color: 'var(--text-muted)', padding: '1px 6px', borderRadius: '20px', fontWeight: 600 }}>🔒 Locked</span>}
                             </div>
-                            <div style={{ marginBottom: '16px' }}>
-                                <label className="form-label" style={{ fontSize: '12px', color: isReadOnly ? 'var(--text-muted)' : undefined }}>Rating</label>
+                            <div style={{ marginBottom: '8px' }}>
+                                <label style={{ fontSize: '11px', color: isReadOnly ? 'var(--text-muted)' : 'var(--text-secondary)', display: 'block', marginBottom: '3px' }}>Rating</label>
                                 <select className="form-select" value={competencies[q.id]?.rating || 0}
                                     disabled={isReadOnly}
-                                    style={{ 
-                                        color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)', 
+                                    style={{
+                                        color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)',
                                         background: 'var(--bg-secondary)',
                                         opacity: 1,
+                                        fontSize: '12px',
+                                        padding: '5px 8px',
                                         cursor: isReadOnly ? 'not-allowed' : 'pointer'
                                     }}
                                     onChange={e => updateCompRating(q.id, parseInt(e.target.value))}>
@@ -252,13 +249,16 @@ export default function Evaluate() {
                                 </select>
                             </div>
                             <div>
-                                <label className="form-label" style={{ fontSize: '12px', color: isReadOnly ? 'var(--text-muted)' : undefined }}>Feedback / Examples</label>
-                                <textarea id={`comp-${q.id}`} className="form-input read-only-text" placeholder={isSubmitted ? 'Evaluation submitted.' : (isLocked ? 'Draft locked. Click Edit to continue...' : 'Manager feedback (min 20 chars)...')} 
-                                    style={{ 
-                                        height: '180px', 
+                                <label style={{ fontSize: '11px', color: isReadOnly ? 'var(--text-muted)' : 'var(--text-secondary)', display: 'block', marginBottom: '3px' }}>Feedback / Examples</label>
+                                <textarea id={`comp-${q.id}`} className="form-input" placeholder={isSubmitted ? 'Submitted.' : (isLocked ? 'Draft locked...' : 'Manager feedback (min 20 chars)...')}
+                                    style={{
+                                        height: '90px',
+                                        minHeight: '90px',
+                                        maxHeight: '90px',
                                         overflowY: 'scroll',
-                                        fontSize: '14px', 
-                                        color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)', 
+                                        resize: 'none',
+                                        fontSize: '12px',
+                                        color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)',
                                         background: 'var(--bg-secondary)',
                                         cursor: isReadOnly ? 'not-allowed' : 'text'
                                     }}
@@ -285,8 +285,8 @@ export default function Evaluate() {
             paddingRight: '36px',
             color: content ? 'var(--text-primary)' : 'var(--text-muted)'
         }}>
-        {content || placeholder}
-    </div>
+            {content || placeholder}
+        </div>
     );
 
     const renderEmployeeReadOnlyTab = (title, subtitle, content, placeholder) => (
@@ -310,58 +310,24 @@ export default function Evaluate() {
 
     const renderSummaryTab = () => (
         <div>
-            <div className="card" style={{ marginBottom: '32px', padding: '24px' }}>
-                <div className="card-title">Overall Summary Feedback</div>
-                <p className="section-subtitle" style={{ marginBottom: '16px' }}>Provide a final assessment of the employee's performance over this cycle.</p>
+            <div className="card" style={{ marginBottom: '20px', padding: '16px' }}>
+                <div className="card-title" style={{ marginBottom: '10px', fontSize: '14px' }}>Overall Summary Feedback</div>
                 <textarea className="form-textarea"
                     placeholder={isReadOnly ? 'Evaluation has been submitted and locked.' : 'Final assessment, growth areas, and career pathing...'}
                     value={feedback}
                     readOnly={isReadOnly}
-                    style={{ 
-                        color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)', 
+                    style={{
+                        color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)',
                         background: 'var(--bg-secondary)',
                         cursor: isReadOnly ? 'not-allowed' : 'text',
-                        minHeight: '150px' 
+                        height: '140px',
+                        maxHeight: '140px',
+                        minHeight: '140px',
+                        overflowY: 'scroll',
+                        resize: 'none'
                     }}
                     onChange={e => { if (!isReadOnly) { setFeedback(e.target.value); setHasEdited(true); } }}
-                    onInput={e => {
-                        e.target.style.height = 'auto';
-                        e.target.style.height = e.target.scrollHeight + 'px';
-                    }} />
-            </div>
-
-            <div className="card" style={{ marginBottom: '32px', padding: '24px' }}>
-                <div className="card-title">Final Rating Classification</div>
-                <p className="section-subtitle" style={{ marginBottom: '16px' }}>Assign an overall final rating and sub-rating.</p>
-                
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-                    <div>
-                        <label className="form-label" style={{ fontSize: '12px', color: isReadOnly ? 'var(--text-muted)' : undefined }}>Final Rating</label>
-                        <select className="form-select" value={finalRating} disabled={isReadOnly} onChange={(e) => { setFinalRating(e.target.value); setHasEdited(true); }} 
-                            style={{ 
-                                color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)', 
-                                background: 'var(--bg-secondary)',
-                                opacity: 1,
-                                cursor: isReadOnly ? 'not-allowed' : 'pointer'
-                            }}>
-                            <option value="">Select a rating...</option>
-                            <option value="Outstanding">Outstanding</option>
-                            <option value="Exceeded">Exceeded Expectations</option>
-                            <option value="Met">Met Expectations</option>
-                            <option value="Below">Below Expectations</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label className="form-label" style={{ fontSize: '12px', color: isReadOnly ? 'var(--text-muted)' : undefined }}>Sub-Rating (1-5, hidden from employee)</label>
-                        <input type="number" step="0.1" min="1" max="5" className="form-input" placeholder="e.g. 4.2" value={subRating} disabled={isReadOnly} onChange={(e) => { setSubRating(e.target.value); setHasEdited(true); }} 
-                            style={{ 
-                                color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)', 
-                                background: 'var(--bg-secondary)',
-                                opacity: 1,
-                                cursor: isReadOnly ? 'not-allowed' : 'text'
-                            }} />
-                    </div>
-                </div>
+                />
             </div>
 
             <div style={{ textAlign: 'right', marginBottom: '40px' }}>
@@ -386,8 +352,16 @@ export default function Evaluate() {
                                 <button type="button" className="btn btn-secondary" style={{ padding: '16px 32px', fontWeight: 600 }} onClick={() => handleSubmit('draft')}>
                                     💾 Save Draft
                                 </button>
-                                <button type="button" className="btn btn-primary" style={{ padding: '16px 64px', fontWeight: 700, fontSize: '16px' }} onClick={() => handleSubmit('pending_approval')}>
-                                    Complete Evaluation
+                                <button type="button" className="btn btn-primary" style={{ padding: '16px 64px', fontWeight: 700, fontSize: '16px' }} onClick={() => {
+                                    // Pre-validate before opening the modal
+                                    const unrated = COMPETENCY_QUESTIONS.filter(q => !competencies[q.id] || competencies[q.id].rating === 0);
+                                    if (unrated.length > 0) { alert('Please provide a rating for all competencies before submitting.'); setActiveTab(1); return; }
+                                    const poorComments = COMPETENCY_QUESTIONS.filter(q => !competencies[q.id]?.comment || competencies[q.id].comment.trim().length < 20);
+                                    if (poorComments.length > 0) { alert('Please provide a detailed comment (min 20 chars) for all competencies.'); setActiveTab(1); return; }
+                                    if (!feedback || feedback.trim().length < 20) { alert('Please provide a detailed final assessment (min 20 chars).'); return; }
+                                    setShowRatingModal(true);
+                                }}>
+                                    🏁 Submit Evaluation
                                 </button>
                             </>
                         )}
@@ -397,122 +371,239 @@ export default function Evaluate() {
         </div>
     );
 
+    // Helper for cycle status badge
+    const getCycleEvalInfo = (cycleId, empId) => {
+        const ev = evaluations.find(e => String(e.employeeId) === String(empId) && String(e.cycleId) === String(cycleId));
+        const sr = selfReviews.find(r => String(r.employeeId) === String(empId) && String(r.cycleId) === String(cycleId));
+        let statusLabel = 'Not Started';
+        let statusColor = '#9ca3af';
+        let pct = null;
+        if (ev?.status === 'approved') { statusLabel = 'Approved'; statusColor = '#10b981'; }
+        else if (ev?.status === 'pending_approval') { statusLabel = 'Submitted'; statusColor = '#6366f1'; }
+        else if (ev?.status === 'draft') { statusLabel = 'Draft'; statusColor = '#f59e0b'; }
+        else if (sr?.status === 'submitted' || sr?.status === 'approved') { statusLabel = 'Awaiting'; statusColor = '#3b82f6'; }
+        if (ev?.subRating) { pct = Math.round((parseFloat(ev.subRating) / 5) * 100); }
+        return { statusLabel, statusColor, pct };
+    };
+    const renderLearningTab = () => (
+        renderEmployeeReadOnlyTab(
+            'Learning & Development',
+            "Employee's self-reported learning achievements and development goals.",
+            selfReview?.metadata?.learning,
+            'No learning & development details provided.'
+        )
+    );
+
+    const renderFeedbackTab = () => (
+        renderEmployeeReadOnlyTab(
+            'Feedback',
+            "Employee's feedback about the team, manager, or organizational processes.",
+            selfReview?.metadata?.feedback,
+            'No feedback provided.'
+        )
+    );
+
+    const renderTabContent = () => {
+        switch (activeTab) {
+            case 1: return renderCompetenciesTab();
+            case 2: return renderLearningTab();
+            case 3:
+                return (
+                    <div>
+                        {renderFeedbackTab()}
+                        <div style={{ marginTop: '24px' }}>
+                            {renderSummaryTab()}
+                        </div>
+                    </div>
+                );
+            default: return null;
+        }
+    };
+
     return (
-        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-            <div className="section-header" style={{ textAlign: 'left', marginBottom: '32px' }}>
-                <div>
-                    <h2 className="section-title" style={{ fontSize: '28px', fontWeight: 700, marginBottom: '8px', letterSpacing: '-0.5px' }}>Performance Evaluation</h2>
-                    <p className="section-subtitle" style={{ fontSize: '14px', color: 'var(--text-muted)', fontWeight: 500 }}>Reviewing performance for a specific cycle.</p>
+        <div style={{ margin: '0 auto', padding: '0' }}>
+            {/* Top Nav Bar — sticky */}
+            <div style={{
+                position: 'sticky', top: 0, zIndex: 100,
+                background: 'var(--bg-primary)',
+                borderBottom: '1px solid var(--border)',
+                padding: '10px 32px',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                gap: '12px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+            }}>
+                {/* Left: Title + Tabs */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                    <div>
+                        <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', margin: 0, lineHeight: 1.2 }}>Evaluation</h2>
+                        <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: 0 }}>{selectedCycleId ? cycles.find(c => c.id === selectedCycleId)?.name : 'Select a cycle'}</p>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '6px', background: 'var(--bg-secondary)', padding: '4px', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                        {TABS.map(t => (
+                            <button key={t.id}
+                                onClick={() => setActiveTab(t.id)}
+                                style={{
+                                    padding: '8px 16px',
+                                    borderRadius: '8px',
+                                    border: 'none',
+                                    background: activeTab === t.id ? 'var(--bg-primary)' : 'transparent',
+                                    boxShadow: activeTab === t.id ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                                    color: activeTab === t.id ? 'var(--purple)' : 'var(--text-secondary)',
+                                    fontWeight: activeTab === t.id ? 700 : 600,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s',
+                                    fontSize: '13px',
+                                    whiteSpace: 'nowrap'
+                                }}>
+                                {t.label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Employee</label>
-                        <select
-                            className="form-select btn-sm"
-                            style={{ minWidth: '180px', background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}
-                            value={selectedEmp}
-                            onChange={(e) => handleEmpChange(e.target.value)}
-                        >
-                            {!team.length && <option value="">No team members</option>}
-                            {team.map(member => (
-                                <option key={member.id} value={member.id}>{member.name}</option>
-                            ))}
-                        </select>
-                    </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Appraisal Cycle</label>
-                        <select
-                            className="form-select btn-sm"
-                            style={{ minWidth: '160px', background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}
-                            value={selectedCycleId}
-                            onChange={(e) => {
-                                setSelectedCycleId(e.target.value);
-                                setStatus('draft');
-                                setHasEdited(false);
-                            }}
-                        >
-                            <option value="">Select Cycle...</option>
-                            {cycles.map(c => (
-                                <option key={c.id} value={c.id}>
-                                    {c.name} ({c.status})
-                                </option>
-                            ))}
-                        </select>
-                    </div>
+                {/* Right: Cycle dropdown + Back */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    {/* Cycle dropdown */}
+                    <select className="form-select"
+                        value={selectedCycleId}
+                        onChange={e => { setSelectedCycleId(e.target.value); setStatus('draft'); setHasEdited(false); }}
+                        style={{ background: 'var(--bg-secondary)', fontWeight: 600, fontSize: '13px', minWidth: '160px', padding: '8px 12px' }}>
+                        <option value="">Select Cycle...</option>
+                        {cycles.map(c => (
+                            <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                    </select>
 
-                    <button onClick={() => navigate('/manager')} className="btn btn-secondary" style={{ padding: '8px 16px', alignSelf: 'flex-end', height: '36px' }}>
+                    <button onClick={() => navigate('/manager')} className="btn btn-secondary" style={{ fontSize: '12px', padding: '8px 14px', whiteSpace: 'nowrap' }}>
                         ← Back
                     </button>
                 </div>
             </div>
 
-            {isReadOnly && !hasEdited && isSelfReviewSubmitted && <div style={{
-                marginBottom: '20px', padding: '12px 20px',
-                background: 'rgba(100,116,139,0.08)', border: '1px solid rgba(100,116,139,0.2)',
-                borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '10px',
-                fontSize: '13px', color: 'var(--text-muted)', fontWeight: 500
-            }}>
-                {isSubmitted ? (
-                    <>🔒 This evaluation has been submitted and is now <strong style={{ color: 'var(--text-secondary)' }}>read-only</strong>. No further changes can be made.</>
-                ) : (
-                    <>🔒 This evaluation is saved as a <strong style={{ color: 'var(--text-secondary)' }}>draft</strong> and locked. Click "Edit Evaluation" to continue.</>
-                )}
-            </div>}
-            {hasEdited && <div className="alert alert-warning" style={{ marginBottom: '24px' }}>⚠️ You have unsaved changes. Click "Complete Evaluation" in the Final Assessment tab to save.</div>}
-
-            {!isSelfReviewSubmitted ? (
-                <div className="card" style={{ padding: '64px 24px', textAlign: 'center', marginTop: '24px', background: 'var(--bg-secondary)' }}>
-                    <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏳</div>
-                    <h3 style={{ color: 'var(--text-primary)', marginBottom: '8px', fontSize: '20px', fontWeight: 700 }}>Waiting for Employee</h3>
-                    <p style={{ color: 'var(--text-muted)', maxWidth: '400px', margin: '0 auto', lineHeight: '1.6' }}>
-                        This employee has not yet submitted their self-review. You cannot begin your evaluation until their review is completed and submitted.
-                    </p>
-                </div>
-            ) : (
-                <div style={{ display: 'flex', gap: '24px', position: 'relative' }}>
-                    {/* Tabs Sidebar */}
-                    <div style={{ width: '240px', flexShrink: 0 }}>
-                        <div className="card" style={{ padding: '8px', position: 'sticky', top: '24px' }}>
-                            {TABS.map(t => (
-                                <button key={t.id}
-                                    onClick={() => setActiveTab(t.id)}
+            {/* Full-width Content Area */}
+            <div style={{ padding: '24px 32px', maxWidth: '1400px', margin: '0 auto' }}>
+                
+                {/* Employee Selection row */}
+                <div style={{ marginBottom: '32px', overflowX: 'auto', paddingBottom: '8px' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px' }}>
+                        Select Team Member
+                    </div>
+                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'nowrap' }}>
+                        {team.map(member => {
+                            const info = getCycleEvalInfo(selectedCycleId, member.id);
+                            const isSelected = selectedEmp === member.id;
+                            return (
+                                <button key={member.id}
+                                    onClick={() => handleEmpChange(member.id)}
                                     style={{
-                                        display: 'block',
-                                        width: '100%',
-                                        textAlign: 'left',
-                                        padding: '12px 16px',
-                                        borderRadius: '8px',
-                                        border: 'none',
-                                        background: activeTab === t.id ? 'var(--bg-primary)' : 'transparent',
-                                        boxShadow: activeTab === t.id ? 'var(--nm-shadow-in-sm)' : 'none',
-                                        color: activeTab === t.id ? 'var(--purple)' : 'var(--text-secondary)',
-                                        fontWeight: activeTab === t.id ? 700 : 500,
-                                        cursor: 'pointer',
-                                        marginBottom: '4px',
-                                        transition: 'all 0.2s',
-                                        fontSize: '14px'
+                                        display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
+                                        padding: '12px 16px', borderRadius: '12px',
+                                        background: isSelected ? 'var(--bg-primary)' : 'var(--bg-secondary)',
+                                        border: isSelected ? '2px solid var(--purple)' : '1px solid var(--border)',
+                                        cursor: 'pointer', minWidth: '200px', flexShrink: 0, transition: 'all 0.2s',
+                                        boxShadow: isSelected ? '0 4px 12px rgba(99, 102, 241, 0.15)' : 'none'
                                     }}>
-                                    {t.label}
+                                    <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '14px', marginBottom: '6px' }}>
+                                        {member.name}
+                                    </div>
+                                    <div style={{ fontSize: '12px', color: info.statusColor, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <span style={{ 
+                                            width: '8px', height: '8px', borderRadius: '50%', backgroundColor: info.statusColor 
+                                        }}></span>
+                                        {info.statusLabel || 'Not Started'}
+                                    </div>
                                 </button>
-                            ))}
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {!selectedEmp ? (
+                    <div className="card" style={{ padding: '64px 24px', textAlign: 'center', background: 'var(--bg-secondary)', border: '2px dashed var(--border)' }}>
+                        <div style={{ fontSize: '48px', marginBottom: '16px' }}>👆</div>
+                        <h3 style={{ color: 'var(--text-primary)', marginBottom: '8px', fontSize: '20px', fontWeight: 800 }}>Select a Team Member</h3>
+                        <p style={{ color: 'var(--text-muted)', maxWidth: '400px', margin: '0 auto' }}>Choose an employee from the top bar to start their performance evaluation.</p>
+                    </div>
+                ) : !isSelfReviewSubmitted ? (
+                    <div className="card" style={{ padding: '64px 24px', textAlign: 'center', background: 'var(--bg-secondary)' }}>
+                        <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏳</div>
+                        <h3 style={{ color: 'var(--text-primary)', marginBottom: '8px', fontSize: '20px', fontWeight: 800 }}>Waiting for Employee</h3>
+                        <p style={{ color: 'var(--text-muted)', maxWidth: '400px', margin: '0 auto' }}>This employee has not yet submitted their self-review. You cannot begin your evaluation until their review is completed.</p>
+                    </div>
+                ) : (
+                    <div>
+                        {isReadOnly && !hasEdited && <div style={{
+                            marginBottom: '20px', padding: '12px 20px',
+                            background: 'rgba(100,116,139,0.08)', border: '1px solid rgba(100,116,139,0.2)',
+                            borderRadius: '12px', fontSize: '13px', color: 'var(--text-muted)'
+                        }}>
+                            🔒 This evaluation is {isSubmitted ? 'submitted and' : 'saved as a draft and'} <strong>read-only</strong>.
+                        </div>}
+
+                        <div style={{ minHeight: '400px' }}>
+                            {renderTabContent()}
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '32px', marginBottom: '40px' }}>
+                            <button className="btn btn-secondary" disabled={activeTab === 1} onClick={() => setActiveTab(p => p - 1)}>← Previous</button>
+                            {activeTab < 3 && <button className="btn btn-primary" onClick={() => setActiveTab(p => p + 1)}>Next Section →</button>}
                         </div>
                     </div>
+                )}
+            </div>
 
-                    {/* Content Area */}
-                    <div style={{ flexGrow: 1 }}>
-                        {activeTab === 1 && renderCompetenciesTab()}
-                    {activeTab === 2 && renderEmployeeReadOnlyTab('Achievements', 'Significant accomplishments or evidence provided by the employee not covered by specific goals.', selfReview?.metadata?.achievements, 'No additional achievements provided.')}
-                    {activeTab === 3 && renderEmployeeReadOnlyTab('Learning & Development', 'Training completed or developmental aspirations noted by the employee.', selfReview?.metadata?.learning, 'No learning and development notes provided.')}
-                    {activeTab === 4 && renderEmployeeReadOnlyTab('Feedback', 'Feedback about the team, manager, or organizational processes.', selfReview?.metadata?.feedback, 'No feedback provided.')}
-                    {activeTab === 5 && renderSummaryTab()}
+            {/* Final Rating Modal */}
+            {showRatingModal && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex',
+                    alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)'
+                }}>
+                    <div className="card" style={{ width: '480px', maxWidth: '95vw', padding: '32px', animation: 'slideUp 0.25s ease-out' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
+                            <div>
+                                <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '4px' }}>🏆 Final Rating Classification</div>
+                                <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Assign an overall rating before submitting. This is hidden from the employee.</div>
+                            </div>
+                            <button onClick={() => setShowRatingModal(false)} style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '8px', width: '32px', height: '32px', cursor: 'pointer', fontSize: '18px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginLeft: '12px' }}>×</button>
+                        </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '24px', marginBottom: '40px' }}>
-                        <button className="btn btn-secondary" disabled={activeTab === 1} onClick={() => setActiveTab(p => p - 1)}>← Previous</button>
-                        {activeTab < 5 && <button className="btn btn-primary" onClick={() => setActiveTab(p => p + 1)}>Next Section →</button>}
+                        <div style={{ display: 'grid', gap: '20px', marginBottom: '28px' }}>
+                            <div>
+                                <label className="form-label" style={{ fontSize: '13px', fontWeight: 600, marginBottom: '8px' }}>Final Rating</label>
+                                <select className="form-select" value={finalRating} onChange={e => { setFinalRating(e.target.value); setHasEdited(true); }}
+                                    style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '14px' }}>
+                                    <option value="">Select a rating...</option>
+                                    <option value="Outstanding">⭐ Outstanding</option>
+                                    <option value="Exceeded">✅ Exceeded Expectations</option>
+                                    <option value="Met">👍 Met Expectations</option>
+                                    <option value="Below">⚠️ Below Expectations</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="form-label" style={{ fontSize: '13px', fontWeight: 600, marginBottom: '8px' }}>Sub-Rating <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(1–5, hidden from employee)</span></label>
+                                <input type="number" step="0.1" min="1" max="5" className="form-input" placeholder="e.g. 4.2"
+                                    value={subRating} onChange={e => { setSubRating(e.target.value); setHasEdited(true); }}
+                                    style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '14px' }} />
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>Score from 1 (Poor) to 5 (Outstanding)</div>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                            <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowRatingModal(false)}>Cancel</button>
+                            <button className="btn btn-primary" style={{ flex: 2, fontWeight: 700 }}
+                                onClick={() => {
+                                    if (!finalRating) { alert('Please select a Final Rating Classification.'); return; }
+                                    if (!subRating || parseFloat(subRating) < 1 || parseFloat(subRating) > 5) { alert('Please provide a valid Sub-Rating between 1 and 5.'); return; }
+                                    setShowRatingModal(false);
+                                    handleSubmit('pending_approval');
+                                }}>
+                                🚀 Confirm &amp; Submit
+                            </button>
+                        </div>
                     </div>
                 </div>
-            </div>
             )}
 
             {/* Custom Popup Overlay */}

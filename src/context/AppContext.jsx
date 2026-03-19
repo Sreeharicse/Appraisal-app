@@ -826,7 +826,6 @@ export function AppProvider({ children }) {
         }
 
         const metadataForStorage = {
-            comments: encrypt(review.comments),
             progress: review.progress || {},
             competencies: encryptedCompetencies,
             feedback: encrypt(review.feedback || ''),
@@ -834,10 +833,10 @@ export function AppProvider({ children }) {
             learning: encrypt(review.learning || ''),
             status: review.status || 'draft'
         };
+
         const packedComments = JSON.stringify(metadataForStorage);
 
         const unencryptedMetadata = {
-            comments: review.comments,
             progress: review.progress || {},
             competencies: review.competencies || {},
             feedback: review.feedback || '',
@@ -846,14 +845,15 @@ export function AppProvider({ children }) {
             status: review.status || 'draft'
         };
 
+
         if (localStorage.getItem('fake_session_role')) {
             const mapped = {
                 id: existing ? existing.id : crypto.randomUUID(),
                 cycleId: review.cycleId,
                 employeeId: review.employeeId,
                 summary: review.summary,
-                comments: review.comments,
                 metadata: unencryptedMetadata,
+
                 submittedAt: new Date().toISOString().split('T')[0]
             };
             setSelfReviews(p => {
@@ -903,8 +903,8 @@ export function AppProvider({ children }) {
                 cycleId: r.cycle_id,
                 employeeId: r.employee_id,
                 summary: review.summary,
-                comments: review.comments,
                 metadata: unencryptedMetadata,
+
                 submittedAt: r.submitted_at,
                 status: review.status || 'draft'
             };
