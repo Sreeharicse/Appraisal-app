@@ -336,7 +336,7 @@ body {
   border-radius: 0;
   box-shadow: none;
   position: relative;
-  z-index: 50;
+  z-index: 999;
   width: 100%;
 }
 

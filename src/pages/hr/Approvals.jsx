@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { calculateScore } from '../../context/AppContext';
 import Icons from '../../components/Icons';
 
 const StarRating = ({ value, onChange, readonly = false }) => {
@@ -100,93 +101,142 @@ export default function Approvals() {
                 const avgHr = getAvgHrRating(ev.id);
                 const allRated = avgHr > 0;
                 
-                // Calculate live preview score: 90% Sub-Rating (Manager) + 10% HR Assessment
-                const previewScoreMath = Math.round(((ev.subRating || 0) / 5 * 90) + (avgHr / 5 * 10));
+                // Calculate live preview score using Core vs. Behavioral weighting
+                const comps = ev.metadata?.competencies || {};
+                const CORE_IDS = ['q1', 'q2', 'q3', 'q4'];
+                const BEHAVIORAL_IDS = ['q5', 'q6', 'q7', 'q10', 'q11', 'q14'];
+                const coreRatings = CORE_IDS.map(id => comps[id]?.rating).filter(r => r > 0);
+                const behavioralRatings = BEHAVIORAL_IDS.map(id => comps[id]?.rating).filter(r => r > 0);
+                const coreAvg = coreRatings.length > 0 ? coreRatings.reduce((a, b) => a + b, 0) / coreRatings.length : 0;
+                const behavioralAvg = behavioralRatings.length > 0 ? behavioralRatings.reduce((a, b) => a + b, 0) / behavioralRatings.length : 0;
+                const previewScoreMath = calculateScore(coreAvg, behavioralAvg, ev.subRating || 0, avgHr);
                 const previewCategory = getCategory(previewScoreMath);
 
                 return (
-                    <div key={ev.id} className="card" style={{ marginBottom: '20px' }}>
-                        {/* Employee Header */}
-                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '20px' }}>
+                    <div key={ev.id} className="card" style={{ marginBottom: '24px', padding: '24px' }}>
+                        {/* Employee Header Row */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                 <div className="avatar">{emp?.avatar}</div>
                                 <div>
                                     <div style={{ fontWeight: 700, fontSize: '15px' }}>{emp?.name}</div>
-                                    <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Evaluated by {mgr?.name} · {ev.submittedAt}</div>
-                                    <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{cycle?.name}</div>
+                                    <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Evaluated by {mgr?.name} · {ev.submittedAt} · {cycle?.name}</div>
                                 </div>
                             </div>
-                            {/* Live Score Preview */}
-                            <div style={{ textAlign: 'center', padding: '12px 20px', borderRadius: '12px', background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
-                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>
-                                    Final Score Preview
-                                </div>
-                                <div style={{ fontSize: '28px', fontWeight: 800, color: 'var(--purple)', opacity: allRated ? 1 : 0.5 }}>{previewScoreMath || '—'}</div>
-                                {previewScoreMath > 0 && <span className={`badge ${previewCategory.badge}`}>{previewCategory.label}</span>}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                {ev.finalRating && <span className="badge badge-green" style={{ padding: '5px 12px', fontSize: '12px' }}>{ev.finalRating}</span>}
                             </div>
                         </div>
 
-                        {/* 4-box Rating Summary Row */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '10px', marginBottom: '16px' }}>
-                            <div style={{ background: 'rgba(168, 85, 247, 0.08)', borderRadius: '10px', padding: '12px 14px', border: '1px solid rgba(168, 85, 247, 0.2)' }}>
-                                <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: 600, textTransform: 'uppercase' }}>Manager Rating <span style={{ color: 'var(--purple)' }}>(90%)</span></div>
-                                <div style={{ fontWeight: 800, fontSize: '18px', color: 'var(--purple)' }}>{ev.subRating || '—'}<span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-muted)' }}>/5</span></div>
-                            </div>
-                            <div style={{ background: 'rgba(245,158,11,0.08)', borderRadius: '10px', padding: '12px 14px', border: '1px solid rgba(245,158,11,0.2)' }}>
-                                <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: 600, textTransform: 'uppercase' }}>HR Assessment <span style={{ color: 'var(--yellow)' }}>(10%)</span></div>
-                                <div style={{ fontWeight: 800, fontSize: '18px', color: 'var(--yellow)', opacity: allRated ? 1 : 0.5 }}>{allRated ? avgHr.toFixed(1) : '?'}<span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-muted)' }}>/5</span></div>
-                            </div>
-                            <div style={{ background: 'rgba(16,185,129,0.07)', borderRadius: '10px', padding: '12px 14px', border: '1px solid rgba(16,185,129,0.2)' }}>
-                                <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: 600, textTransform: 'uppercase' }}>Final Rating</div>
-                                <div style={{ fontWeight: 700, fontSize: '14px', color: '#10b981' }}>{ev.finalRating || 'Not Set'}</div>
-                            </div>
-                            <div style={{ background: 'rgba(59,130,246,0.07)', borderRadius: '10px', padding: '12px 14px', border: '1px solid rgba(59,130,246,0.2)' }}>
-                                <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: 600, textTransform: 'uppercase' }}>Sub-Rating</div>
-                                <div style={{ fontWeight: 800, fontSize: '18px', color: 'var(--blue)' }}>{ev.subRating || '—'}<span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-muted)' }}>/5</span></div>
-                            </div>
-                        </div>
-
-                        {/* HR Assessment Form */}
-                        <div style={{ background: 'var(--bg-secondary)', borderRadius: '12px', padding: '16px', marginBottom: '16px', border: '1px solid var(--border)' }}>
-                            <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '16px', color: 'var(--purple-light)' }}>
-                                📋 HR Assessment (10% of Final Score)
-                            </div>
+                        {/* Two-Column Layout: Score Breakdown | HR Assessment */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
                             
-                            <div style={{ display: 'grid', gap: '10px' }}>
-                                {HR_QUESTIONS.map(q => (
-                                    <div key={q.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-primary)', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border)', boxShadow: 'var(--nm-shadow-out-sm)' }}>
-                                        <div>
-                                            <div style={{ fontWeight: 600, fontSize: '13px', marginBottom: '2px' }}>{q.label}</div>
-                                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{q.desc}</div>
+                            {/* LEFT: Score Preview + Breakdown */}
+                            <div style={{ background: 'var(--bg-secondary)', borderRadius: '14px', padding: '20px', border: '1px solid var(--border)' }}>
+                                {/* Score Circle + Label */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
+                                    <div style={{
+                                        width: '72px', height: '72px', borderRadius: '50%', flexShrink: 0,
+                                        background: `conic-gradient(var(--purple) ${previewScoreMath}%, var(--border) 0)`,
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        opacity: allRated ? 1 : 0.5
+                                    }}>
+                                        <div style={{
+                                            width: '56px', height: '56px', borderRadius: '50%',
+                                            background: 'var(--bg-secondary)', display: 'flex', flexDirection: 'column',
+                                            alignItems: 'center', justifyContent: 'center'
+                                        }}>
+                                            <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>{previewScoreMath || '—'}</div>
+                                            <div style={{ fontSize: '9px', color: 'var(--text-muted)', fontWeight: 600 }}>/100</div>
                                         </div>
-                                        <StarRating 
-                                            value={(hrRatings[ev.id] || {})[q.id] || 0} 
-                                            onChange={(val) => setHrRatingForQuestion(ev.id, q.id, val)} 
-                                        />
                                     </div>
-                                ))}
+                                    <div>
+                                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Score Preview</div>
+                                        {previewScoreMath > 0 && <span className={`badge ${previewCategory.badge}`} style={{ fontSize: '12px' }}>{previewCategory.label}</span>}
+                                        {!previewScoreMath && <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic' }}>Complete HR ratings</span>}
+                                    </div>
+                                </div>
+
+                                {/* Compact Breakdown Bars */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                    {/* Core */}
+                                    <div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
+                                            <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Core Performance <span style={{ color: 'var(--blue-light)', fontWeight: 700 }}>45%</span></span>
+                                            <span style={{ fontWeight: 700, color: 'var(--blue-light)' }}>{coreAvg.toFixed(1)}/5</span>
+                                        </div>
+                                        <div className="progress-bar" style={{ height: '6px' }}><div className="progress-fill" style={{ width: `${(coreAvg / 5) * 100}%`, background: 'var(--blue-light)' }} /></div>
+                                    </div>
+                                    {/* Behavioral */}
+                                    <div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
+                                            <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Behavioral Traits <span style={{ color: '#06b6d4', fontWeight: 700 }}>30%</span></span>
+                                            <span style={{ fontWeight: 700, color: '#06b6d4' }}>{behavioralAvg.toFixed(1)}/5</span>
+                                        </div>
+                                        <div className="progress-bar" style={{ height: '6px' }}><div className="progress-fill" style={{ width: `${(behavioralAvg / 5) * 100}%`, background: '#06b6d4' }} /></div>
+                                    </div>
+                                    {/* Sub-Rating */}
+                                    <div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
+                                            <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Sub-Rating <span style={{ color: 'var(--purple)', fontWeight: 700 }}>25%</span></span>
+                                            <span style={{ fontWeight: 700, color: 'var(--purple)' }}>{ev.subRating || '—'}/5</span>
+                                        </div>
+                                        <div className="progress-bar" style={{ height: '6px' }}><div className="progress-fill" style={{ width: `${((ev.subRating || 0) / 5) * 100}%`, background: 'var(--purple)' }} /></div>
+                                    </div>
+                                    {/* HR */}
+                                    <div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
+                                            <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>HR Assessment <span style={{ color: 'var(--yellow)', fontWeight: 700 }}>10%</span></span>
+                                            <span style={{ fontWeight: 700, color: allRated ? 'var(--yellow)' : 'var(--text-muted)' }}>{allRated ? avgHr.toFixed(1) : '—'}/5</span>
+                                        </div>
+                                        <div className="progress-bar" style={{ height: '6px' }}><div className="progress-fill" style={{ width: allRated ? `${(avgHr / 5) * 100}%` : '0%', background: 'var(--yellow)' }} /></div>
+                                    </div>
+                                </div>
                             </div>
 
-                            <div style={{ marginTop: '12px' }}>
-                                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>HR Comment (Sent to Employee)</div>
-                                <textarea 
-                                    className="form-input" 
-                                    placeholder="HR feedback..." 
-                                    style={{ height: '90px', fontSize: '13px', overflowY: 'scroll' }}
-                                    value={comment[ev.id] || ''}
-                                    onChange={e => setComment(prev => ({ ...prev, [ev.id]: e.target.value }))}
-                                />
+                            {/* RIGHT: HR Assessment Form */}
+                            <div style={{ background: 'var(--bg-secondary)', borderRadius: '14px', padding: '20px', border: '1px solid var(--border)' }}>
+                                <div style={{ fontWeight: 700, fontSize: '13px', marginBottom: '14px', color: 'var(--purple-light)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    📋 HR Assessment
+                                </div>
+                                
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
+                                    {HR_QUESTIONS.map(q => (
+                                        <div key={q.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-primary)', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div style={{ fontWeight: 600, fontSize: '12px', marginBottom: '2px' }}>{q.label}</div>
+                                                <div style={{ fontSize: '10px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{q.desc}</div>
+                                            </div>
+                                            <StarRating 
+                                                value={(hrRatings[ev.id] || {})[q.id] || 0} 
+                                                onChange={(val) => setHrRatingForQuestion(ev.id, q.id, val)} 
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div>
+                                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: 500 }}>HR Comment (Sent to Employee)</div>
+                                    <textarea 
+                                        className="form-input" 
+                                        placeholder="HR feedback..." 
+                                        style={{ height: '70px', fontSize: '12px', overflowY: 'auto', resize: 'none' }}
+                                        value={comment[ev.id] || ''}
+                                        onChange={e => setComment(prev => ({ ...prev, [ev.id]: e.target.value }))}
+                                    />
+                                </div>
                             </div>
                         </div>
 
-                        {/* Manager Feedback */}
-                        <div style={{ background: 'var(--bg-secondary)', borderRadius: '10px', padding: '12px 14px', marginBottom: '16px', border: '1px solid var(--border)' }}>
-                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Manager Summary Feedback</div>
-                            <p className="read-only-text" style={{ fontSize: '13px', lineHeight: '1.6', wordBreak: 'break-word', overflowWrap: 'break-word', height: '90px', overflowY: 'scroll', margin: 0 }}>
+                        {/* Manager Feedback — compact */}
+                        <div style={{ background: 'var(--bg-secondary)', borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', border: '1px solid var(--border)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px' }}>Manager Summary Feedback</div>
+                            <p className="read-only-text" style={{ fontSize: '13px', lineHeight: '1.5', wordBreak: 'break-word', overflowWrap: 'break-word', maxHeight: '72px', overflowY: 'auto', margin: 0 }}>
                                 {ev.feedback || 'No feedback provided.'}
                             </p>
                         </div>
 
+                        {/* Action Buttons */}
                         <div style={{ display: 'flex', gap: '10px' }}>
                             <button
                                 className="btn btn-success"

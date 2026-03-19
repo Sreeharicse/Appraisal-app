@@ -423,9 +423,9 @@ export default function SelfReview() {
         <div style={{ margin: '0 auto', padding: '0' }}>
             {/* Top Nav Bar — sticks at top of scrollable content */}
             <div style={{
-                position: 'sticky', top: 0, zIndex: 100,
-                margin: '0 -32px',
-                padding: '12px 32px',
+                position: 'sticky', top: '-32px', zIndex: 100,
+                margin: '-32px -40px 32px -40px',
+                padding: '32px 40px 12px 40px',
                 background: 'var(--bg-primary)',
                 borderBottom: '1px solid var(--border)',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
