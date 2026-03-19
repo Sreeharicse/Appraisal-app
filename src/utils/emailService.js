@@ -6,23 +6,27 @@
  */
 export const sendEmailNotification = async (toEmail, subject, htmlBody) => {
     console.log(`[EMAIL DISPATCH] Sending to: ${toEmail}`);
-    console.log(`[EMAIL DISPATCH] Subject: ${subject}`);
     
-    // Example implementation for calling a Supabase Edge Function:
-    /*
-    const response = await fetch('YOUR_SUPABASE_URL/functions/v1/send-email', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer YOUR_ANON_KEY`
-        },
-        body: JSON.stringify({ to: toEmail, subject, htmlBody })
-    });
-    
-    if (!response.ok) {
-        console.error('Failed to send email:', await response.text());
+    try {
+        console.log(`[EMAIL API] Calling backend for ${toEmail}...`);
+        const response = await fetch('http://localhost:3001/api/send-email', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ to: toEmail, subject, htmlBody })
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`[EMAIL ERROR] API returned ${response.status}: ${errorText}`);
+        } else {
+            const data = await response.json();
+            console.log(`[EMAIL SUCCESS] API replied:`, data);
+        }
+    } catch (error) {
+        console.error('Error in sendEmailNotification:', error);
     }
-    */
 };
 
 export const employeeSubmitEmail = (employeeName, managerName) => {
@@ -51,3 +55,14 @@ export const hrApproveEmail = (employeeName) => {
         <p>Please log in to your portal to review your final results and feedback.</p>
     `;
 };
+
+export const cycleCreatedEmail = (employeeName, cycleName, startDate, endDate) => {
+    return `
+        <h2>New Appraisal Cycle Launched</h2>
+        <p>Hi ${employeeName},</p>
+        <p>A new appraisal cycle <strong>${cycleName}</strong> has been launched.</p>
+        <p><strong>Duration:</strong> ${startDate} to ${endDate}</p>
+        <p>Please log in to the portal to start your self-review process.</p>
+    `;
+};
+

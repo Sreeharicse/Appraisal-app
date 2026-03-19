@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { supabase } from '../lib/supabase';
 import { PERFORMANCE_CATEGORIES } from '../data/constants';
 import { encrypt, decrypt, encryptJSON, decryptJSON, MASKED, AUTHORIZED_ROLES, logDecryptionAccess } from '../utils/encryption';
-import { sendEmailNotification, employeeSubmitEmail, managerSubmitEmail, hrApproveEmail } from '../utils/emailService';
+import { sendEmailNotification, employeeSubmitEmail, managerSubmitEmail, hrApproveEmail, cycleCreatedEmail } from '../utils/emailService';
 
 const AppContext = createContext(null);
 
@@ -678,6 +678,10 @@ export function AppProvider({ children }) {
             const allUserIds = users.filter(u => u.role === 'employee' || u.role === 'manager').map(u => u.id);
             if (mapped.status === 'active') {
                 createNotification(allUserIds, 'New Appraisal Cycle', `The ${mapped.name} cycle has been launched.`, 'info', '/employee/self-review');
+                allUserIds.forEach(uid => {
+                    const emp = users.find(u => u.id === uid);
+                    if (emp) sendEmailNotification(emp.email, 'New Appraisal Cycle Launched', cycleCreatedEmail(emp.name, mapped.name, mapped.startDate, mapped.endDate));
+                });
             }
             return mapped;
         }
@@ -700,6 +704,10 @@ export function AppProvider({ children }) {
             if (mapped.status === 'active') {
                 const allUserIds = users.filter(u => u.role === 'employee' || u.role === 'manager').map(u => u.id);
                 createNotification(allUserIds, 'New Appraisal Cycle', `The ${mapped.name} cycle has been launched.`, 'info', '/employee/self-review');
+                allUserIds.forEach(uid => {
+                    const emp = users.find(u => u.id === uid);
+                    if (emp) sendEmailNotification(emp.email, 'New Appraisal Cycle Launched', cycleCreatedEmail(emp.name, mapped.name, mapped.startDate, mapped.endDate));
+                });
             }
             return mapped;
         }
@@ -717,6 +725,13 @@ export function AppProvider({ children }) {
                 const cName = cycles.find(c => c.id === id)?.name || updates.name || "A";
                 const allUserIds = users.filter(u => u.role === 'employee' || u.role === 'manager').map(u => u.id);
                 createNotification(allUserIds, 'Appraisal Cycle Active', `The ${cName} cycle is now active.`, 'info', '/employee/self-review');
+                allUserIds.forEach(uid => {
+                    const emp = users.find(u => u.id === uid);
+                    if (emp) {
+                        const cycle = cycles.find(c => c.id === id);
+                        sendEmailNotification(emp.email, 'Appraisal Cycle Active', cycleCreatedEmail(emp.name, cName, cycle?.startDate || '', cycle?.endDate || ''));
+                    }
+                });
             }
             return;
         }
@@ -734,6 +749,13 @@ export function AppProvider({ children }) {
                 const cName = cycles.find(c => c.id === id)?.name || updates.name || "A";
                 const allUserIds = users.filter(u => u.role === 'employee' || u.role === 'manager').map(u => u.id);
                 createNotification(allUserIds, 'Appraisal Cycle Active', `The ${cName} cycle is now active.`, 'info', '/employee/self-review');
+                allUserIds.forEach(uid => {
+                    const emp = users.find(u => u.id === uid);
+                    if (emp) {
+                        const cycle = cycles.find(c => c.id === id);
+                        sendEmailNotification(emp.email, 'Appraisal Cycle Active', cycleCreatedEmail(emp.name, cName, cycle?.startDate || '', cycle?.endDate || ''));
+                    }
+                });
             }
         }
     };
@@ -864,12 +886,19 @@ export function AppProvider({ children }) {
             
             // Notify Manager or HR fallback ONLY if state just changed to submitted
             if (mapped.status === 'submitted' && (!existing || existing.status !== 'submitted')) {
-                const empManager = users.find(u => u.id === users.find(emp => emp.id === mapped.employeeId)?.managerId);
-                const empName = users.find(u => u.id === mapped.employeeId)?.name;
+                const employee = users.find(u => u.id === mapped.employeeId);
+                const managerId = employee?.managerId;
+                const empManager = users.find(u => u.id === managerId);
+                const empName = employee?.name || 'An employee';
+
+                console.log(`[SelfReview-Fake] Submitting for: ${empName}, managerId: ${managerId}`);
+
                 if (empManager) {
+                    console.log(`[SelfReview-Fake] Found manager: ${empManager.name} (${empManager.email})`);
                     createNotification([empManager.id], 'Self-Review Submitted', `${empName} has submitted their self-review.`, 'success', '/manager/evaluate');
                     sendEmailNotification(empManager.email, `Self-Review Submitted by ${empName}`, employeeSubmitEmail(empName, empManager.name));
                 } else {
+                    console.log(`[SelfReview-Fake] No manager found for ${empName}, falling back to HR.`);
                     const hrs = users.filter(u => u.role === 'admin' || u.role === 'hr');
                     if (hrs.length > 0) {
                         createNotification(hrs.map(h => h.id), 'Self-Review Submitted', `${empName} has submitted their self-review (no manager assigned).`, 'success', '/hr/evaluations');
@@ -911,12 +940,19 @@ export function AppProvider({ children }) {
             setSelfReviews(p => existing ? p.map(x => x.id === existing.id ? mapped : x) : [...p, mapped]);
             // Notify Manager or HR fallback ONLY if state just changed to submitted
             if (mapped.status === 'submitted' && (!existing || existing.status !== 'submitted')) {
-                const empManager = users.find(u => u.id === users.find(emp => emp.id === mapped.employeeId)?.managerId);
-                const empName = users.find(u => u.id === mapped.employeeId)?.name;
+                const employee = users.find(u => u.id === mapped.employeeId);
+                const managerId = employee?.managerId;
+                const empManager = users.find(u => u.id === managerId);
+                const empName = employee?.name || 'An employee';
+
+                console.log(`[SelfReview] Submitting for: ${empName}, managerId: ${managerId}`);
+
                 if (empManager) {
+                    console.log(`[SelfReview] Found manager: ${empManager.name} (${empManager.email})`);
                     createNotification([empManager.id], 'Self-Review Submitted', `${empName} has submitted their self-review.`, 'success', '/manager');
                     sendEmailNotification(empManager.email, `Self-Review Submitted by ${empName}`, employeeSubmitEmail(empName, empManager.name));
                 } else {
+                    console.log(`[SelfReview] No manager found for ${empName}, falling back to HR.`);
                     const hrs = users.filter(u => u.role === 'admin' || u.role === 'hr');
                     if (hrs.length > 0) {
                         createNotification(hrs.map(h => h.id), 'Self-Review Submitted', `${empName} has submitted their self-review (no manager assigned).`, 'success', '/hr/approvals');
@@ -1077,8 +1113,10 @@ export function AppProvider({ children }) {
 
             // Notify Employee & Manager
             const theEval = evaluations.find(e => e.id === evalId);
+            console.log(`[Approve-Fake] Approving evalId: ${evalId}, found: ${!!theEval}`);
             if (theEval) {
                 const emp = users.find(u => u.id === theEval.employeeId);
+                console.log(`[Approve-Fake] Employee: ${emp?.name} (${emp?.email})`);
                 if (emp) {
                     createNotification([emp.id], 'Evaluation Approved', 'Your appraisal results are now officially approved and available.', 'success', '/employee/results');
                     sendEmailNotification(emp.email, 'Evaluation Finalized', hrApproveEmail(emp.name));
@@ -1120,14 +1158,14 @@ export function AppProvider({ children }) {
         }
         setEvaluations(p => p.map(e => e.id === evalId ? { ...e, status: 'approved', hrRating } : e));
         
-        const theEval = evaluations.find(e => e.id === evalId);
-        if (theEval) {
-            const emp = users.find(u => u.id === theEval.employeeId);
+        if (theEvalToApprove) {
+            const emp = users.find(u => u.id === theEvalToApprove.employeeId);
+            console.log(`[Approve] Employee: ${emp?.name} (${emp?.email})`);
             if (emp) {
                 createNotification([emp.id], 'Evaluation Approved', 'Your appraisal results are now officially approved and available.', 'success', '/employee/results');
                 sendEmailNotification(emp.email, 'Evaluation Finalized', hrApproveEmail(emp.name));
             }
-            createNotification([theEval.managerId], 'Evaluation Approved', `HR approved your evaluation for ${emp?.name}.`, 'success', '/manager');
+            createNotification([theEvalToApprove.managerId], 'Evaluation Approved', `HR approved your evaluation for ${emp?.name}.`, 'success', '/manager');
         }
     };
 
