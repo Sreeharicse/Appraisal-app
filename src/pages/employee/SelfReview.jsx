@@ -272,7 +272,8 @@ export default function SelfReview() {
                                         className="form-input"
                                         placeholder="Provide detailed explanation with examples and achievements..."
                                         style={{ 
-                                            minHeight: '120px', 
+                                            height: '180px', 
+                                            overflowY: 'scroll',
                                             width: '100%', 
                                             fontSize: '14px', 
                                             color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)', 
@@ -289,11 +290,6 @@ export default function SelfReview() {
                                                 [q.id]: { ...p[q.id], comment: e.target.value }
                                             }));
                                             if (errors[`comp-${q.id}`]) setErrors(p => ({ ...p, [`comp-${q.id}`]: null }));
-                                        }}
-                                        onInput={e => {
-                                            if (isReadOnly) return;
-                                            e.target.style.height = 'auto';
-                                            e.target.style.height = e.target.scrollHeight + 'px';
                                         }}
                                     />
                                 </div>
@@ -318,12 +314,13 @@ export default function SelfReview() {
                                 </div>
                                 <div>
                                     <label className="form-label" style={{ fontSize: '12px' }}>Comments / Feedback</label>
-                                    <div style={{
+                                    <div className="read-only-text" style={{
                                         padding: '12px',
                                         background: 'var(--bg-secondary)',
                                         borderRadius: '8px',
                                         fontSize: '13px',
-                                        minHeight: '80px',
+                                        height: '180px',
+                                        overflowY: 'scroll',
                                         color: mngComps[q.id]?.comment ? 'var(--text-primary)' : 'var(--text-muted)',
                                         whiteSpace: 'pre-wrap'
                                     }}>
@@ -515,8 +512,8 @@ export default function SelfReview() {
     };
 
     return (
-        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-            <div className="section-header">
+        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px' }}>
+            <div className="section-header" style={{ marginBottom: '24px' }}>
                 <div>
                     <h2 className="section-title">Comprehensive Self Review</h2>
                     <p className="section-subtitle">{cycle?.name || 'Loading cycle...'}</p>
@@ -530,7 +527,7 @@ export default function SelfReview() {
                 </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '24px', position: 'relative' }}>
+            <div style={{ display: 'flex', gap: '32px', position: 'relative' }}>
                 {/* Tabs Sidebar */}
                 <div style={{ width: '240px', flexShrink: 0 }}>
                     <div className="card" style={{ padding: '8px', position: 'sticky', top: '24px' }}>

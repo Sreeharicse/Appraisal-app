@@ -111,22 +111,15 @@ export default function Layout({ children }) {
             <aside className="sidebar">
                 <div className="sidebar-logo" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
                     {theme === 'dark' ? (
-                        // Dark mode: clip whitespace — image is wide with padding, show just the logo content
-                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
-                            <div style={{ width: '120px', height: '32px', overflow: 'hidden', position: 'relative' }}>
-                                <img
-                                    src={logoDark}
-                                    alt="Techxl Logo"
-                                    style={{ width: '120px', height: 'auto', position: 'absolute', top: '50%', transform: 'translateY(-50%)' }}
-                                />
-                            </div>
+                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+                            <img src={logoDark} alt="Techxl Logo" style={{ height: '42px', width: 'auto' }} />
                         </div>
                     ) : (
                         <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-                            <img src={logo} alt="Techxl Logo" style={{ height: '36px', width: 'auto' }} />
+                            <img src={logo} alt="Techxl Logo" style={{ height: '42px', width: 'auto' }} />
                         </div>
                     )}
-                    <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '6px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '6px' }}>
                         {ROLE_LABELS[currentUser?.role]}
                     </div>
                 </div>

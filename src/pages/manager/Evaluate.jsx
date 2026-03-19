@@ -222,7 +222,7 @@ export default function Evaluate() {
                             </div>
                             <div>
                                 <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Self-Comments</div>
-                                <div className="read-only-text" style={{ padding: '12px', paddingRight: '36px', background: 'var(--bg-secondary)', borderRadius: '8px', fontSize: '13px', minHeight: '60px', maxHeight: '200px', overflowY: 'auto', fontStyle: empComps[q.id]?.comment ? 'normal' : 'italic' }}>
+                                <div className="read-only-text" style={{ padding: '12px', paddingRight: '36px', background: 'var(--bg-secondary)', borderRadius: '8px', fontSize: '13px', height: '180px', overflowY: 'scroll', fontStyle: empComps[q.id]?.comment ? 'normal' : 'italic' }}>
                                     {empComps[q.id]?.comment || 'No comments provided.'}
                                 </div>
                             </div>
@@ -253,9 +253,10 @@ export default function Evaluate() {
                             </div>
                             <div>
                                 <label className="form-label" style={{ fontSize: '12px', color: isReadOnly ? 'var(--text-muted)' : undefined }}>Feedback / Examples</label>
-                                <textarea id={`comp-${q.id}`} className="form-input" placeholder={isSubmitted ? 'Evaluation submitted.' : (isLocked ? 'Draft locked. Click Edit to continue...' : 'Manager feedback (min 20 chars)...')} 
+                                <textarea id={`comp-${q.id}`} className="form-input read-only-text" placeholder={isSubmitted ? 'Evaluation submitted.' : (isLocked ? 'Draft locked. Click Edit to continue...' : 'Manager feedback (min 20 chars)...')} 
                                     style={{ 
-                                        minHeight: '120px', 
+                                        height: '180px', 
+                                        overflowY: 'scroll',
                                         fontSize: '14px', 
                                         color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)', 
                                         background: 'var(--bg-secondary)',
@@ -264,11 +265,6 @@ export default function Evaluate() {
                                     value={competencies[q.id]?.comment || ''}
                                     readOnly={isReadOnly}
                                     onChange={e => { if (!isReadOnly) updateCompComment(q.id, e.target.value); }}
-                                    onInput={e => {
-                                        if (isReadOnly) return;
-                                        e.target.style.height = 'auto';
-                                        e.target.style.height = e.target.scrollHeight + 'px';
-                                    }}
                                 />
                             </div>
                         </div>
@@ -276,6 +272,21 @@ export default function Evaluate() {
                 </div>
             ))}
         </div>
+    );
+
+    const renderManagerReadOnlyBox = (content, placeholder) => (
+        <div className="read-only-text" style={{
+            padding: '12px',
+            background: 'rgba(168, 85, 247, 0.05)',
+            border: '1px solid rgba(168, 85, 247, 0.1)',
+            borderRadius: '12px',
+            height: '180px',
+            overflowY: 'scroll',
+            paddingRight: '36px',
+            color: content ? 'var(--text-primary)' : 'var(--text-muted)'
+        }}>
+        {content || placeholder}
+    </div>
     );
 
     const renderEmployeeReadOnlyTab = (title, subtitle, content, placeholder) => (
@@ -287,9 +298,8 @@ export default function Evaluate() {
                 background: 'rgba(56, 189, 248, 0.05)',
                 border: '1px solid rgba(56, 189, 248, 0.1)',
                 borderRadius: '12px',
-                minHeight: '120px',
-                maxHeight: '400px',
-                overflowY: 'auto',
+                height: '180px',
+                overflowY: 'scroll',
                 paddingRight: '36px',
                 color: content ? 'var(--text-primary)' : 'var(--text-muted)'
             }}>
