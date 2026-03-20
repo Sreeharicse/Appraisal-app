@@ -10,6 +10,10 @@ export const sendEmailNotification = async (toEmail, subject, htmlBody) => {
     try {
         console.log(`[EMAIL API] Calling backend for ${toEmail}...`);
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+        console.log(`[EMAIL API] URL: ${apiUrl}/api/send-email`);
+        if (!import.meta.env.VITE_API_URL) {
+            console.warn('[EMAIL WARNING] VITE_API_URL is NOT set. Falling back to localhost.');
+        }
         const response = await fetch(`${apiUrl}/api/send-email`, {
             method: 'POST',
             headers: {
