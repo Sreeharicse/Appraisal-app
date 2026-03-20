@@ -9,10 +9,22 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, '../.env') });
 
 const app = express();
-app.use(cors());
+
+// Explicit CORS configuration for Render
+app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json());
 
 const PORT = process.env.PORT || 3001;
+
+// HEALTH CHECK for Render
+app.get('/', (req, res) => {
+    res.status(200).send('Email Server is Live');
+});
 
 // CREATE TRANSPORTER
 const transporter = nodemailer.createTransport({
