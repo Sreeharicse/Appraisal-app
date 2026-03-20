@@ -1,5 +1,5 @@
 import express from 'express';
-import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
@@ -9,9 +9,6 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, '../.env') });
 
 const app = express();
-
-// Initialize Resend
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Explicit CORS configuration for Render
 const corsOptions = {
@@ -37,36 +34,51 @@ const PORT = process.env.PORT || 3001;
 
 // HEALTH CHECK for Render
 app.get('/', (req, res) => {
-    res.status(200).send('Email Server is Live (Resend Version)');
+    res.status(200).send('Email Server is Live (SMTP Reverted)');
+});
+
+// CREATE TRANSPORTER
+const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: parseInt(process.env.SMTP_PORT || '587'),
+    secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
+    auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+    },
+});
+
+// TEST TRANSPORTER
+transporter.verify((error, success) => {
+    if (error) {
+        console.error('SMTP Connection Error:', error);
+    } else {
+        console.log('SMTP Server is ready to take our messages');
+    }
 });
 
 app.post('/api/send-email', async (req, res) => {
     const { to, subject, htmlBody } = req.body;
-    console.log(`[SERVER] Incoming Resend request to: ${to}, subject: ${subject}`);
+    console.log(`[SERVER] Incoming SMTP request to: ${to}, subject: ${subject}`);
 
     if (!to || !subject || !htmlBody) {
         return res.status(400).json({ error: 'Missing required fields: to, subject, htmlBody' });
     }
 
     try {
-        const { data, error } = await resend.emails.send({
-            from: 'Appraisals <onboarding@resend.dev>', // Default Resend test email
-            to: Array.isArray(to) ? to : [to], // Resend likes arrays
+        const info = await transporter.sendMail({
+            from: `"Appraisals Notify" <${process.env.SMTP_USER}>`,
+            to,
             subject,
             html: htmlBody,
         });
 
-        if (error) {
-            console.error('Resend API Error:', error);
-            return res.status(500).json({ error: 'Failed to send email', details: error.message });
-        }
-
-        console.log('Message sent via Resend:', data.id);
-        res.status(200).json({ success: true, messageId: data.id });
+        console.log('Message sent via SMTP:', info.messageId);
+        res.status(200).json({ success: true, messageId: info.messageId });
     } catch (error) {
-        console.error('Unexpected Error:', error);
+        console.error('SMTP Error:', error);
         res.status(500).json({ 
-            error: 'Failed to send email', 
+            error: 'Failed to send email via SMTP', 
             details: error.message 
         });
     }
