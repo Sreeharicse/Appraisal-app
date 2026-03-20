@@ -7,7 +7,7 @@ services:
     healthCheckPath: /
     envVars:
       - key: PORT
-        value: 80 # Render will map this correctly
+        value: 10000 # Matches Nginx config and Render default
       - key: VITE_SUPABASE_URL
         sync: false
       - key: VITE_SUPABASE_ANON_KEY

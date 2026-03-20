@@ -40,7 +40,7 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 # Verify built assets (will show in build logs)
 RUN ls -la /usr/share/nginx/html
 
-EXPOSE 80
+EXPOSE 10000
 
 CMD ["nginx", "-g", "daemon off;"]
 
