@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { supabase } from '../lib/supabase';
 import { PERFORMANCE_CATEGORIES } from '../data/constants';
 import { encrypt, decrypt, encryptJSON, decryptJSON, MASKED, AUTHORIZED_ROLES, logDecryptionAccess } from '../utils/encryption';
-import { sendEmailNotification, employeeSubmitEmail, managerSubmitEmail, hrApproveEmail, cycleCreatedEmail } from '../utils/emailService';
+import { sendEmailNotification, employeeSubmitEmail, managerSubmitEmail, hrApproveEmail, cycleCreatedEmail, hrEvaluationSubmittedEmail } from '../utils/emailService';
 
 const AppContext = createContext(null);
 
@@ -1030,6 +1030,7 @@ export function AppProvider({ children }) {
                     sendEmailNotification(emp.email, 'Evaluation Assessed', managerSubmitEmail(emp.name));
                 }
                 createNotification(hrs.map(h => h.id), 'Pending HR Approval', `Evaluation for ${emp?.name} is awaiting your approval.`, 'warning', '/hr/approvals');
+                hrs.forEach(hr => sendEmailNotification(hr.email, 'Evaluation Awaiting Approval', hrEvaluationSubmittedEmail(emp?.name || 'An employee', currentUser?.name || 'A Manager')));
             }
 
             return mapped;
@@ -1096,6 +1097,7 @@ export function AppProvider({ children }) {
                     sendEmailNotification(emp.email, 'Evaluation Assessed', managerSubmitEmail(emp.name));
                 }
                 createNotification(hrs.map(h => h.id), 'Pending HR Approval', `Evaluation for ${emp?.name} is awaiting your approval.`, 'warning', '/hr/approvals');
+                hrs.forEach(hr => sendEmailNotification(hr.email, 'Evaluation Awaiting Approval', hrEvaluationSubmittedEmail(emp?.name || 'An employee', currentUser?.name || 'A Manager')));
             }
 
             return mapped;
