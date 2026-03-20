@@ -6,6 +6,8 @@ services:
     plan: free # Change to paid if needed
     healthCheckPath: /
     envVars:
+      - key: PORT
+        value: 80 # Render will override this anyway, but it helps for local tests
       - key: VITE_SUPABASE_URL
         sync: false
       - key: VITE_SUPABASE_ANON_KEY
