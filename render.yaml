@@ -1,13 +1,19 @@
 services:
-  # Frontend Web Service (Vite + Nginx)
-  - type: web
+  # Frontend Static Site (Vite)
+  - type: static_site
     name: appraisal-frontend
-    runtime: docker
-    plan: free # Change to paid if needed
-    healthCheckPath: /
+    buildCommand: npm install && npm run build
+    publishDir: dist
+    headers:
+      - path: /*
+        headers:
+          - key: Cache-Control
+            value: no-cache
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
     envVars:
-      - key: PORT
-        value: 10000 # Matches Nginx config and Render default
       - key: VITE_SUPABASE_URL
         sync: false
       - key: VITE_SUPABASE_ANON_KEY
