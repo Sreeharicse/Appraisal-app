@@ -31,8 +31,8 @@ RUN npm run build
 # ── Production stage ──────────────────────────────────────
 FROM nginx:stable-alpine AS production
 
-# Copy custom nginx config template
-COPY nginx.conf /etc/nginx/conf.d/default.conf.template
+# Copy custom nginx config
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copy built assets from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
@@ -40,9 +40,7 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 # Verify built assets (will show in build logs)
 RUN ls -la /usr/share/nginx/html
 
-# Default port to listen on (Render provides this)
-ENV PORT=80
+EXPOSE 80
 
-# Use envsubst to replace $PORT in the template and start nginx
-CMD ["/bin/sh", "-c", "envsubst '${PORT}' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]
+CMD ["nginx", "-g", "daemon off;"]
 

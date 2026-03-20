@@ -7,7 +7,7 @@ services:
     healthCheckPath: /
     envVars:
       - key: PORT
-        value: 80 # Render will override this anyway, but it helps for local tests
+        value: 80 # Render will map this correctly
       - key: VITE_SUPABASE_URL
         sync: false
       - key: VITE_SUPABASE_ANON_KEY
