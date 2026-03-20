@@ -11,13 +11,24 @@ dotenv.config({ path: join(__dirname, '../.env') });
 const app = express();
 
 // Explicit CORS configuration for Render
-app.use(cors({
+const corsOptions = {
     origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-}));
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+    optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // Handle preflight for all routes
 
 app.use(express.json());
+
+// Log all incoming request origins for debugging
+app.use((req, res, next) => {
+    console.log(`[REQUEST] ${req.method} ${req.path} from Origin: ${req.headers.origin}`);
+    next();
+});
 
 const PORT = process.env.PORT || 3001;
 
