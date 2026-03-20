@@ -681,12 +681,15 @@ export function AppProvider({ children }) {
             });
             
             // Notify all employees and managers
-            const allUserIds = users.filter(u => u.role === 'employee' || u.role === 'manager').map(u => u.id);
+            const allUsers = users.filter(u => u.role === 'employee' || u.role === 'manager');
+            const allUserIds = allUsers.map(u => u.id);
+            console.log(`[EMAIL DEBUG] Found ${allUsers.length} recipients for new cycle.`);
+            
             if (mapped.status === 'active') {
                 createNotification(allUserIds, 'New Appraisal Cycle', `The ${mapped.name} cycle has been launched.`, 'info', '/employee/self-review');
-                allUserIds.forEach(uid => {
-                    const emp = users.find(u => u.id === uid);
-                    if (emp) sendEmailNotification(emp.email, 'New Appraisal Cycle Launched', cycleCreatedEmail(emp.name, mapped.name, mapped.startDate, mapped.endDate));
+                allUsers.forEach(emp => {
+                    console.log(`[EMAIL DEBUG] Attempting to email: ${emp.name} <${emp.email}>`);
+                    sendEmailNotification(emp.email, 'New Appraisal Cycle Launched', cycleCreatedEmail(emp.name, mapped.name, mapped.startDate, mapped.endDate));
                 });
             }
             return mapped;
@@ -708,11 +711,14 @@ export function AppProvider({ children }) {
             setCycles(p => [...p, mapped]);
             
             if (mapped.status === 'active') {
-                const allUserIds = users.filter(u => u.role === 'employee' || u.role === 'manager').map(u => u.id);
+                const allUsers = users.filter(u => u.role === 'employee' || u.role === 'manager');
+                const allUserIds = allUsers.map(u => u.id);
+                console.log(`[EMAIL DEBUG] Found ${allUsers.length} recipients for activated cycle.`);
+                
                 createNotification(allUserIds, 'New Appraisal Cycle', `The ${mapped.name} cycle has been launched.`, 'info', '/employee/self-review');
-                allUserIds.forEach(uid => {
-                    const emp = users.find(u => u.id === uid);
-                    if (emp) sendEmailNotification(emp.email, 'New Appraisal Cycle Launched', cycleCreatedEmail(emp.name, mapped.name, mapped.startDate, mapped.endDate));
+                allUsers.forEach(emp => {
+                    console.log(`[EMAIL DEBUG] Attempting to email: ${emp.name} <${emp.email}>`);
+                    sendEmailNotification(emp.email, 'New Appraisal Cycle Launched', cycleCreatedEmail(emp.name, mapped.name, mapped.startDate, mapped.endDate));
                 });
             }
             return mapped;
