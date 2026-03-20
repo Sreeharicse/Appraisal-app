@@ -9,7 +9,8 @@ export const sendEmailNotification = async (toEmail, subject, htmlBody) => {
     
     try {
         console.log(`[EMAIL API] Calling backend for ${toEmail}...`);
-        const response = await fetch('http://localhost:3001/api/send-email', {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+        const response = await fetch(`${apiUrl}/api/send-email`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

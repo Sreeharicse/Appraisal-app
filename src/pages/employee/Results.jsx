@@ -22,7 +22,7 @@ export default function Results() {
         // Check if there's a pending evaluation (manager submitted but not yet approved)
         const hasPendingEval = cycles.some(c => {
             const ev = getEvaluation(currentUser.id, c.id);
-            return ev && ev.status !== 'approved';
+            return ev && ev.status === 'pending_approval';
         });
 
         return (
@@ -120,11 +120,51 @@ export default function Results() {
                 <div className="card" style={{ gridColumn: '1 / -1' }}>
                     <div className="card-title" style={{ marginBottom: '20px', color: 'var(--text-primary)' }}>Score Breakdown</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                        {/* Manager Rating (Sub-Rating) 90% */}
+                        {/* Core Performance (Q1-4) 40.5% of total */}
+                        <div>
+                            {(() => {
+                                const comps = ev.metadata?.competencies || {};
+                                const CORE_IDS = ['q1', 'q2', 'q3', 'q4'];
+                                const coreRatings = CORE_IDS.map(id => comps[id]?.rating).filter(r => r > 0);
+                                const coreAvg = coreRatings.length > 0 ? coreRatings.reduce((a, b) => a + b, 0) / coreRatings.length : 0;
+                                const corePts = Math.round((coreAvg / 5) * 0.45 * 90);
+                                return (
+                                    <>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
+                                            <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Core Performance (Q1-4) <span style={{ color: 'var(--blue-light)', fontSize: '11px', fontWeight: 700 }}>45% of 90%</span></span>
+                                            <span style={{ fontWeight: 700, color: 'var(--blue-light)' }}>{coreAvg.toFixed(1)}/5 → {corePts} pts</span>
+                                        </div>
+                                        <div className="progress-bar" style={{ height: '8px' }}><div className="progress-fill" style={{ width: `${(coreAvg / 5) * 100}%`, background: 'var(--blue-light)' }} /></div>
+                                    </>
+                                );
+                            })()}
+                        </div>
+
+                        {/* Behavioral Traits (Q5-10) 27% of total */}
+                        <div>
+                            {(() => {
+                                const comps = ev.metadata?.competencies || {};
+                                const BEHAVIORAL_IDS = ['q5', 'q6', 'q7', 'q10', 'q11', 'q14'];
+                                const behavioralRatings = BEHAVIORAL_IDS.map(id => comps[id]?.rating).filter(r => r > 0);
+                                const behavioralAvg = behavioralRatings.length > 0 ? behavioralRatings.reduce((a, b) => a + b, 0) / behavioralRatings.length : 0;
+                                const behavioralPts = Math.round((behavioralAvg / 5) * 0.30 * 90);
+                                return (
+                                    <>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
+                                            <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Behavioral Traits (Q5-10) <span style={{ color: '#06b6d4', fontSize: '11px', fontWeight: 700 }}>30% of 90%</span></span>
+                                            <span style={{ fontWeight: 700, color: '#06b6d4' }}>{behavioralAvg.toFixed(1)}/5 → {behavioralPts} pts</span>
+                                        </div>
+                                        <div className="progress-bar" style={{ height: '8px' }}><div className="progress-fill" style={{ width: `${(behavioralAvg / 5) * 100}%`, background: '#06b6d4' }} /></div>
+                                    </>
+                                );
+                            })()}
+                        </div>
+
+                        {/* Manager Sub-Rating 22.5% */}
                         <div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
-                                <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Manager Evaluation <span style={{ color: 'var(--purple-light)', fontSize: '11px', fontWeight: 700 }}>90%</span></span>
-                                <span style={{ fontWeight: 700, color: 'var(--purple)' }}>{ev.subRating || 0}/5 → {Math.round(((ev.subRating || 0) / 5) * 90)} pts</span>
+                                <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Manager Sub-Rating <span style={{ color: 'var(--purple)', fontSize: '11px', fontWeight: 700 }}>25% of 90%</span></span>
+                                <span style={{ fontWeight: 700, color: 'var(--purple)' }}>{ev.subRating || 0}/5 → {Math.round(((ev.subRating || 0) / 5) * 0.25 * 90)} pts</span>
                             </div>
                             <div className="progress-bar" style={{ height: '8px' }}><div className="progress-fill" style={{ width: `${((ev.subRating || 0) / 5) * 100}%`, background: 'var(--purple)' }} /></div>
                         </div>

@@ -104,7 +104,8 @@ export default function Evaluate() {
 
         if (ev) {
             setStatus(ev.status);
-            setIsLocked(true);
+            // Auto-unlock if it's a draft to allow immediate editing
+            setIsLocked(ev.status !== 'draft');
         } else {
             setStatus('new');
             setIsLocked(false);
@@ -117,6 +118,20 @@ export default function Evaluate() {
             setHasEdited(false); // Reset edit flag on employee change
         }
     }, [employeeId]);
+
+    // Auto-calculate Sub-Rating from Competencies
+    useEffect(() => {
+        if (isReadOnly || isSubmitted) return;
+        
+        const ratings = Object.values(competencies).map(c => c.rating).filter(r => r > 0);
+        if (ratings.length > 0) {
+            const avg = ratings.reduce((a, b) => a + b, 0) / ratings.length;
+            // Round to 1 decimal place for the input field
+            setSubRating(avg.toFixed(1));
+        } else {
+            setSubRating('');
+        }
+    }, [competencies, isReadOnly, isSubmitted]);
 
     const handleEmpChange = (id) => {
         setSelectedEmp(id);
@@ -178,7 +193,7 @@ export default function Evaluate() {
         if (finalStatus === 'pending_approval') {
             setPopupMessage({ title: '🎊 Evaluation Complete!', body: 'Your official performance evaluation has been submitted successfully.' });
         } else {
-            setPopupMessage({ title: '💾 Draft Saved', body: 'Your evaluation progress has been saved securely and locked. Click "Edit" to continue later.' });
+            setPopupMessage({ title: '💾 Progress Saved', body: 'Your evaluation draft has been saved. You can continue editing at any time.' });
         }
         setShowPopup(true);
     };
@@ -216,8 +231,7 @@ export default function Evaluate() {
                                 </div>
                             </div>
                             <div>
-                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '3px' }}>Self-Comments</div>
-                                <div className="read-only-text" style={{ padding: '8px', paddingRight: '24px', background: 'var(--bg-secondary)', borderRadius: '6px', fontSize: '12px', height: '90px', maxHeight: '90px', overflowY: 'scroll', fontStyle: empComps[q.id]?.comment ? 'normal' : 'italic' }}>
+                                <div className="read-only-text" style={{ padding: '12px', paddingRight: '24px', background: 'var(--bg-secondary)', borderRadius: '8px', fontSize: '13px', height: '180px', maxHeight: '180px', overflowY: 'auto', fontStyle: empComps[q.id]?.comment ? 'normal' : 'italic', lineHeight: '1.5' }}>
                                     {empComps[q.id]?.comment || 'No comments provided.'}
                                 </div>
                             </div>
@@ -228,7 +242,7 @@ export default function Evaluate() {
                             <div style={{ fontWeight: 700, fontSize: '12px', marginBottom: '8px', color: 'var(--purple)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 👨‍💼 Manager Perspective
                                 {isSubmitted && <span style={{ fontSize: '10px', background: 'rgba(10, 185, 129, 0.1)', color: '#10b981', padding: '1px 6px', borderRadius: '20px', fontWeight: 600 }}>✅ Submitted</span>}
-                                {!isSubmitted && isLocked && status === 'draft' && <span style={{ fontSize: '10px', background: 'rgba(100,116,139,0.15)', color: 'var(--text-muted)', padding: '1px 6px', borderRadius: '20px', fontWeight: 600 }}>🔒 Locked</span>}
+                                {!isSubmitted && status === 'draft' && <span style={{ fontSize: '10px', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', padding: '1px 6px', borderRadius: '20px', fontWeight: 600 }}>✍️ In Progress</span>}
                             </div>
                             <div style={{ marginBottom: '8px' }}>
                                 <label style={{ fontSize: '11px', color: isReadOnly ? 'var(--text-muted)' : 'var(--text-secondary)', display: 'block', marginBottom: '3px' }}>Rating</label>
@@ -249,18 +263,19 @@ export default function Evaluate() {
                                 </select>
                             </div>
                             <div>
-                                <label style={{ fontSize: '11px', color: isReadOnly ? 'var(--text-muted)' : 'var(--text-secondary)', display: 'block', marginBottom: '3px' }}>Feedback / Examples</label>
                                 <textarea id={`comp-${q.id}`} className="form-input" placeholder={isSubmitted ? 'Submitted.' : (isLocked ? 'Draft locked...' : 'Manager feedback (min 20 chars)...')}
                                     style={{
-                                        height: '90px',
-                                        minHeight: '90px',
-                                        maxHeight: '90px',
-                                        overflowY: 'scroll',
+                                        height: '180px',
+                                        minHeight: '180px',
+                                        maxHeight: '180px',
+                                        overflowY: 'auto',
                                         resize: 'none',
-                                        fontSize: '12px',
+                                        fontSize: '13px',
+                                        lineHeight: '1.5',
                                         color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)',
                                         background: 'var(--bg-secondary)',
-                                        cursor: isReadOnly ? 'not-allowed' : 'text'
+                                        cursor: isReadOnly ? 'not-allowed' : 'text',
+                                        padding: '12px'
                                     }}
                                     value={competencies[q.id]?.comment || ''}
                                     readOnly={isReadOnly}
@@ -320,11 +335,14 @@ export default function Evaluate() {
                         color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)',
                         background: 'var(--bg-secondary)',
                         cursor: isReadOnly ? 'not-allowed' : 'text',
-                        height: '140px',
-                        maxHeight: '140px',
-                        minHeight: '140px',
-                        overflowY: 'scroll',
-                        resize: 'none'
+                        height: '240px',
+                        maxHeight: '240px',
+                        minHeight: '240px',
+                        overflowY: 'auto',
+                        resize: 'none',
+                        fontSize: '14px',
+                        lineHeight: '1.5',
+                        padding: '16px'
                     }}
                     onChange={e => { if (!isReadOnly) { setFeedback(e.target.value); setHasEdited(true); } }}
                 />
@@ -380,8 +398,8 @@ export default function Evaluate() {
         let pct = null;
         if (ev?.status === 'approved') { statusLabel = 'Approved'; statusColor = '#10b981'; }
         else if (ev?.status === 'pending_approval') { statusLabel = 'Submitted'; statusColor = '#6366f1'; }
-        else if (ev?.status === 'draft') { statusLabel = 'Draft'; statusColor = '#f59e0b'; }
-        else if (sr?.status === 'submitted' || sr?.status === 'approved') { statusLabel = 'Awaiting'; statusColor = '#3b82f6'; }
+        else if (ev?.status === 'draft') { statusLabel = 'In Progress'; statusColor = '#f59e0b'; }
+        else if (sr?.status === 'submitted' || sr?.status === 'approved') { statusLabel = 'Ready to Evaluate'; statusColor = '#3b82f6'; }
         if (ev?.subRating) { pct = Math.round((parseFloat(ev.subRating) / 5) * 100); }
         return { statusLabel, statusColor, pct };
     };
@@ -424,10 +442,11 @@ export default function Evaluate() {
         <div style={{ margin: '0 auto', padding: '0' }}>
             {/* Top Nav Bar — sticky */}
             <div style={{
-                position: 'sticky', top: 0, zIndex: 100,
+                position: 'sticky', top: '-32px', zIndex: 100,
+                margin: '-32px -40px 32px -40px',
+                padding: '32px 40px 12px 40px',
                 background: 'var(--bg-primary)',
                 borderBottom: '1px solid var(--border)',
-                padding: '10px 32px',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 gap: '12px',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
@@ -435,8 +454,9 @@ export default function Evaluate() {
                 {/* Left: Title + Tabs */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
                     <div>
-                        <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', margin: 0, lineHeight: 1.2 }}>Evaluation</h2>
-                        <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: 0 }}>{selectedCycleId ? cycles.find(c => c.id === selectedCycleId)?.name : 'Select a cycle'}</p>
+                        <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', margin: 0, lineHeight: 1.2 }}>
+                            {selectedCycleId ? cycles.find(c => c.id === selectedCycleId)?.name : 'Select a cycle'}
+                        </h2>
                     </div>
 
                     <div style={{ display: 'flex', gap: '6px', background: 'var(--bg-secondary)', padding: '4px', borderRadius: '10px', border: '1px solid var(--border)' }}>
@@ -483,7 +503,7 @@ export default function Evaluate() {
 
             {/* Full-width Content Area */}
             <div style={{ padding: '24px 32px', maxWidth: '1400px', margin: '0 auto' }}>
-                
+
                 {/* Employee Selection row */}
                 <div style={{ marginBottom: '32px', overflowX: 'auto', paddingBottom: '8px' }}>
                     <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px' }}>
@@ -508,8 +528,8 @@ export default function Evaluate() {
                                         {member.name}
                                     </div>
                                     <div style={{ fontSize: '12px', color: info.statusColor, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                        <span style={{ 
-                                            width: '8px', height: '8px', borderRadius: '50%', backgroundColor: info.statusColor 
+                                        <span style={{
+                                            width: '8px', height: '8px', borderRadius: '50%', backgroundColor: info.statusColor
                                         }}></span>
                                         {info.statusLabel || 'Not Started'}
                                     </div>
@@ -582,7 +602,9 @@ export default function Evaluate() {
                                 </select>
                             </div>
                             <div>
-                                <label className="form-label" style={{ fontSize: '13px', fontWeight: 600, marginBottom: '8px' }}>Sub-Rating <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(1–5, hidden from employee)</span></label>
+                                <label className="form-label" style={{ fontSize: '13px', fontWeight: 600, marginBottom: '8px' }}>
+                                    Sub-Rating <span style={{ color: 'var(--purple)', fontWeight: 700 }}>(Auto-calculated Average)</span>
+                                </label>
                                 <input type="number" step="0.1" min="1" max="5" className="form-input" placeholder="e.g. 4.2"
                                     value={subRating} onChange={e => { setSubRating(e.target.value); setHasEdited(true); }}
                                     style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '14px' }} />

@@ -6,13 +6,19 @@ import { sendEmailNotification, employeeSubmitEmail, managerSubmitEmail, hrAppro
 
 const AppContext = createContext(null);
 
-export function calculateScore(managerRating, hrRating = 0) {
-    // managerRating is 1-5, hrRating is 1-5
-    // Final score is 0-100
-    // Weighted 90% Manager, 10% HR
-    const managerScore = (managerRating / 5) * 90 || 0;
-    const hrScore = (hrRating / 5) * 10 || 0;
-    return Math.round(managerScore + hrScore);
+export function calculateScore(coreAvg, behavioralAvg, subRating, hrRating = 0) {
+    // Option 2: Core vs. Behavioral Weighting
+    // coreAvg: average of Questions 1-4 (Quality, Technical, Problem Solving, Productivity) (1-5)
+    // behavioralAvg: average of Questions 5-10 (Communication, Collaboration, Initiative, Time, Project Success, Professionalism) (1-5)
+    // subRating: manager final sub-rating (1-5)
+    // hrRating: HR assessment (1-5)
+    // Formula within 90% manager slot: (CoreAvg * 0.45) + (BehavioralAvg * 0.30) + (SubRating * 0.25)
+    // HR gets 10% of overall
+    const corePart = (coreAvg / 5) * 0.45 * 90 || 0;       // 40.5% of total
+    const behavioralPart = (behavioralAvg / 5) * 0.30 * 90 || 0; // 27% of total
+    const subPart = (subRating / 5) * 0.25 * 90 || 0;      // 22.5% of total
+    const hrPart = (hrRating / 5) * 10 || 0;                // 10% of total
+    return Math.round(corePart + behavioralPart + subPart + hrPart);
 }
 
 export function getCategory(score) {
@@ -1247,7 +1253,19 @@ export function AppProvider({ children }) {
         const ev = getEvaluation(empId, cycleId);
         // Only calculate and expose scores once HR has approved the evaluation
         if (!ev || ev.status !== 'approved') return null;
-        const score = calculateScore(ev.subRating, ev.hrRating || 0);
+
+        // Split competencies into Core (Q1-4) and Behavioral (Q5-10)
+        const comps = ev.metadata?.competencies || {};
+        const CORE_IDS = ['q1', 'q2', 'q3', 'q4'];
+        const BEHAVIORAL_IDS = ['q5', 'q6', 'q7', 'q10', 'q11', 'q14'];
+
+        const coreRatings = CORE_IDS.map(id => comps[id]?.rating).filter(r => r > 0);
+        const behavioralRatings = BEHAVIORAL_IDS.map(id => comps[id]?.rating).filter(r => r > 0);
+
+        const coreAvg = coreRatings.length > 0 ? coreRatings.reduce((a, b) => a + b, 0) / coreRatings.length : 0;
+        const behavioralAvg = behavioralRatings.length > 0 ? behavioralRatings.reduce((a, b) => a + b, 0) / behavioralRatings.length : 0;
+
+        const score = calculateScore(coreAvg, behavioralAvg, ev.subRating || 0, ev.hrRating || 0);
         return { score, category: getCategory(score) };
     };
 

@@ -1,0 +1,42 @@
+services:
+  # Frontend Web Service (Vite + Nginx)
+  - type: web
+    name: appraisal-frontend
+    runtime: docker
+    plan: free # Change to paid if needed
+    healthCheckPath: /
+    envVars:
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
+      - key: VITE_SUPABASE_ENCRYPTION_KEY
+        sync: false
+      - key: VITE_MSAL_CLIENT_ID
+        sync: false
+      - key: VITE_MSAL_TENANT_ID
+        sync: false
+      - key: VITE_API_URL
+        sync: false
+
+  # Backend Web Service (Node.js Email Server)
+  - type: web
+    name: appraisal-email-backend
+    runtime: node
+    plan: free
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_SECURE
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: PORT
+        value: 3001 # Render defaults to 10000, setting it here as well

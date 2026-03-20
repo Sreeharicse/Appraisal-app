@@ -17,7 +17,7 @@ export default function ManagerDashboard() {
 
     const teamGoals = goals.filter(g => g.managerId === currentUser.id && g.cycleId === cycle?.id);
     const teamEvals = evaluations.filter(e => {
-        return team.some(t => t.id === e.employeeId) && e.cycleId === cycle?.id;
+        return team.some(t => t.id === e.employeeId) && e.cycleId === cycle?.id && e.status !== 'draft';
     });
     const teamReviews = selfReviews.filter(r => {
         return team.some(t => t.id === r.employeeId) && r.cycleId === cycle?.id;
@@ -86,7 +86,18 @@ export default function ManagerDashboard() {
                         {team.length === 0 && <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px' }}>No direct reports assigned to you.</td></tr>}
                         {team.map(emp => {
                             const hasReview = teamReviews.some(r => r.employeeId === emp.id);
-                            const hasEval = teamEvals.some(e => e.employeeId === emp.id);
+                            const evalData = evaluations.find(e => e.employeeId === emp.id && e.cycleId === cycle?.id);
+                            const evalStatus = evalData?.status || 'pending';
+                            
+                            let evalBadge = 'badge-gray';
+                            let evalLabel = 'Pending';
+                            let evalIcon = <Icons.Clock style={{ width: '12px', height: '12px', marginRight: '4px' }} />;
+
+                            if (evalStatus === 'approved') { evalBadge = 'badge-green'; evalLabel = '✓ Approved'; evalIcon = null; }
+                            else if (evalStatus === 'pending_approval') { evalBadge = 'badge-blue'; evalLabel = '✓ Submitted'; evalIcon = null; }
+                            else if (evalStatus === 'draft') { evalBadge = 'badge-yellow'; evalLabel = '✎ Draft'; evalIcon = null; }
+                            else if (evalStatus === 'rejected') { evalBadge = 'badge-red'; evalLabel = '✖ Rejected'; evalIcon = null; }
+                            
                             return (
                                 <tr key={emp.id}>
                                     <td>
@@ -97,7 +108,7 @@ export default function ManagerDashboard() {
                                     </td>
                                      <td>{emp.department}</td>
                                     <td><span className={`badge ${hasReview ? 'badge-green' : 'badge-gray'}`}>{hasReview ? '✓ Done' : <><Icons.Clock style={{ width: '12px', height: '12px', marginRight: '4px' }} /> Pending</>}</span></td>
-                                    <td><span className={`badge ${hasEval ? 'badge-green' : 'badge-gray'}`}>{hasEval ? '✓ Done' : <><Icons.Clock style={{ width: '12px', height: '12px', marginRight: '4px' }} /> Pending</>}</span></td>
+                                    <td><span className={`badge ${evalBadge}`}>{evalIcon}{evalLabel}</span></td>
                                     <td>
                                         <div style={{ display: 'flex', gap: '8px' }}>
                                             <NavLink
@@ -105,9 +116,9 @@ export default function ManagerDashboard() {
                                                 className="btn btn-primary"
                                                 style={{ padding: '4px 12px', fontSize: '12px' }}
                                             >
-                                                {hasEval ? 'Update' : 'Evaluate'}
+                                                {evalData ? (evalStatus === 'draft' ? 'Resume' : 'Update') : 'Evaluate'}
                                             </NavLink>
-                                            {hasEval && (
+                                            {evalData && (evalStatus === 'approved' || evalStatus === 'pending_approval') && (
                                                 <NavLink
                                                     to="/manager/team-report"
                                                     className="btn btn-secondary"
