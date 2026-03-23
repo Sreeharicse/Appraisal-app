@@ -685,7 +685,7 @@ export function AppProvider({ children }) {
             const allUsers = users.filter(u => u.role === 'employee' || u.role === 'manager');
             const allUserIds = allUsers.map(u => u.id);
             console.log(`[EMAIL DEBUG] Found ${allUsers.length} recipients for new cycle.`);
-            
+
             if (mapped.status === 'active') {
                 createNotification(allUserIds, 'New Appraisal Cycle', `The ${mapped.name} cycle has been launched.`, 'info', '/employee/self-review');
                 allUsers.forEach(emp => {
@@ -715,7 +715,7 @@ export function AppProvider({ children }) {
                 const allUsers = users.filter(u => u.role === 'employee' || u.role === 'manager');
                 const allUserIds = allUsers.map(u => u.id);
                 console.log(`[EMAIL DEBUG] Found ${allUsers.length} recipients for activated cycle.`);
-                
+
                 createNotification(allUserIds, 'New Appraisal Cycle', `The ${mapped.name} cycle has been launched.`, 'info', '/employee/self-review');
                 allUsers.forEach(emp => {
                     console.log(`[EMAIL DEBUG] Attempting to email: ${emp.name} <${emp.email}>`);
@@ -1202,13 +1202,13 @@ export function AppProvider({ children }) {
         };
 
         if (localStorage.getItem('fake_session_role')) {
-            const mapped = { 
-                ...existing, 
-                hrRating: avgHr, 
-                metadata: { ...existing.metadata, hr_comment: hrComment, hr_ratings: hrRatings } 
+            const mapped = {
+                ...existing,
+                hrRating: avgHr,
+                metadata: { ...existing.metadata, hr_comment: hrComment, hr_ratings: hrRatings }
             };
             setEvaluations(p => p.map(e => e.id === evalId ? mapped : e));
-            
+
             const fakeEvals = JSON.parse(localStorage.getItem('fake_evaluations') || '[]');
             const updated = fakeEvals.map(e => e.id === evalId ? { ...e, hr_rating: payload.hr_rating, feedback: payload.feedback } : e);
             localStorage.setItem('fake_evaluations', JSON.stringify(updated));
@@ -1217,10 +1217,10 @@ export function AppProvider({ children }) {
 
         const { error } = await supabase.from('evaluations').update(payload).eq('id', evalId);
         if (!error) {
-            const mapped = { 
-                ...existing, 
-                hrRating: avgHr, 
-                metadata: { ...existing.metadata, hr_comment: hrComment, hr_ratings: hrRatings } 
+            const mapped = {
+                ...existing,
+                hrRating: avgHr,
+                metadata: { ...existing.metadata, hr_comment: hrComment, hr_ratings: hrRatings }
             };
             setEvaluations(p => p.map(e => e.id === evalId ? mapped : e));
             return mapped;

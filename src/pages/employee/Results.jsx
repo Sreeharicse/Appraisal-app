@@ -166,14 +166,6 @@ export default function Results() {
                             })()}
                         </div>
 
-                        {/* Manager Sub-Rating 22.5% */}
-                        <div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
-                                <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Manager Sub-Rating <span style={{ color: 'var(--purple)', fontSize: '11px', fontWeight: 700 }}>25% of 90%</span></span>
-                                <span style={{ fontWeight: 700, color: 'var(--purple)' }}>{ev.subRating || 0}/5 → {Math.round(((ev.subRating || 0) / 5) * 0.25 * 90)} pts</span>
-                            </div>
-                            <div className="progress-bar" style={{ height: '8px' }}><div className="progress-fill" style={{ width: `${((ev.subRating || 0) / 5) * 100}%`, background: 'var(--purple)' }} /></div>
-                        </div>
 
                         {/* HR Assessment 10% */}
                         <div>
