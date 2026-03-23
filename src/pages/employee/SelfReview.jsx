@@ -483,6 +483,50 @@ export default function SelfReview() {
                     ))}
                 </div>
 
+                {/* Middle: Save Draft / Edit Button */}
+                {!isSubmitted && (
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                        {status === 'draft' && isLocked ? (
+                            <button
+                                type="button"
+                                className="btn btn-secondary"
+                                onClick={() => setIsLocked(false)}
+                                style={{ 
+                                    padding: '8px 16px', 
+                                    fontSize: '13px', 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: '8px',
+                                    height: '42px',
+                                    border: '1px solid rgba(56, 189, 248, 0.2)',
+                                    background: 'rgba(56, 189, 248, 0.05)'
+                                }}
+                            >
+                                <span style={{ fontSize: '16px' }}>✏️</span> Edit Review
+                            </button>
+                        ) : (
+                            <button
+                                type="button"
+                                className="btn btn-secondary"
+                                onClick={() => handleSubmit('draft')}
+                                style={{ 
+                                    padding: '8px 16px', 
+                                    fontSize: '13px', 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: '8px',
+                                    height: '42px',
+                                    border: '1px solid rgba(16, 185, 129, 0.2)',
+                                    background: 'rgba(16, 185, 129, 0.05)',
+                                    color: 'var(--text-primary)'
+                                }}
+                            >
+                                <span style={{ fontSize: '16px' }}>💾</span> {status === 'new' ? 'Save Draft' : 'Update Draft'}
+                            </button>
+                        )}
+                    </div>
+                )}
+
                 {/* Right: Cycle dropdown only */}
                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center', minWidth: '220px' }}>
                     <div style={{ 
