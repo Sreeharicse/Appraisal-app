@@ -32,9 +32,23 @@ const HR_QUESTIONS = [
 ];
 
 export default function Approvals() {
-    const { evaluations, users, cycles, approveEvaluation, rejectEvaluation, getScore, currentUser, getCategory } = useApp();
-    const [comment, setComment] = useState({});
-    const [hrRatings, setHrRatings] = useState({});
+    const { evaluations, users, cycles, approveEvaluation, rejectEvaluation, saveHRDraft, getScore, currentUser, getCategory } = useApp();
+    const [comment, setComment] = React.useState({});
+    const [hrRatings, setHrRatings] = React.useState({});
+
+    // Initialize state from existing metadata drafts
+    React.useEffect(() => {
+        const initialComments = {};
+        const initialRatings = {};
+        evaluations.forEach(ev => {
+            if (ev.status === 'pending_approval') {
+                if (ev.metadata?.hr_comment) initialComments[ev.id] = ev.metadata.hr_comment;
+                if (ev.metadata?.hr_ratings) initialRatings[ev.id] = ev.metadata.hr_ratings;
+            }
+        });
+        setComment(initialComments);
+        setHrRatings(initialRatings);
+    }, [evaluations.length]); // Re-run if evaluation count changes
 
     const setHrRatingForQuestion = (evalId, qId, value) => {
         setHrRatings(prev => ({
@@ -244,6 +258,15 @@ export default function Approvals() {
                                 disabled={!allRated}
                                 onClick={() => handleApprove(ev.id)}>
                                 <Icons.Check /> {allRated ? 'Approve Evaluation' : 'Complete HR Ratings to Approve'}
+                            </button>
+                            <button
+                                className="btn btn-secondary"
+                                style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                                onClick={async () => {
+                                    const res = await saveHRDraft(ev.id, comment[ev.id] || '', hrRatings[ev.id] || {});
+                                    if (res) alert('Progress saved successfully.');
+                                }}>
+                                💾 Save Progress
                             </button>
                             <button className="btn btn-danger" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
                                 onClick={() => { if (window.confirm('Reject this evaluation?')) rejectEvaluation(ev.id, comment[ev.id]); }}>
