@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
+import Icons from '../../components/Icons';
 
 export default function SelfReview() {
     const { currentUser, cycles, evaluations = [], getSelfReview, submitSelfReview, getScore, refreshData } = useApp();
