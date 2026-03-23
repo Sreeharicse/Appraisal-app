@@ -16,8 +16,8 @@ export default function Reports() {
             return users.filter(u => u.role !== 'admin');
         }
         if (currentUser?.role === 'hr') {
-            // HR sees only regular employees in reports now
-            return users.filter(u => u.role === 'employee');
+            // HR sees all employees and managers in reports
+            return users.filter(u => u.role === 'employee' || u.role === 'manager');
         }
         return users.filter(u => u.role === 'employee');
     }, [users, currentUser]);
