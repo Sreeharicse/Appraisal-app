@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { useParams, useNavigate } from 'react-router-dom';
+import Icons from '../../components/Icons';
 
 export default function Evaluate() {
     const { employeeId } = useParams();
