@@ -67,15 +67,6 @@ export default function Login() {
                     {loading ? 'Redirecting...' : 'Sign in with Microsoft'}
                 </button>
 
-                <div style={{ marginTop: '32px', width: '100%', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '24px' }}>
-                    <p style={{ textAlign: 'center', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '16px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>Developer Testing</p>
-                    <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                        <button onClick={() => loginAsFake('admin')} className="btn btn-secondary" style={{ flex: '1 1 40%', boxShadow: 'none' }}>Admin</button>
-                        <button onClick={() => loginAsFake('hr')} className="btn btn-secondary" style={{ flex: '1 1 40%', boxShadow: 'none' }}>HR</button>
-                        <button onClick={() => loginAsFake('manager')} className="btn btn-secondary" style={{ flex: '1 1 40%', boxShadow: 'none' }}>Manager</button>
-                        <button onClick={() => loginAsFake('employee')} className="btn btn-secondary" style={{ flex: '1 1 40%', boxShadow: 'none' }}>Employee</button>
-                    </div>
-                </div>
             </div>
         </div>
     );
