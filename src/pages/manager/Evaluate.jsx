@@ -286,6 +286,26 @@ export default function Evaluate() {
                     </div>
                 </div>
             ))}
+
+            {/* Save Draft Button for Competencies */}
+            {!isSubmitted && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '12px', padding: '16px', background: 'rgba(168, 85, 247, 0.05)', borderRadius: '12px', border: '1px solid rgba(168, 85, 247, 0.1)' }}>
+                    {status === 'draft' && isLocked ? (
+                        <button type="button" className="btn btn-secondary" onClick={() => setIsLocked(false)} style={{ padding: '10px 20px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            ✏️ Edit Evaluation
+                        </button>
+                    ) : (
+                        <>
+                            <button type="button" className="btn btn-secondary" onClick={() => handleSubmit('draft')} style={{ padding: '10px 20px', fontSize: '13px' }}>
+                                💾 Save Draft
+                            </button>
+                            <button type="button" className="btn btn-primary" onClick={() => setActiveTab(2)} style={{ padding: '10px 24px', fontSize: '13px', fontWeight: 700 }}>
+                                Next Section →
+                            </button>
+                        </>
+                    )}
+                </div>
+            )}
         </div>
     );
 

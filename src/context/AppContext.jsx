@@ -160,6 +160,7 @@ export function AppProvider({ children }) {
                             }
                         });
                     }
+                    if (metadata.hr_comment) metadata.hr_comment = decrypt(metadata.hr_comment);
                 }
             } catch (err) {
                 console.error("Failed to parse evaluation metadata", err);
@@ -1183,6 +1184,50 @@ export function AppProvider({ children }) {
         }
     };
 
+    const saveHRDraft = async (evalId, hrComment, hrRatings) => {
+        const existing = evaluations.find(e => e.id === evalId);
+        if (!existing) return;
+
+        const avgHr = Object.values(hrRatings).reduce((a, b) => a + b, 0) / Object.keys(hrRatings).length || 0;
+
+        const newMetadata = {
+            ...existing.metadata,
+            hr_comment: encrypt(hrComment),
+            hr_ratings: hrRatings
+        };
+
+        const payload = {
+            hr_rating: encrypt(String(avgHr.toFixed(2))),
+            feedback: JSON.stringify(newMetadata)
+        };
+
+        if (localStorage.getItem('fake_session_role')) {
+            const mapped = { 
+                ...existing, 
+                hrRating: avgHr, 
+                metadata: { ...existing.metadata, hr_comment: hrComment, hr_ratings: hrRatings } 
+            };
+            setEvaluations(p => p.map(e => e.id === evalId ? mapped : e));
+            
+            const fakeEvals = JSON.parse(localStorage.getItem('fake_evaluations') || '[]');
+            const updated = fakeEvals.map(e => e.id === evalId ? { ...e, hr_rating: payload.hr_rating, feedback: payload.feedback } : e);
+            localStorage.setItem('fake_evaluations', JSON.stringify(updated));
+            return mapped;
+        }
+
+        const { error } = await supabase.from('evaluations').update(payload).eq('id', evalId);
+        if (!error) {
+            const mapped = { 
+                ...existing, 
+                hrRating: avgHr, 
+                metadata: { ...existing.metadata, hr_comment: hrComment, hr_ratings: hrRatings } 
+            };
+            setEvaluations(p => p.map(e => e.id === evalId ? mapped : e));
+            return mapped;
+        }
+        return null;
+    };
+
     const rejectEvaluation = async (evalId, comment = '') => {
         if (localStorage.getItem('fake_session_role')) {
             setEvaluations(p => {
@@ -1287,7 +1332,7 @@ export function AppProvider({ children }) {
             submitSelfReview, submitEvaluation,
             theme, toggleTheme, refreshData: fetchAllData,
             encryptionKey, setEncryptionKey, resetAndSeedFakeData,
-            approveEvaluation, rejectEvaluation,
+            approveEvaluation, rejectEvaluation, saveHRDraft,
             getActiveCycle, getUserById,
             getTeamEmployees, getSelfReview, getEvaluation, getScore,
             calculateScore, getCategory,
