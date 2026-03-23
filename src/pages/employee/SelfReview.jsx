@@ -311,33 +311,6 @@ export default function SelfReview() {
                         </div>
                     </div>
                 ))}
-                
-                {/* Save Draft Button for Competencies */}
-                {!isSubmitted && (
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '12px', padding: '16px', background: 'rgba(56, 189, 248, 0.05)', borderRadius: '12px', border: '1px solid rgba(56, 189, 248, 0.1)' }}>
-                        {status === 'draft' && isLocked ? (
-                            <button type="button" className="btn btn-secondary" onClick={() => setIsLocked(false)} style={{ padding: '10px 20px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                ✏️ Edit Review
-                            </button>
-                        ) : (
-                            <>
-                                {status === 'new' && (
-                                    <button type="button" className="btn btn-secondary" onClick={() => handleSubmit('draft')} style={{ padding: '10px 20px', fontSize: '13px' }}>
-                                        💾 Save Draft
-                                    </button>
-                                )}
-                                {status === 'draft' && !isLocked && (
-                                    <button type="button" className="btn btn-secondary" onClick={() => handleSubmit('draft')} style={{ padding: '10px 20px', fontSize: '13px' }}>
-                                        💾 Update Draft
-                                    </button>
-                                )}
-                                <button type="button" className="btn btn-primary" onClick={() => setActiveTab(2)} style={{ padding: '10px 24px', fontSize: '13px', fontWeight: 700 }}>
-                                    Next Section →
-                                </button>
-                            </>
-                        )}
-                    </div>
-                )}
             </div>
         );
     };
