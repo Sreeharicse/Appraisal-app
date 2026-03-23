@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import Icons from '../../components/Icons';
 import {
@@ -11,9 +11,16 @@ const COLORS = ['#10b981', '#06b6d4', '#7c3aed', '#f59e0b', '#ef4444'];
 export default function Reports() {
     const { users, cycles, evaluations, getScore, currentUser } = useApp();
     const [selectedCycleId, setSelectedCycleId] = React.useState('');
-    const employees = (currentUser?.role === 'admin' || currentUser?.role === 'hr')
-        ? users.filter(u => u.role !== 'admin')
-        : users.filter(u => u.role === 'employee');
+    const employees = useMemo(() => {
+        if (currentUser?.role === 'admin') {
+            return users.filter(u => u.role !== 'admin');
+        }
+        if (currentUser?.role === 'hr') {
+            // HR sees only regular employees in reports now
+            return users.filter(u => u.role === 'employee');
+        }
+        return users.filter(u => u.role === 'employee');
+    }, [users, currentUser]);
 
     // Auto-select active cycle initially
     React.useEffect(() => {
@@ -82,7 +89,7 @@ export default function Reports() {
         }
 
         const headers = ['Employee Name', 'Role', 'Department', 'Score', 'Category', 'Status'];
-        
+
         const rows = employeeScores.map(emp => {
             const ev = evaluations.find(e => e.employeeId === emp.id && e.cycleId === activeCycle?.id);
             const status = ev?.status?.replace('_', ' ') || 'pending';
@@ -201,7 +208,7 @@ export default function Reports() {
                                     >
                                         {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                                     </Pie>
-                                    <Tooltip 
+                                    <Tooltip
                                         contentStyle={{ background: '#151731', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }}
                                         itemStyle={{ color: '#fff' }}
                                     />
@@ -271,3 +278,4 @@ export default function Reports() {
         </div>
     );
 }
+

@@ -28,7 +28,17 @@ export default function CycleDetail() {
     const getNextStep = () => {
         if (!selfReview) return { title: 'Complete Self-Review', description: 'It is time to reflect on your performance and submit your self-review.', actionPath: '/employee/self-review', actionLabel: 'Start Self-Review', statusType: 'pending' };
         if (!evaluation) return { title: 'Awaiting Manager Evaluation', description: 'Your self-review is submitted. Your manager will evaluate your performance soon.', actionPath: null, statusType: 'waiting' };
-        if (evaluation.status === 'pending_approval') return { title: 'Awaiting HR Approval', description: 'Your manager has submitted the evaluation. It is now pending final approval from HR.', actionPath: null, statusType: 'waiting' };
+        if (evaluation.status === 'pending_approval') {
+            const isHrOrMgr = currentUser.role === 'hr' || currentUser.role === 'manager';
+            return { 
+                title: isHrOrMgr ? 'Awaiting Admin Approval' : 'Awaiting HR Approval', 
+                description: isHrOrMgr 
+                    ? 'Your manager has submitted the evaluation. It is now pending final approval from the Admin.' 
+                    : 'Your manager has submitted the evaluation. It is now pending final approval from HR.', 
+                actionPath: null, 
+                statusType: 'waiting' 
+            };
+        }
         return { title: 'Check Your Results', description: 'Your appraisal is complete! You can now view your final score and feedback.', actionPath: '/employee/results', actionLabel: 'View Results', statusType: 'complete' };
     };
 
@@ -37,7 +47,7 @@ export default function CycleDetail() {
     const statusSteps = [
         { label: 'Self Review', done: !!selfReview },
         { label: 'Manager Evaluation', done: !!evaluation },
-        { label: 'HR Approved', done: evaluation?.status === 'approved' },
+        { label: (currentUser.role === 'hr' || currentUser.role === 'manager') ? 'Admin Approved' : 'HR Approved', done: evaluation?.status === 'approved' },
     ];
 
     return (
