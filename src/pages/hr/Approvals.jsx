@@ -67,8 +67,12 @@ export default function Approvals() {
 
     const filterByRole = (ev) => {
         const emp = users.find(u => u.id === ev.employeeId);
-        if (currentUser.role === 'admin' || currentUser.role === 'hr') {
-            return emp?.role !== 'admin';
+        if (currentUser.role === 'admin') {
+            return emp?.role !== 'admin'; // Admin sees everyone except other admins
+        }
+        if (currentUser.role === 'hr') {
+            // HR sees only regular employees, not other HRs or Managers
+            return emp?.role === 'employee';
         }
         return false;
     };
@@ -93,7 +97,7 @@ export default function Approvals() {
                     <p className="section-subtitle" style={{ fontSize: '14px', color: 'var(--text-muted)', fontWeight: 500 }}>
                         {currentUser.role === 'admin'
                             ? 'Review and approve HR & Manager evaluations'
-                            : 'Review and approve manager evaluations'}
+                            : 'Review and approve employee evaluations'}
                     </p>
                 </div>
             </div>
@@ -114,7 +118,7 @@ export default function Approvals() {
                 const cycle = getCycleById(ev.cycleId);
                 const avgHr = getAvgHrRating(ev.id);
                 const allRated = avgHr > 0;
-                
+
                 // Calculate live preview score using Core vs. Behavioral weighting
                 const comps = ev.metadata?.competencies || {};
                 const CORE_IDS = ['q1', 'q2', 'q3', 'q4'];
@@ -144,7 +148,7 @@ export default function Approvals() {
 
                         {/* Two-Column Layout: Score Breakdown | HR Assessment */}
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-                            
+
                             {/* LEFT: Score Preview + Breakdown */}
                             <div style={{ background: 'var(--bg-secondary)', borderRadius: '14px', padding: '20px', border: '1px solid var(--border)' }}>
                                 {/* Score Circle + Label */}
@@ -213,7 +217,7 @@ export default function Approvals() {
                                 <div style={{ fontWeight: 700, fontSize: '13px', marginBottom: '14px', color: 'var(--purple-light)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                     📋 HR Assessment
                                 </div>
-                                
+
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
                                     {HR_QUESTIONS.map(q => (
                                         <div key={q.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-primary)', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border)' }}>
@@ -221,9 +225,9 @@ export default function Approvals() {
                                                 <div style={{ fontWeight: 600, fontSize: '12px', marginBottom: '2px' }}>{q.label}</div>
                                                 <div style={{ fontSize: '10px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{q.desc}</div>
                                             </div>
-                                            <StarRating 
-                                                value={(hrRatings[ev.id] || {})[q.id] || 0} 
-                                                onChange={(val) => setHrRatingForQuestion(ev.id, q.id, val)} 
+                                            <StarRating
+                                                value={(hrRatings[ev.id] || {})[q.id] || 0}
+                                                onChange={(val) => setHrRatingForQuestion(ev.id, q.id, val)}
                                             />
                                         </div>
                                     ))}
@@ -231,9 +235,9 @@ export default function Approvals() {
 
                                 <div>
                                     <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: 500 }}>HR Comment (Sent to Employee)</div>
-                                    <textarea 
-                                        className="form-input" 
-                                        placeholder="HR feedback..." 
+                                    <textarea
+                                        className="form-input"
+                                        placeholder="HR feedback..."
                                         style={{ height: '70px', fontSize: '12px', overflowY: 'auto', resize: 'none' }}
                                         value={comment[ev.id] || ''}
                                         onChange={e => setComment(prev => ({ ...prev, [ev.id]: e.target.value }))}

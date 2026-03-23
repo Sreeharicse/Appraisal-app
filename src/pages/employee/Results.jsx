@@ -38,12 +38,18 @@ export default function Results() {
                         {hasPendingEval ? '⏳' : '📊'}
                     </div>
                     <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                        {hasPendingEval ? 'Awaiting HR Approval' : 'No results available yet'}
+                        {hasPendingEval
+                            ? (currentUser.role === 'hr' || currentUser.role === 'manager' ? 'Awaiting Admin Approval' : 'Awaiting HR Approval')
+                            : 'No results available yet'}
                     </h3>
                     <p style={{ color: 'var(--text-muted)', marginTop: '8px', maxWidth: '400px', margin: '8px auto 0' }}>
                         {hasPendingEval
-                            ? 'Your manager has submitted your evaluation. Results will be visible here once HR officially approves it.'
-                            : 'Once your manager completes your evaluation and HR approves it, your results will appear here.'}
+                            ? (currentUser.role === 'hr' || currentUser.role === 'manager'
+                                ? 'Your manager has submitted your evaluation. Results will be visible here once the Admin officially approves it.'
+                                : 'Your manager has submitted your evaluation. Results will be visible here once HR officially approves it.')
+                            : (currentUser.role === 'hr' || currentUser.role === 'manager'
+                                ? 'Once your evaluation is completed and approved by the Admin, your results will appear here.'
+                                : 'Once your manager completes your evaluation and HR approves it, your results will appear here.')}
                     </p>
                 </div>
             </div>
@@ -168,7 +174,7 @@ export default function Results() {
                             </div>
                             <div className="progress-bar" style={{ height: '8px' }}><div className="progress-fill" style={{ width: `${((ev.subRating || 0) / 5) * 100}%`, background: 'var(--purple)' }} /></div>
                         </div>
-                        
+
                         {/* HR Assessment 10% */}
                         <div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
@@ -215,11 +221,11 @@ export default function Results() {
                     }}>
                         {(() => {
                             if (!approval?.comment) {
-                                return ev.status === 'approved' 
-                                    ? 'Evaluation approved with no additional HR comments.' 
+                                return ev.status === 'approved'
+                                    ? 'Evaluation approved with no additional HR comments.'
                                     : <span style={{ fontStyle: 'italic', color: 'var(--text-muted)' }}>HR feedback will appear here once the evaluation is fully approved.</span>;
                             }
-                            
+
                             try {
                                 if (approval.comment.startsWith('{')) {
                                     const parsed = JSON.parse(approval.comment);
