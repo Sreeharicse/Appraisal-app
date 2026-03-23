@@ -378,29 +378,9 @@ export default function SelfReview() {
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '32px' }}>
                 {!isSubmitted && (
-                    <>
-                        {status === 'draft' && isLocked ? (
-                            <button type="button" className="btn btn-secondary" onClick={() => setIsLocked(false)} style={{ padding: '12px 24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                ✏️ Edit Review
-                            </button>
-                        ) : (
-                            <>
-                                {status === 'new' && (
-                                    <button type="button" className="btn btn-secondary" onClick={() => handleSubmit('draft')} style={{ padding: '12px 24px' }}>
-                                        💾 Save Draft
-                                    </button>
-                                )}
-                                {status === 'draft' && !isLocked && (
-                                    <button type="button" className="btn btn-secondary" onClick={() => handleSubmit('draft')} style={{ padding: '12px 24px' }}>
-                                        🔄 Update Draft
-                                    </button>
-                                )}
-                                <button type="button" className="btn btn-primary" onClick={() => handleSubmit('submitted')} style={{ padding: '12px 32px', fontWeight: 700 }}>
-                                    🚀 Submit Full Appraisal
-                                </button>
-                            </>
-                        )}
-                    </>
+                    <button type="button" className="btn btn-primary" onClick={() => handleSubmit('submitted')} style={{ padding: '12px 32px', fontWeight: 700 }}>
+                        🚀 Submit Full Appraisal
+                    </button>
                 )}
                 {isSubmitted && (
                     <button type="button" className="btn btn-primary" disabled style={{ padding: '12px 32px', fontWeight: 700, opacity: 0.7 }}>
@@ -456,38 +436,61 @@ export default function SelfReview() {
                     ))}
                 </div>
 
-                {/* Right: Cycle dropdown only */}
-                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', minWidth: '220px' }}>
-                    <div style={{ 
-                        position: 'absolute', 
-                        left: '14px', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: '6px', 
-                        pointerEvents: 'none',
-                        color: 'var(--text-muted)',
-                        zIndex: 1
-                    }}>
-                        <Icons.Cycles style={{ width: '14px', height: '14px' }} />
-                        <span style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '0.05em' }}>CYCLE</span>
+                {/* Right: Cycle dropdown + Save Draft */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    {!isSubmitted && (
+                        <button 
+                            type="button" 
+                            className="btn btn-secondary" 
+                            onClick={() => handleSubmit('draft')}
+                            style={{ 
+                                padding: '8px 16px', 
+                                fontSize: '13px', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: '8px',
+                                background: 'rgba(16, 185, 129, 0.05)',
+                                border: '1px solid rgba(16, 185, 129, 0.1)',
+                                color: '#10b981',
+                                fontWeight: 700
+                            }}
+                        >
+                            💾 {status === 'new' ? 'Save Draft' : 'Update Draft'}
+                        </button>
+                    )}
+
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', minWidth: '220px' }}>
+                        <div style={{ 
+                            position: 'absolute', 
+                            left: '14px', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '6px', 
+                            pointerEvents: 'none',
+                            color: 'var(--text-muted)',
+                            zIndex: 1
+                        }}>
+                            <Icons.Cycles style={{ width: '14px', height: '14px' }} />
+                            <span style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '0.05em' }}>CYCLE</span>
+                        </div>
+                        <select 
+                            className="form-select" 
+                            value={selectedCycleId} 
+                            onChange={e => setSelectedCycleId(e.target.value)}
+                            style={{ 
+                                paddingLeft: '75px', 
+                                fontWeight: 700, 
+                                fontSize: '13px',
+                                width: '100%',
+                                background: 'var(--bg-secondary)',
+                                height: '42px'
+                            }}
+                        >
+                            {activeCycles.map(c => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                        </select>
                     </div>
-                    <select 
-                        className="form-select" 
-                        value={selectedCycleId} 
-                        onChange={e => setSelectedCycleId(e.target.value)}
-                        style={{ 
-                            paddingLeft: '75px', 
-                            fontWeight: 700, 
-                            fontSize: '13px',
-                            width: '100%',
-                            background: 'var(--bg-secondary)',
-                            height: '42px'
-                        }}
-                    >
-                        {activeCycles.map(c => (
-                            <option key={c.id} value={c.id}>{c.name}</option>
-                        ))}
-                    </select>
                 </div>
             </div>
 

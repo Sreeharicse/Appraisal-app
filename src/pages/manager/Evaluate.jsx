@@ -367,22 +367,17 @@ export default function Evaluate() {
                                 ✏️ Edit Evaluation
                             </button>
                         ) : (
-                            <>
-                                <button type="button" className="btn btn-secondary" style={{ padding: '16px 32px', fontWeight: 600 }} onClick={() => handleSubmit('draft')}>
-                                    💾 Save Draft
-                                </button>
-                                <button type="button" className="btn btn-primary" style={{ padding: '16px 64px', fontWeight: 700, fontSize: '16px' }} onClick={() => {
-                                    // Pre-validate before opening the modal
-                                    const unrated = COMPETENCY_QUESTIONS.filter(q => !competencies[q.id] || competencies[q.id].rating === 0);
-                                    if (unrated.length > 0) { alert('Please provide a rating for all competencies before submitting.'); setActiveTab(1); return; }
-                                    const poorComments = COMPETENCY_QUESTIONS.filter(q => !competencies[q.id]?.comment || competencies[q.id].comment.trim().length < 20);
-                                    if (poorComments.length > 0) { alert('Please provide a detailed comment (min 20 chars) for all competencies.'); setActiveTab(1); return; }
-                                    if (!feedback || feedback.trim().length < 20) { alert('Please provide a detailed final assessment (min 20 chars).'); return; }
-                                    setShowRatingModal(true);
-                                }}>
-                                    🏁 Submit Evaluation
-                                </button>
-                            </>
+                            <button type="button" className="btn btn-primary" style={{ padding: '16px 64px', fontWeight: 700, fontSize: '16px' }} onClick={() => {
+                                // Pre-validate before opening the modal
+                                const unrated = COMPETENCY_QUESTIONS.filter(q => !competencies[q.id] || competencies[q.id].rating === 0);
+                                if (unrated.length > 0) { alert('Please provide a rating for all competencies before submitting.'); setActiveTab(1); return; }
+                                const poorComments = COMPETENCY_QUESTIONS.filter(q => !competencies[q.id]?.comment || competencies[q.id].comment.trim().length < 20);
+                                if (poorComments.length > 0) { alert('Please provide a detailed comment (min 20 chars) for all competencies.'); setActiveTab(1); return; }
+                                if (!feedback || feedback.trim().length < 20) { alert('Please provide a detailed final assessment (min 20 chars).'); return; }
+                                setShowRatingModal(true);
+                            }}>
+                                🏁 Submit Evaluation
+                            </button>
                         )}
                     </div>
                 )}
@@ -483,8 +478,29 @@ export default function Evaluate() {
                     </div>
                 </div>
 
-                {/* Right: Cycle dropdown + Back */}
+                {/* Right: Cycle dropdown + Back + Save Draft */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    {!isSubmitted && (
+                        <button 
+                            type="button" 
+                            className="btn btn-secondary" 
+                            onClick={() => handleSubmit('draft')}
+                            style={{ 
+                                padding: '8px 16px', 
+                                fontSize: '13px', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: '8px',
+                                background: 'rgba(168, 85, 247, 0.05)',
+                                border: '1px solid rgba(168, 85, 247, 0.1)',
+                                color: 'var(--purple)',
+                                fontWeight: 700
+                            }}
+                        >
+                            💾 Save Draft
+                        </button>
+                    )}
+
                     {/* Cycle dropdown */}
                     <div style={{ position: 'relative', display: 'flex', alignItems: 'center', minWidth: '220px' }}>
                         <div style={{ 
