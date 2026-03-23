@@ -6,7 +6,7 @@ export default function TeamReport() {
     const team = users.filter(u => u.managerId === currentUser.id);
 
     // Sort cycles descending by date
-    const sortedCycles = [...cycles].sort((a,b) => new Date(b.startDate) - new Date(a.startDate));
+    const sortedCycles = [...cycles].sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
 
     return (
         <div>
@@ -30,7 +30,7 @@ export default function TeamReport() {
                                     <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{emp.department} • {emp.designation}</div>
                                 </div>
                             </div>
-                            
+
                             <div className="table-container" style={{ margin: 0, boxShadow: 'none' }}>
                                 <table>
                                     <thead>
@@ -54,7 +54,7 @@ export default function TeamReport() {
                                                 <tr key={c.id}>
                                                     <td>
                                                         <div style={{ fontWeight: 600 }}>{c.name}</div>
-                                                        <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}><span style={{textTransform: 'capitalize'}}>{c.status}</span></div>
+                                                        <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}><span style={{ textTransform: 'capitalize' }}>{c.status}</span></div>
                                                     </td>
                                                     <td>
                                                         <span className={`badge ${hasSr ? 'badge-green' : 'badge-gray'}`}>

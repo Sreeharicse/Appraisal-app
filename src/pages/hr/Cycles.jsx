@@ -7,7 +7,7 @@ export default function Cycles() {
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
     const [form, setForm] = useState({ name: '', startDate: '', endDate: '', status: 'draft' });
-    
+
     // Deletion Flow State
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [cycleToDelete, setCycleToDelete] = useState(null);
@@ -54,17 +54,17 @@ export default function Cycles() {
     const exportCycleData = (cycle) => {
         // Find evaluated employees for this cycle
         const cycleEvals = evaluations.filter(e => e.cycleId === cycle.id);
-        
+
         const headers = ['Employee Name', 'Role', 'Department', 'Score', 'Category', 'Status'];
-        
+
         const rows = users.filter(u => u.role !== 'admin' && u.role !== 'hr' || cycleEvals.some(e => e.employeeId === u.id)).map(emp => {
             const ev = cycleEvals.find(e => e.employeeId === emp.id);
             if (!ev && emp.role !== 'employee') return null; // Only include non-employees if they were evaluated
-            
+
             const status = ev?.status?.replace('_', ' ') || 'pending';
             let score = 'N/A';
             let category = 'N/A';
-            
+
             if (ev && (ev.status === 'submitted' || ev.status === 'approved' || ev.status === 'rejected')) {
                 const scoreData = getScore(emp.id, cycle.id);
                 if (scoreData) {
@@ -72,7 +72,7 @@ export default function Cycles() {
                     category = scoreData.category.label;
                 }
             }
-            
+
             return [
                 emp.name,
                 emp.role,
@@ -95,7 +95,7 @@ export default function Cycles() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        
+
         setHasDownloaded(true);
     };
 
@@ -160,9 +160,9 @@ export default function Cycles() {
                                                 <Icons.Trash />
                                             </button>
                                         ) : (
-                                            <button 
-                                                className="btn btn-secondary btn-sm" 
-                                                style={{ display: 'flex', alignItems: 'center', gap: '4px', opacity: deleteRequested[c.id] ? 0.5 : 1 }} 
+                                            <button
+                                                className="btn btn-secondary btn-sm"
+                                                style={{ display: 'flex', alignItems: 'center', gap: '4px', opacity: deleteRequested[c.id] ? 0.5 : 1 }}
                                                 onClick={() => handleDeleteClick(c)}
                                                 disabled={deleteRequested[c.id]}
                                                 title="Request Admin to Delete"
@@ -205,8 +205,8 @@ export default function Cycles() {
                                 <p style={{ marginTop: '8px', marginBottom: 0, color: 'var(--red)', fontSize: '13px', fontWeight: 600 }}>This action cannot be undone.</p>
                             </div>
 
-                            <button 
-                                className="btn btn-secondary" 
+                            <button
+                                className="btn btn-secondary"
                                 style={{ width: '100%', padding: '12px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', background: hasDownloaded ? 'var(--bg-secondary)' : 'var(--blue)', color: hasDownloaded ? 'var(--text-primary)' : '#fff', border: hasDownloaded ? '1px solid var(--border)' : 'none' }}
                                 onClick={() => exportCycleData(cycleToDelete)}
                             >
@@ -220,8 +220,8 @@ export default function Cycles() {
 
                             <div style={{ marginBottom: '8px' }}>
                                 <label style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px', display: 'block' }}>Type <strong>{cycleToDelete.name}</strong> to confirm deletion without downloading a backup:</label>
-                                <input 
-                                    className="form-input" 
+                                <input
+                                    className="form-input"
                                     style={{ width: '100%' }}
                                     placeholder={cycleToDelete.name}
                                     value={confirmName}
@@ -231,8 +231,8 @@ export default function Cycles() {
                         </div>
                         <div className="modal-footer" style={{ borderTop: 'none', paddingTop: 0 }}>
                             <button className="btn btn-secondary" onClick={() => { setShowDeleteConfirm(false); setConfirmName(''); }}>Cancel</button>
-                            <button 
-                                className="btn btn-danger" 
+                            <button
+                                className="btn btn-danger"
                                 disabled={!hasDownloaded && confirmName.trim() !== cycleToDelete.name}
                                 onClick={confirmAdminDelete}
                                 style={{ opacity: hasDownloaded || confirmName.trim() === cycleToDelete.name ? 1 : 0.5, cursor: hasDownloaded || confirmName.trim() === cycleToDelete.name ? 'pointer' : 'not-allowed' }}
@@ -289,3 +289,4 @@ export default function Cycles() {
         </div>
     );
 };
+

@@ -81,7 +81,7 @@ export default function Reports() {
         }
 
         const headers = ['Employee Name', 'Role', 'Department', 'Score', 'Category', 'Status'];
-        
+
         const rows = employeeScores.map(emp => {
             const ev = evaluations.find(e => e.employeeId === emp.id && e.cycleId === activeCycle?.id);
             const status = ev?.status?.replace('_', ' ') || 'pending';
@@ -178,7 +178,7 @@ export default function Reports() {
                                     >
                                         {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                                     </Pie>
-                                    <Tooltip 
+                                    <Tooltip
                                         contentStyle={{ background: '#151731', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }}
                                         itemStyle={{ color: '#fff' }}
                                     />
@@ -248,3 +248,4 @@ export default function Reports() {
         </div>
     );
 }
+

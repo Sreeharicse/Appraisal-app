@@ -3,15 +3,15 @@ import { useApp } from '../../context/AppContext';
 import Icons from '../../components/Icons';
 
 export default function Settings() {
-    const { 
-        encryptionKey, 
-        setEncryptionKey, 
-        departments, 
-        addDepartment, 
-        deleteDepartment, 
-        designations, 
-        addDesignation, 
-        deleteDesignation 
+    const {
+        encryptionKey,
+        setEncryptionKey,
+        departments,
+        addDepartment,
+        deleteDepartment,
+        designations,
+        addDesignation,
+        deleteDesignation
     } = useApp();
 
     const [activeTab, setActiveTab] = useState('security');
@@ -53,19 +53,19 @@ export default function Settings() {
             </div>
 
             {/* Tabs */}
-            <div style={{ 
-                display: 'flex', gap: '8px', marginBottom: '24px', 
-                background: 'var(--bg-secondary)', padding: '6px', 
-                borderRadius: '12px', width: 'fit-content', border: '1px solid var(--border)' 
+            <div style={{
+                display: 'flex', gap: '8px', marginBottom: '24px',
+                background: 'var(--bg-secondary)', padding: '6px',
+                borderRadius: '12px', width: 'fit-content', border: '1px solid var(--border)'
             }}>
-                <button 
+                <button
                     onClick={() => setActiveTab('security')}
                     className={`btn ${activeTab === 'security' ? 'btn-primary' : 'btn-ghost'}`}
                     style={{ fontSize: '13px', padding: '8px 16px' }}
                 >
                     <Icons.Lock style={{ marginRight: '8px' }} /> Security
                 </button>
-                <button 
+                <button
                     onClick={() => setActiveTab('organization')}
                     className={`btn ${activeTab === 'organization' ? 'btn-primary' : 'btn-ghost'}`}
                     style={{ fontSize: '13px', padding: '8px 16px' }}
@@ -79,23 +79,23 @@ export default function Settings() {
                 <div className="card" style={{ maxWidth: '600px' }}>
                     <div className="card-title" style={{ marginBottom: '20px' }}>Master Encryption Key</div>
                     <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '20px', lineHeight: '1.6' }}>
-                        This key is used to encrypt and decrypt sensitive employee feedback and manager ratings. 
+                        This key is used to encrypt and decrypt sensitive employee feedback and manager ratings.
                         <strong> Warning:</strong> Changing this key without a migration plan will make existing encrypted data unreadable.
                     </p>
-                    
+
                     <div className="form-group" style={{ marginBottom: '20px' }}>
                         <label className="form-label">Encryption Key</label>
                         <div style={{ position: 'relative' }}>
-                            <input 
-                                className="form-input" 
-                                type={showKey ? "text" : "password"} 
-                                value={tempKey} 
+                            <input
+                                className="form-input"
+                                type={showKey ? "text" : "password"}
+                                value={tempKey}
                                 onChange={e => setTempKey(e.target.value)}
                                 style={{ paddingRight: '40px' }}
                             />
-                            <button 
+                            <button
                                 onClick={() => setShowKey(!showKey)}
-                                style={{ 
+                                style={{
                                     position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
                                     background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer'
                                 }}
@@ -123,16 +123,16 @@ export default function Settings() {
             {/* Organization Tab */}
             {activeTab === 'organization' && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-                    
+
                     {/* Departments Section */}
                     <div className="card">
                         <div className="card-title" style={{ marginBottom: '16px' }}>Manage Departments</div>
-                        
+
                         <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-                            <input 
-                                className="form-input" 
-                                placeholder="New Department" 
-                                value={newDept} 
+                            <input
+                                className="form-input"
+                                placeholder="New Department"
+                                value={newDept}
                                 onChange={e => setNewDept(e.target.value)}
                                 onKeyDown={e => e.key === 'Enter' && handleAddDepartment()}
                             />
@@ -144,14 +144,14 @@ export default function Settings() {
                                 <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>No departments found.</div>
                             ) : (
                                 departments.map(d => (
-                                    <div key={d.id} style={{ 
-                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-                                        padding: '12px 16px', borderBottom: '1px solid var(--border)', 
+                                    <div key={d.id} style={{
+                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                        padding: '12px 16px', borderBottom: '1px solid var(--border)',
                                         background: 'var(--bg-secondary)'
                                     }}>
                                         <span style={{ fontWeight: 500, fontSize: '14px' }}>{d.name}</span>
-                                        <button 
-                                            className="btn btn-danger btn-sm" 
+                                        <button
+                                            className="btn btn-danger btn-sm"
                                             onClick={() => window.confirm(`Delete ${d.name}?`) && deleteDepartment(d.id)}
                                             style={{ padding: '4px 8px' }}
                                         >
@@ -166,12 +166,12 @@ export default function Settings() {
                     {/* Job Titles Section */}
                     <div className="card">
                         <div className="card-title" style={{ marginBottom: '16px' }}>Manage Job Titles</div>
-                        
+
                         <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-                            <input 
-                                className="form-input" 
-                                placeholder="New Job Title" 
-                                value={newDesig} 
+                            <input
+                                className="form-input"
+                                placeholder="New Job Title"
+                                value={newDesig}
                                 onChange={e => setNewDesig(e.target.value)}
                                 onKeyDown={e => e.key === 'Enter' && handleAddDesignation()}
                             />
@@ -183,14 +183,14 @@ export default function Settings() {
                                 <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>No job titles found.</div>
                             ) : (
                                 designations.map(d => (
-                                    <div key={d.id} style={{ 
-                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-                                        padding: '12px 16px', borderBottom: '1px solid var(--border)', 
+                                    <div key={d.id} style={{
+                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                        padding: '12px 16px', borderBottom: '1px solid var(--border)',
                                         background: 'var(--bg-secondary)'
                                     }}>
                                         <span style={{ fontWeight: 500, fontSize: '14px' }}>{d.name}</span>
-                                        <button 
-                                            className="btn btn-danger btn-sm" 
+                                        <button
+                                            className="btn btn-danger btn-sm"
                                             onClick={() => window.confirm(`Delete ${d.name}?`) && deleteDesignation(d.id)}
                                             style={{ padding: '4px 8px' }}
                                         >

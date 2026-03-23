@@ -631,7 +631,7 @@ export function AppProvider({ children }) {
     const createNotification = async (userIds, title, message, type = 'info', link = null) => {
         if (!userIds || userIds.length === 0) return;
         const now = new Date().toISOString();
-        
+
         // Pack link into the message string securely so we don't need a DB schema change
         const payloadStr = JSON.stringify({ text: message, link: link });
 
@@ -659,14 +659,14 @@ export function AppProvider({ children }) {
 
     const markNotificationAsRead = async (id) => {
         setNotifications(p => p.map(n => n.id === id ? { ...n, isRead: true } : n));
-        
+
         if (localStorage.getItem('fake_session_role')) {
             const fakeNotifs = JSON.parse(localStorage.getItem('fake_notifications') || '[]');
             const updated = fakeNotifs.map(n => n.id === id ? { ...n, isRead: true } : n);
             localStorage.setItem('fake_notifications', JSON.stringify(updated));
             return;
         }
-        
+
         await supabase.from('notifications').update({ is_read: true }).eq('id', id);
     };
 
@@ -679,7 +679,7 @@ export function AppProvider({ children }) {
                 localStorage.setItem('fake_cycles', JSON.stringify(updated));
                 return updated;
             });
-            
+
             // Notify all employees and managers
             const allUserIds = users.filter(u => u.role === 'employee' || u.role === 'manager').map(u => u.id);
             if (mapped.status === 'active') {
@@ -706,7 +706,7 @@ export function AppProvider({ children }) {
         if (data) {
             const mapped = { id: data.id, name: data.name, startDate: data.start_date, endDate: data.end_date, status: data.status, createdBy: data.created_by };
             setCycles(p => [...p, mapped]);
-            
+
             if (mapped.status === 'active') {
                 const allUserIds = users.filter(u => u.role === 'employee' || u.role === 'manager').map(u => u.id);
                 createNotification(allUserIds, 'New Appraisal Cycle', `The ${mapped.name} cycle has been launched.`, 'info', '/employee/self-review');
@@ -783,7 +783,7 @@ export function AppProvider({ children }) {
             // 1. Fetch ALL evaluations for this cycle directly from DB to avoid missing any (stale local state)
             const { data: dbEvals, error: fetchError } = await supabase.from('evaluations').select('id').eq('cycle_id', id);
             if (fetchError) throw new Error(`Fetch evals failed: ${fetchError.message}`);
-            
+
             const dbEvalIds = dbEvals?.map(e => e.id) || [];
 
             // 2. Delete approvals linked to those evaluations
@@ -804,18 +804,18 @@ export function AppProvider({ children }) {
             // 6. Finally, delete the cycle itself
             console.log(`[DEBUG] Final step: Deleting cycle ${id}...`);
             const { data: deleteRes, error: cycleError } = await supabase.from('cycles').delete().eq('id', id).select();
-            
+
             console.log(`[DEBUG] deleteRes:`, deleteRes);
             console.log(`[DEBUG] cycleError:`, cycleError);
-            
+
             if (cycleError) throw new Error(`Delete cycle failed: ${cycleError.message}`);
-            
+
             if (!deleteRes || deleteRes.length === 0) {
                 throw new Error('Deletion failed: No cycle was removed from the database. This might be due to a permission issue (RLS).');
             } else {
                 console.log(`Successfully deleted cycle ${id} from Supabase:`, deleteRes[0].name);
             }
-            
+
             // 7. Refresh local state to ensure consistency
             await fetchAllData();
             return { success: true };
@@ -830,9 +830,9 @@ export function AppProvider({ children }) {
         const admins = users.filter(u => u.role === 'admin').map(u => u.id);
         if (admins.length > 0) {
             await createNotification(
-                admins, 
-                '🗑️ Cycle Delete Request', 
-                `${currentUser?.name} (HR) has requested deletion of the '${cycle.name}' cycle. Please review and delete from Appraisal Cycles if approved.`, 
+                admins,
+                '🗑️ Cycle Delete Request',
+                `${currentUser?.name} (HR) has requested deletion of the '${cycle.name}' cycle. Please review and delete from Appraisal Cycles if approved.`,
                 'warning'
             );
         }
@@ -889,7 +889,7 @@ export function AppProvider({ children }) {
                 localStorage.setItem('fake_reviews', JSON.stringify(updated));
                 return updated;
             });
-            
+
             // Notify Manager or HR fallback ONLY if state just changed to submitted
             if (mapped.status === 'submitted' && (!existing || existing.status !== 'submitted')) {
                 const employee = users.find(u => u.id === mapped.employeeId);
@@ -1020,7 +1020,7 @@ export function AppProvider({ children }) {
                 localStorage.setItem('fake_evaluations', JSON.stringify(updated));
                 return updated;
             });
-            
+
             // Only Notify Employee & HR if fully submitted and state just changed
             if (mapped.status === 'pending_approval' && (!existing || existing.status !== 'pending_approval')) {
                 const hrs = users.filter(u => u.role === 'admin' || u.role === 'hr');
@@ -1086,7 +1086,7 @@ export function AppProvider({ children }) {
             } else {
                 setEvaluations(p => [...p, mapped]);
             }
-            
+
             // Only Notify Employee & HR if fully submitted and state just changed
             if (mapped.status === 'pending_approval' && (!existing || existing.status !== 'pending_approval')) {
                 const hrs = users.filter(u => u.role === 'admin' || u.role === 'hr');
@@ -1163,7 +1163,7 @@ export function AppProvider({ children }) {
             await supabase.from('evaluations').update({ status: 'approved' }).eq('id', evalId);
         }
         setEvaluations(p => p.map(e => e.id === evalId ? { ...e, status: 'approved', hrRating } : e));
-        
+
         if (theEvalToApprove) {
             const emp = users.find(u => u.id === theEvalToApprove.employeeId);
             console.log(`[Approve] Employee: ${emp?.name} (${emp?.email})`);
@@ -1182,7 +1182,7 @@ export function AppProvider({ children }) {
                 localStorage.setItem('fake_evaluations', JSON.stringify(updated));
                 return updated;
             });
-            
+
             const theEval = evaluations.find(e => e.id === evalId);
             if (theEval) {
                 createNotification([theEval.managerId], 'Evaluation Rejected', `HR rejected your evaluation for ${users.find(u => u.id === theEval.employeeId)?.name}. Please review and resubmit.`, 'danger', '/manager');

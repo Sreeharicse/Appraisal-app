@@ -122,7 +122,7 @@ export default function Evaluate() {
     // Auto-calculate Sub-Rating from Competencies
     useEffect(() => {
         if (isReadOnly || isSubmitted) return;
-        
+
         const ratings = Object.values(competencies).map(c => c.rating).filter(r => r > 0);
         if (ratings.length > 0) {
             const avg = ratings.reduce((a, b) => a + b, 0) / ratings.length;

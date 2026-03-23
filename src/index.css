@@ -108,7 +108,9 @@ body {
 }
 
 /* Force visible scrollbar for feedback areas */
-.form-textarea, .read-only-text, .form-input {
+.form-textarea,
+.read-only-text,
+.form-input {
   scrollbar-width: thin;
   scrollbar-color: #d1d5db transparent;
   scrollbar-gutter: stable;
@@ -121,7 +123,7 @@ body {
 
 .read-only-text::-webkit-scrollbar-track,
 .form-textarea::-webkit-scrollbar-track {
-  background: rgba(0,0,0,0.02);
+  background: rgba(0, 0, 0, 0.02);
 }
 
 /* Layout */
@@ -804,7 +806,8 @@ textarea.form-input,
   word-break: break-word;
   white-space: pre-wrap;
   line-height: 1.6;
-  padding: 16px 40px 16px 16px; /* Extra padding for scrollbar visibility */
+  padding: 16px 40px 16px 16px;
+  /* Extra padding for scrollbar visibility */
   background: var(--bg-secondary);
   box-shadow: var(--nm-shadow-in-sm);
   border: 1px solid var(--border);
@@ -829,7 +832,7 @@ textarea.form-input::-webkit-scrollbar,
 
 textarea.form-input::-webkit-scrollbar-track,
 .form-textarea::-webkit-scrollbar-track {
-  background: rgba(0,0,0,0.05);
+  background: rgba(0, 0, 0, 0.05);
   border-radius: 5px;
   margin: 4px;
 }
@@ -852,7 +855,7 @@ textarea.form-input::-webkit-scrollbar-thumb:hover,
 }
 
 .read-only-text::-webkit-scrollbar-track {
-  background: rgba(0,0,0,0.05);
+  background: rgba(0, 0, 0, 0.05);
   border-radius: 5px;
   margin: 4px;
 }
@@ -1663,7 +1666,15 @@ textarea.form-input::-webkit-scrollbar-thumb:hover,
   animation: fadeIn 0.3s ease;
 }
 
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
 
 .modal {
   background: var(--bg-primary);
@@ -1676,9 +1687,16 @@ textarea.form-input::-webkit-scrollbar-thumb:hover,
   animation: slideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-@keyframes slideUp { 
-  from { transform: translateY(20px); opacity: 0; } 
-  to { transform: translateY(0); opacity: 1; } 
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 .modal-header {
@@ -1733,6 +1751,13 @@ textarea.form-input::-webkit-scrollbar-thumb:hover,
 
 /* Animations */
 @keyframes slideIn {
-  from { transform: translateX(100%); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
-}
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}

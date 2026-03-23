@@ -168,7 +168,7 @@ export default function Results() {
                             </div>
                             <div className="progress-bar" style={{ height: '8px' }}><div className="progress-fill" style={{ width: `${((ev.subRating || 0) / 5) * 100}%`, background: 'var(--purple)' }} /></div>
                         </div>
-                        
+
                         {/* HR Assessment 10% */}
                         <div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
@@ -215,11 +215,11 @@ export default function Results() {
                     }}>
                         {(() => {
                             if (!approval?.comment) {
-                                return ev.status === 'approved' 
-                                    ? 'Evaluation approved with no additional HR comments.' 
+                                return ev.status === 'approved'
+                                    ? 'Evaluation approved with no additional HR comments.'
                                     : <span style={{ fontStyle: 'italic', color: 'var(--text-muted)' }}>HR feedback will appear here once the evaluation is fully approved.</span>;
                             }
-                            
+
                             try {
                                 if (approval.comment.startsWith('{')) {
                                     const parsed = JSON.parse(approval.comment);
