@@ -483,12 +483,38 @@ export default function SelfReview() {
                 </div>
 
                 {/* Right: Cycle dropdown only */}
-                <select className="form-select" value={selectedCycleId} onChange={e => setSelectedCycleId(e.target.value)}
-                    style={{ background: 'var(--bg-secondary)', fontWeight: 600, fontSize: '13px', minWidth: '180px', padding: '8px 12px' }}>
-                    {activeCycles.map(c => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                </select>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', minWidth: '220px' }}>
+                    <div style={{ 
+                        position: 'absolute', 
+                        left: '14px', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '6px', 
+                        pointerEvents: 'none',
+                        color: 'var(--text-muted)',
+                        zIndex: 1
+                    }}>
+                        <Icons.Cycles style={{ width: '14px', height: '14px' }} />
+                        <span style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '0.05em' }}>CYCLE</span>
+                    </div>
+                    <select 
+                        className="form-select" 
+                        value={selectedCycleId} 
+                        onChange={e => setSelectedCycleId(e.target.value)}
+                        style={{ 
+                            paddingLeft: '75px', 
+                            fontWeight: 700, 
+                            fontSize: '13px',
+                            width: '100%',
+                            background: 'var(--bg-secondary)',
+                            height: '42px'
+                        }}
+                    >
+                        {activeCycles.map(c => (
+                            <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                    </select>
+                </div>
             </div>
 
             {/* Full-width Content Area */}
