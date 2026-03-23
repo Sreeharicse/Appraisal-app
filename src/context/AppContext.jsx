@@ -1302,8 +1302,9 @@ export function AppProvider({ children }) {
     const getEvaluation = (empId, cycleId) => evaluations.find(e => String(e.employeeId) === String(empId) && String(e.cycleId) === String(cycleId));
     const getScore = (empId, cycleId) => {
         const ev = getEvaluation(empId, cycleId);
-        // Only calculate and expose scores once HR has approved the evaluation
-        if (!ev || ev.status !== 'approved') return null;
+        // Only calculate and expose scores once HR has approved the evaluation, 
+        // OR if it's pending approval so Admin/HR can see the preliminary score in reports.
+        if (!ev || (ev.status !== 'approved' && ev.status !== 'pending_approval')) return null;
 
         // Split competencies into Core (Q1-4) and Behavioral (Q5-10)
         const comps = ev.metadata?.competencies || {};
