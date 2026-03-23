@@ -173,11 +173,12 @@ export default function SelfReview() {
 
         setStatus(finalStatus);
         setSubmitted(true);
-        setIsLocked(true);
+        setIsLocked(finalStatus === 'submitted');
+        
         if (finalStatus === 'submitted') {
             setPopupMessage({ title: '🎊 Review Submitted!', body: 'Your self-review has been successfully submitted to your manager for evaluation.' });
         } else {
-            setPopupMessage({ title: '💾 Draft Saved', body: 'Your progress has been saved securely and locked. Click "Edit" if you need to make more changes.' });
+            setPopupMessage({ title: '💾 Draft Saved', body: 'Your progress has been saved securely. You can continue editing your review.' });
         }
         setShowPopup(true);
     };

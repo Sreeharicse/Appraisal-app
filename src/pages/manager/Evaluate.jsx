@@ -189,7 +189,7 @@ export default function Evaluate() {
 
         setStatus(finalStatus);
         setHasEdited(false);
-        setIsLocked(true);
+        setIsLocked(finalStatus === 'pending_approval');
 
         if (finalStatus === 'pending_approval') {
             setPopupMessage({ title: '🎊 Evaluation Complete!', body: 'Your official performance evaluation has been submitted successfully.' });
