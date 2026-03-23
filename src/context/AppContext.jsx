@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { supabase } from '../lib/supabase';
 import { PERFORMANCE_CATEGORIES } from '../data/constants';
 import { encrypt, decrypt, encryptJSON, decryptJSON, MASKED, AUTHORIZED_ROLES, logDecryptionAccess } from '../utils/encryption';
-import { sendEmailNotification, employeeSubmitEmail, managerSubmitEmail, hrApproveEmail, cycleCreatedEmail } from '../utils/emailService';
+import { sendEmailNotification, employeeSubmitEmail, managerSubmitEmail, hrApproveEmail, cycleCreatedEmail, hrEvaluationSubmittedEmail } from '../utils/emailService';
 
 const AppContext = createContext(null);
 
@@ -160,6 +160,7 @@ export function AppProvider({ children }) {
                             }
                         });
                     }
+                    if (metadata.hr_comment) metadata.hr_comment = decrypt(metadata.hr_comment);
                 }
             } catch (err) {
                 console.error("Failed to parse evaluation metadata", err);
@@ -681,12 +682,15 @@ export function AppProvider({ children }) {
             });
 
             // Notify all employees and managers
-            const allUserIds = users.filter(u => u.role === 'employee' || u.role === 'manager').map(u => u.id);
+            const allUsers = users.filter(u => u.role === 'employee' || u.role === 'manager');
+            const allUserIds = allUsers.map(u => u.id);
+            console.log(`[EMAIL DEBUG] Found ${allUsers.length} recipients for new cycle.`);
+            
             if (mapped.status === 'active') {
                 createNotification(allUserIds, 'New Appraisal Cycle', `The ${mapped.name} cycle has been launched.`, 'info', '/employee/self-review');
-                allUserIds.forEach(uid => {
-                    const emp = users.find(u => u.id === uid);
-                    if (emp) sendEmailNotification(emp.email, 'New Appraisal Cycle Launched', cycleCreatedEmail(emp.name, mapped.name, mapped.startDate, mapped.endDate));
+                allUsers.forEach(emp => {
+                    console.log(`[EMAIL DEBUG] Attempting to email: ${emp.name} <${emp.email}>`);
+                    sendEmailNotification(emp.email, 'New Appraisal Cycle Launched', cycleCreatedEmail(emp.name, mapped.name, mapped.startDate, mapped.endDate));
                 });
             }
             return mapped;
@@ -708,11 +712,14 @@ export function AppProvider({ children }) {
             setCycles(p => [...p, mapped]);
 
             if (mapped.status === 'active') {
-                const allUserIds = users.filter(u => u.role === 'employee' || u.role === 'manager').map(u => u.id);
+                const allUsers = users.filter(u => u.role === 'employee' || u.role === 'manager');
+                const allUserIds = allUsers.map(u => u.id);
+                console.log(`[EMAIL DEBUG] Found ${allUsers.length} recipients for activated cycle.`);
+                
                 createNotification(allUserIds, 'New Appraisal Cycle', `The ${mapped.name} cycle has been launched.`, 'info', '/employee/self-review');
-                allUserIds.forEach(uid => {
-                    const emp = users.find(u => u.id === uid);
-                    if (emp) sendEmailNotification(emp.email, 'New Appraisal Cycle Launched', cycleCreatedEmail(emp.name, mapped.name, mapped.startDate, mapped.endDate));
+                allUsers.forEach(emp => {
+                    console.log(`[EMAIL DEBUG] Attempting to email: ${emp.name} <${emp.email}>`);
+                    sendEmailNotification(emp.email, 'New Appraisal Cycle Launched', cycleCreatedEmail(emp.name, mapped.name, mapped.startDate, mapped.endDate));
                 });
             }
             return mapped;
@@ -1030,6 +1037,7 @@ export function AppProvider({ children }) {
                     sendEmailNotification(emp.email, 'Evaluation Assessed', managerSubmitEmail(emp.name));
                 }
                 createNotification(hrs.map(h => h.id), 'Pending HR Approval', `Evaluation for ${emp?.name} is awaiting your approval.`, 'warning', '/hr/approvals');
+                hrs.forEach(hr => sendEmailNotification(hr.email, 'Evaluation Awaiting Approval', hrEvaluationSubmittedEmail(emp?.name || 'An employee', currentUser?.name || 'A Manager')));
             }
 
             return mapped;
@@ -1096,6 +1104,7 @@ export function AppProvider({ children }) {
                     sendEmailNotification(emp.email, 'Evaluation Assessed', managerSubmitEmail(emp.name));
                 }
                 createNotification(hrs.map(h => h.id), 'Pending HR Approval', `Evaluation for ${emp?.name} is awaiting your approval.`, 'warning', '/hr/approvals');
+                hrs.forEach(hr => sendEmailNotification(hr.email, 'Evaluation Awaiting Approval', hrEvaluationSubmittedEmail(emp?.name || 'An employee', currentUser?.name || 'A Manager')));
             }
 
             return mapped;
@@ -1173,6 +1182,50 @@ export function AppProvider({ children }) {
             }
             createNotification([theEvalToApprove.managerId], 'Evaluation Approved', `HR approved your evaluation for ${emp?.name}.`, 'success', '/manager');
         }
+    };
+
+    const saveHRDraft = async (evalId, hrComment, hrRatings) => {
+        const existing = evaluations.find(e => e.id === evalId);
+        if (!existing) return;
+
+        const avgHr = Object.values(hrRatings).reduce((a, b) => a + b, 0) / Object.keys(hrRatings).length || 0;
+
+        const newMetadata = {
+            ...existing.metadata,
+            hr_comment: encrypt(hrComment),
+            hr_ratings: hrRatings
+        };
+
+        const payload = {
+            hr_rating: encrypt(String(avgHr.toFixed(2))),
+            feedback: JSON.stringify(newMetadata)
+        };
+
+        if (localStorage.getItem('fake_session_role')) {
+            const mapped = { 
+                ...existing, 
+                hrRating: avgHr, 
+                metadata: { ...existing.metadata, hr_comment: hrComment, hr_ratings: hrRatings } 
+            };
+            setEvaluations(p => p.map(e => e.id === evalId ? mapped : e));
+            
+            const fakeEvals = JSON.parse(localStorage.getItem('fake_evaluations') || '[]');
+            const updated = fakeEvals.map(e => e.id === evalId ? { ...e, hr_rating: payload.hr_rating, feedback: payload.feedback } : e);
+            localStorage.setItem('fake_evaluations', JSON.stringify(updated));
+            return mapped;
+        }
+
+        const { error } = await supabase.from('evaluations').update(payload).eq('id', evalId);
+        if (!error) {
+            const mapped = { 
+                ...existing, 
+                hrRating: avgHr, 
+                metadata: { ...existing.metadata, hr_comment: hrComment, hr_ratings: hrRatings } 
+            };
+            setEvaluations(p => p.map(e => e.id === evalId ? mapped : e));
+            return mapped;
+        }
+        return null;
     };
 
     const rejectEvaluation = async (evalId, comment = '') => {
@@ -1279,7 +1332,7 @@ export function AppProvider({ children }) {
             submitSelfReview, submitEvaluation,
             theme, toggleTheme, refreshData: fetchAllData,
             encryptionKey, setEncryptionKey, resetAndSeedFakeData,
-            approveEvaluation, rejectEvaluation,
+            approveEvaluation, rejectEvaluation, saveHRDraft,
             getActiveCycle, getUserById,
             getTeamEmployees, getSelfReview, getEvaluation, getScore,
             calculateScore, getCategory,

@@ -9,10 +9,33 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, '../.env') });
 
 const app = express();
-app.use(cors());
+
+// Explicit CORS configuration for Render
+const corsOptions = {
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+    optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // Handle preflight for all routes
+
 app.use(express.json());
 
-const PORT = 3001;
+// Log all incoming request origins for debugging
+app.use((req, res, next) => {
+    console.log(`[REQUEST] ${req.method} ${req.path} from Origin: ${req.headers.origin}`);
+    next();
+});
+
+const PORT = process.env.PORT || 3001;
+
+// HEALTH CHECK for Render
+app.get('/', (req, res) => {
+    res.status(200).send('Email Server is Live (SMTP Reverted)');
+});
 
 // CREATE TRANSPORTER
 const transporter = nodemailer.createTransport({
@@ -23,6 +46,8 @@ const transporter = nodemailer.createTransport({
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
     },
+    connectionTimeout: 10000, // 10 seconds
+    greetingTimeout: 10000,
 });
 
 // TEST TRANSPORTER
@@ -36,7 +61,7 @@ transporter.verify((error, success) => {
 
 app.post('/api/send-email', async (req, res) => {
     const { to, subject, htmlBody } = req.body;
-    console.log(`[SERVER] Incoming email request to: ${to}, subject: ${subject}`);
+    console.log(`[SERVER] Incoming SMTP request to: ${to}, subject: ${subject}`);
 
     if (!to || !subject || !htmlBody) {
         return res.status(400).json({ error: 'Missing required fields: to, subject, htmlBody' });
@@ -50,11 +75,14 @@ app.post('/api/send-email', async (req, res) => {
             html: htmlBody,
         });
 
-        console.log('Message sent: %s', info.messageId);
+        console.log('Message sent via SMTP:', info.messageId);
         res.status(200).json({ success: true, messageId: info.messageId });
     } catch (error) {
-        console.error('Error sending email:', error);
-        res.status(500).json({ error: 'Failed to send email. Check server logs.' });
+        console.error('SMTP Error:', error);
+        res.status(500).json({ 
+            error: 'Failed to send email via SMTP', 
+            details: error.message 
+        });
     }
 });
 

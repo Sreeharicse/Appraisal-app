@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
+import Icons from '../../components/Icons';
 
 export default function SelfReview() {
     const { currentUser, cycles, evaluations = [], getSelfReview, submitSelfReview, getScore, refreshData } = useApp();
@@ -310,6 +311,33 @@ export default function SelfReview() {
                         </div>
                     </div>
                 ))}
+                
+                {/* Save Draft Button for Competencies */}
+                {!isSubmitted && (
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '12px', padding: '16px', background: 'rgba(56, 189, 248, 0.05)', borderRadius: '12px', border: '1px solid rgba(56, 189, 248, 0.1)' }}>
+                        {status === 'draft' && isLocked ? (
+                            <button type="button" className="btn btn-secondary" onClick={() => setIsLocked(false)} style={{ padding: '10px 20px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                ✏️ Edit Review
+                            </button>
+                        ) : (
+                            <>
+                                {status === 'new' && (
+                                    <button type="button" className="btn btn-secondary" onClick={() => handleSubmit('draft')} style={{ padding: '10px 20px', fontSize: '13px' }}>
+                                        💾 Save Draft
+                                    </button>
+                                )}
+                                {status === 'draft' && !isLocked && (
+                                    <button type="button" className="btn btn-secondary" onClick={() => handleSubmit('draft')} style={{ padding: '10px 20px', fontSize: '13px' }}>
+                                        💾 Update Draft
+                                    </button>
+                                )}
+                                <button type="button" className="btn btn-primary" onClick={() => setActiveTab(2)} style={{ padding: '10px 24px', fontSize: '13px', fontWeight: 700 }}>
+                                    Next Section →
+                                </button>
+                            </>
+                        )}
+                    </div>
+                )}
             </div>
         );
     };
@@ -456,12 +484,38 @@ export default function SelfReview() {
                 </div>
 
                 {/* Right: Cycle dropdown only */}
-                <select className="form-select" value={selectedCycleId} onChange={e => setSelectedCycleId(e.target.value)}
-                    style={{ background: 'var(--bg-secondary)', fontWeight: 600, fontSize: '13px', minWidth: '180px', padding: '8px 12px' }}>
-                    {activeCycles.map(c => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                </select>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', minWidth: '220px' }}>
+                    <div style={{ 
+                        position: 'absolute', 
+                        left: '14px', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '6px', 
+                        pointerEvents: 'none',
+                        color: 'var(--text-muted)',
+                        zIndex: 1
+                    }}>
+                        <Icons.Cycles style={{ width: '14px', height: '14px' }} />
+                        <span style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '0.05em' }}>CYCLE</span>
+                    </div>
+                    <select 
+                        className="form-select" 
+                        value={selectedCycleId} 
+                        onChange={e => setSelectedCycleId(e.target.value)}
+                        style={{ 
+                            paddingLeft: '75px', 
+                            fontWeight: 700, 
+                            fontSize: '13px',
+                            width: '100%',
+                            background: 'var(--bg-secondary)',
+                            height: '42px'
+                        }}
+                    >
+                        {activeCycles.map(c => (
+                            <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                    </select>
+                </div>
             </div>
 
             {/* Full-width Content Area */}

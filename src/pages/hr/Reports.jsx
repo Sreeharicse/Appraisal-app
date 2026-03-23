@@ -1,5 +1,6 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
+import Icons from '../../components/Icons';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell, Legend
@@ -123,19 +124,41 @@ export default function Reports() {
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                         Export CSV
                     </button>
-                    <select
-                        className="form-select"
-                        style={{ minWidth: '200px' }}
-                        value={selectedCycleId}
-                        onChange={(e) => setSelectedCycleId(e.target.value)}
-                        disabled={cycles.length === 0}
-                    >
-                        {cycles.map(c => (
-                            <option key={c.id} value={c.id}>
-                                {c.name} ({c.status})
-                            </option>
-                        ))}
-                    </select>
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', minWidth: '220px' }}>
+                        <div style={{ 
+                            position: 'absolute', 
+                            left: '14px', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '6px', 
+                            pointerEvents: 'none',
+                            color: 'var(--text-muted)',
+                            zIndex: 1
+                        }}>
+                            <Icons.Cycles style={{ width: '14px', height: '14px' }} />
+                            <span style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '0.05em' }}>CYCLE</span>
+                        </div>
+                        <select
+                            className="form-select"
+                            value={selectedCycleId}
+                            onChange={(e) => setSelectedCycleId(e.target.value)}
+                            disabled={cycles.length === 0}
+                            style={{ 
+                                paddingLeft: '75px', 
+                                fontWeight: 700, 
+                                fontSize: '13px',
+                                width: '100%',
+                                background: 'var(--bg-secondary)',
+                                height: '42px'
+                            }}
+                        >
+                            {cycles.map(c => (
+                                <option key={c.id} value={c.id}>
+                                    {c.name} ({c.status})
+                                </option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
             </div>
 

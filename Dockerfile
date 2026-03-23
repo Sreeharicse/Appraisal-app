@@ -16,12 +16,14 @@ ARG VITE_SUPABASE_ANON_KEY
 ARG VITE_SUPABASE_ENCRYPTION_KEY
 ARG VITE_MSAL_CLIENT_ID
 ARG VITE_MSAL_TENANT_ID
+ARG VITE_API_URL
 
 ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
 ENV VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
 ENV VITE_SUPABASE_ENCRYPTION_KEY=$VITE_SUPABASE_ENCRYPTION_KEY
 ENV VITE_MSAL_CLIENT_ID=$VITE_MSAL_CLIENT_ID
 ENV VITE_MSAL_TENANT_ID=$VITE_MSAL_TENANT_ID
+ENV VITE_API_URL=$VITE_API_URL
 
 # Build the Vite app
 RUN npm run build
@@ -35,6 +37,10 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # Copy built assets from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-EXPOSE 80
+# Verify built assets (will show in build logs)
+RUN ls -la /usr/share/nginx/html
+
+EXPOSE 10000
 
 CMD ["nginx", "-g", "daemon off;"]
+

@@ -112,7 +112,7 @@ export default function Layout({ children }) {
                 <div className="sidebar-logo" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
                     {theme === 'dark' ? (
                         <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-                            <img src={logoDark} alt="Techxl Logo" style={{ height: '42px', width: 'auto' }} />
+                            <img src={logoDark} alt="Techxl Logo" style={{ height: '100px', width: 'auto' }} />
                         </div>
                     ) : (
                         <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
