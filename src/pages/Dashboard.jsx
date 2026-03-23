@@ -45,7 +45,13 @@ export default function Dashboard() {
 
     // -- HR / Admin Stats
     const totalEmployees = users.filter(u => u.role !== 'admin').length;
-    const pendingHRApprovals = approvals.filter(a => a.status === 'pending');
+    const pendingHRApprovals = evaluations.filter(ev => {
+        if (ev.status !== 'pending_approval') return false;
+        const emp = users.find(u => u.id === ev.employeeId);
+        if (currentUser.role === 'admin') return emp?.role !== 'admin';
+        if (currentUser.role === 'hr') return emp?.role === 'employee';
+        return false;
+    });
 
     const handleResetData = () => {
         if (window.confirm('This will RESET all local mock data and seed fresh sample data. Continue?')) {

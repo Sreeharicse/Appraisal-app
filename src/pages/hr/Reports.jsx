@@ -11,9 +11,16 @@ const COLORS = ['#10b981', '#06b6d4', '#7c3aed', '#f59e0b', '#ef4444'];
 export default function Reports() {
     const { users, cycles, evaluations, getScore, currentUser } = useApp();
     const [selectedCycleId, setSelectedCycleId] = React.useState('');
-    const employees = (currentUser?.role === 'admin' || currentUser?.role === 'hr')
-        ? users.filter(u => u.role !== 'admin')
-        : users.filter(u => u.role === 'employee');
+    const employees = useMemo(() => {
+        if (currentUser?.role === 'admin') {
+            return users.filter(u => u.role !== 'admin');
+        }
+        if (currentUser?.role === 'hr') {
+            // HR sees only regular employees in reports now
+            return users.filter(u => u.role === 'employee');
+        }
+        return users.filter(u => u.role === 'employee');
+    }, [users, currentUser]);
 
     // Auto-select active cycle initially
     React.useEffect(() => {

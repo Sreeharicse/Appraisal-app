@@ -67,8 +67,12 @@ export default function Approvals() {
 
     const filterByRole = (ev) => {
         const emp = users.find(u => u.id === ev.employeeId);
-        if (currentUser.role === 'admin' || currentUser.role === 'hr') {
-            return emp?.role !== 'admin';
+        if (currentUser.role === 'admin') {
+            return emp?.role !== 'admin'; // Admin sees everyone except other admins
+        }
+        if (currentUser.role === 'hr') {
+            // HR sees only regular employees, not other HRs or Managers
+            return emp?.role === 'employee';
         }
         return false;
     };
@@ -93,7 +97,7 @@ export default function Approvals() {
                     <p className="section-subtitle" style={{ fontSize: '14px', color: 'var(--text-muted)', fontWeight: 500 }}>
                         {currentUser.role === 'admin'
                             ? 'Review and approve HR & Manager evaluations'
-                            : 'Review and approve manager evaluations'}
+                            : 'Review and approve employee evaluations'}
                     </p>
                 </div>
             </div>

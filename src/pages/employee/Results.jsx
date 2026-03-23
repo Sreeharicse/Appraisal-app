@@ -38,12 +38,18 @@ export default function Results() {
                         {hasPendingEval ? '⏳' : '📊'}
                     </div>
                     <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                        {hasPendingEval ? 'Awaiting HR Approval' : 'No results available yet'}
+                        {hasPendingEval
+                            ? (currentUser.role === 'hr' || currentUser.role === 'manager' ? 'Awaiting Admin Approval' : 'Awaiting HR Approval')
+                            : 'No results available yet'}
                     </h3>
                     <p style={{ color: 'var(--text-muted)', marginTop: '8px', maxWidth: '400px', margin: '8px auto 0' }}>
                         {hasPendingEval
-                            ? 'Your manager has submitted your evaluation. Results will be visible here once HR officially approves it.'
-                            : 'Once your manager completes your evaluation and HR approves it, your results will appear here.'}
+                            ? (currentUser.role === 'hr' || currentUser.role === 'manager'
+                                ? 'Your manager has submitted your evaluation. Results will be visible here once the Admin officially approves it.'
+                                : 'Your manager has submitted your evaluation. Results will be visible here once HR officially approves it.')
+                            : (currentUser.role === 'hr' || currentUser.role === 'manager'
+                                ? 'Once your evaluation is completed and approved by the Admin, your results will appear here.'
+                                : 'Once your manager completes your evaluation and HR approves it, your results will appear here.')}
                     </p>
                 </div>
             </div>
