@@ -270,11 +270,38 @@ export default function Cycles() {
                             </div>
                             <div className="form-group">
                                 <label className="form-label">Status</label>
-                                <select className="form-select" value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value }))}>
-                                    <option value="draft">Draft</option>
-                                    <option value="active">Active</option>
-                                    <option value="closed">Closed</option>
-                                </select>
+                                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                    <div style={{ 
+                                        position: 'absolute', 
+                                        left: '14px', 
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        gap: '6px', 
+                                        pointerEvents: 'none',
+                                        color: 'var(--text-muted)',
+                                        zIndex: 1
+                                    }}>
+                                        <Icons.Cycles style={{ width: '14px', height: '14px' }} />
+                                        <span style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '0.05em' }}>STATUS</span>
+                                    </div>
+                                    <select 
+                                        className="form-select" 
+                                        value={form.status} 
+                                        onChange={e => setForm(p => ({ ...p, status: e.target.value }))}
+                                        style={{ 
+                                            paddingLeft: '85px', 
+                                            fontWeight: 700, 
+                                            fontSize: '13px',
+                                            width: '100%',
+                                            background: 'var(--bg-secondary)',
+                                            height: '42px'
+                                        }}
+                                    >
+                                        <option value="draft">Draft</option>
+                                        <option value="active">Active</option>
+                                        <option value="closed">Closed</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
                         <div className="modal-footer">
