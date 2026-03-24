@@ -124,8 +124,8 @@ export default function Layout({ children }) {
                         src={theme === 'dark' ? logoDark : logo} 
                         alt="Techxl Logo" 
                         style={{ 
-                            height: theme === 'dark' ? '55px' : '42px', 
-                            width: 'auto', 
+                            width: '160px', 
+                            height: 'auto', 
                             display: 'block', 
                             marginBottom: '12px' 
                         }} 
