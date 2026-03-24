@@ -1,10 +1,11 @@
 import React, { useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import Icons from '../components/Icons';
+import Avatar from '../components/Avatar';
 import { useNavigate } from 'react-router-dom';
 
 export default function Dashboard() {
-    const { currentUser, cycles, getActiveCycle, goals, selfReviews, evaluations, users, approvals, resetAndSeedFakeData } = useApp();
+    const { currentUser, cycles, getActiveCycle, goals, selfReviews, evaluations, users, approvals, resetAndSeedFakeData, updateUser, refreshData } = useApp();
     const navigate = useNavigate();
     const activeCycle = getActiveCycle();
 
@@ -60,12 +61,31 @@ export default function Dashboard() {
         }
     };
 
+    const handleAvatarUpload = async (base64) => {
+        const res = await updateUser(currentUser.id, { avatar: base64 });
+        if (res.success) {
+            await refreshData();
+        } else {
+            alert('Failed to update profile photo.');
+        }
+    };
+
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
             <div className="section-header" style={{ marginBottom: '32px', textAlign: 'left' }}>
-                <h2 className="section-title" style={{ fontSize: '28px', fontWeight: 700, marginBottom: '8px', letterSpacing: '-0.5px' }}>
-                    {getGreeting()}, <span style={{ color: 'var(--purple)' }}>{currentUser.name}</span>
-                </h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '8px' }}>
+                    <Avatar 
+                        avatarData={currentUser.avatar} 
+                        name={currentUser.name} 
+                        size={64} 
+                        editable={true} 
+                        onUpload={handleAvatarUpload}
+                        style={{ boxShadow: '0 4px 14px rgba(0,0,0,0.1)' }}
+                    />
+                    <h2 className="section-title" style={{ fontSize: '28px', fontWeight: 700, margin: 0, letterSpacing: '-0.5px' }}>
+                        {getGreeting()}, <span style={{ color: 'var(--purple)' }}>{currentUser.name}</span>
+                    </h2>
+                </div>
                 {(currentUser.role === 'hr' || currentUser.role === 'admin') && (
                     <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
                         <button className="btn btn-primary" onClick={() => navigate('/hr/cycles')}>

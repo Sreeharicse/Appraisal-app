@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import Icons from '../../components/Icons';
+import Avatar from '../../components/Avatar';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell, Legend
@@ -232,7 +233,7 @@ export default function Reports() {
                                         <tr key={emp.id}>
                                             <td>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                    <div className="avatar" style={{ width: '28px', height: '28px', fontSize: '11px' }}>{emp.avatar}</div>
+                                                    <Avatar avatarData={emp.avatar} name={emp.name} size={28} />
                                                     <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{emp.name}</span>
                                                 </div>
                                             </td>

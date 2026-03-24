@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { calculateScore } from '../../context/AppContext';
 import Icons from '../../components/Icons';
+import Avatar from '../../components/Avatar';
 
 const StarRating = ({ value, onChange, readonly = false }) => {
     return (
@@ -135,7 +136,7 @@ export default function Approvals() {
                         {/* Employee Header Row */}
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <div className="avatar">{emp?.avatar}</div>
+                                <Avatar avatarData={emp?.avatar} name={emp?.name} size={40} />
                                 <div>
                                     <div style={{ fontWeight: 700, fontSize: '15px' }}>{emp?.name}</div>
                                     <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Evaluated by {mgr?.name} · {ev.submittedAt} · {cycle?.name}</div>

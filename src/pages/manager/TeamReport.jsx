@@ -1,5 +1,6 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
+import Avatar from '../../components/Avatar';
 
 export default function TeamReport() {
     const { currentUser, users, cycles, evaluations, selfReviews, getScore } = useApp();
@@ -24,7 +25,7 @@ export default function TeamReport() {
                     {team.map(emp => (
                         <div key={emp.id} className="card" style={{ padding: '24px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', borderBottom: '1px solid var(--border)', paddingBottom: '16px', marginBottom: '16px' }}>
-                                <div className="avatar" style={{ width: '48px', height: '48px', fontSize: '16px' }}>{emp.avatar}</div>
+                                <Avatar avatarData={emp.avatar} name={emp.name} size={48} />
                                 <div>
                                     <div style={{ fontWeight: 700, fontSize: '18px', color: 'var(--text-primary)' }}>{emp.name}</div>
                                     <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{emp.department} • {emp.designation}</div>

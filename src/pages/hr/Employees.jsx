@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import Icons from '../../components/Icons';
+import Avatar from '../../components/Avatar';
 import { useMsal } from '@azure/msal-react';
 import { loginRequest } from '../../auth/msalConfig';
 
@@ -154,7 +155,8 @@ export default function Employees() {
 
     const handleSave = async () => {
         if (!form.name || !form.email) return;
-        const avatar = form.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+        const fallbackInitials = form.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+        const avatar = profilePhoto || (editing && editing.avatar?.startsWith('data:image') ? editing.avatar : fallbackInitials);
         if (editing) {
             const result = await updateUser(editing.id, { ...form, avatar });
             if (result?.success) {
@@ -231,7 +233,7 @@ export default function Employees() {
                                 <tr key={u.id}>
                                     <td>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                            <div className="avatar" style={{ width: '32px', height: '32px', fontSize: '12px' }}>{u.avatar}</div>
+                                            <Avatar avatarData={u.avatar} name={u.name} size={32} />
                                             <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{u.name}</span>
                                         </div>
                                     </td>
@@ -274,19 +276,14 @@ export default function Employees() {
                         <div className="modal-header" style={{ padding: '20px 24px 16px', gap: '12px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                 {/* Avatar preview */}
-                                <div style={{
-                                    width: '44px', height: '44px', borderRadius: '50%',
-                                    background: 'var(--blue-gradient)',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    fontSize: '16px', fontWeight: 700, color: 'white',
-                                    overflow: 'hidden', flexShrink: 0,
-                                    boxShadow: '0 4px 12px rgba(59,130,246,0.35)'
-                                }}>
-                                    {profilePhoto
-                                        ? <img src={profilePhoto} style={{ width: '44px', height: '44px', objectFit: 'cover' }} alt="avatar" />
-                                        : (form.name ? form.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '?')
-                                    }
-                                </div>
+                                <Avatar 
+                                    avatarData={profilePhoto || (editing ? editing.avatar : null) || form.name} 
+                                    name={form.name} 
+                                    size={44} 
+                                    editable={true}
+                                    onUpload={(base64) => setProfilePhoto(base64)}
+                                    style={{ boxShadow: '0 4px 12px rgba(59,130,246,0.35)' }}
+                                />
                                 <div>
                                     <h3 style={{ fontSize: '16px', fontWeight: 700, margin: 0 }}>
                                         {editing ? 'Edit Employee' : 'Add New Employee'}

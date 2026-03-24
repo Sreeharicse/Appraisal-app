@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext';
 import logo from '../assets/logo-techxl.png';
 import logoDark from '../assets/logo-techxl-dark.png';
 import Icons from './Icons';
+import Avatar from './Avatar';
 
 // BASE LINKS - Available to ALL roles
 const BASE_LINKS = [
@@ -138,7 +139,7 @@ export default function Layout({ children }) {
                 </nav>
                 <div className="sidebar-footer">
                     <div className="user-badge">
-                        <div className="avatar" style={{ background: 'var(--blue-gradient)' }}>{currentUser?.avatar || '?'}</div>
+                        <Avatar avatarData={currentUser?.avatar} name={currentUser?.name} size={36} />
                         <div className="user-info">
                             <div className="user-name">{currentUser?.name}</div>
                             <div className="user-role">{currentUser?.department}</div>
