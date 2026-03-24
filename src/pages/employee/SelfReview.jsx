@@ -189,6 +189,22 @@ export default function SelfReview() {
         { id: 3, label: '💬 Feedback' },
     ];
 
+    // Register TopBar Action after all dependencies are initialized, but before ANY early return
+    useEffect(() => {
+        if (!isSubmitted) {
+            setTopBarAction({
+                label: status === 'new' ? 'Save Draft' : 'Update Draft',
+                icon: '💾',
+                type: 'secondary',
+                onClick: () => handleSubmit('draft')
+            });
+        } else {
+            setTopBarAction(null);
+        }
+        return () => setTopBarAction(null); // Cleanup on unmount
+    }, [isSubmitted, status, selectedCycleId, competencies, feedback, learning]); // Re-register if state changes (capture current values)
+
+
     if (loading && selectedCycleId) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading review data...</div>;
 
     const evaluation = evaluations.find(e =>
@@ -391,21 +407,6 @@ export default function SelfReview() {
             </div>
         </div>
     );
-    // Register TopBar Action after all dependencies are initialized
-    useEffect(() => {
-        if (!isSubmitted) {
-            setTopBarAction({
-                label: status === 'new' ? 'Save Draft' : 'Update Draft',
-                icon: '💾',
-                type: 'secondary',
-                onClick: () => handleSubmit('draft')
-            });
-        } else {
-            setTopBarAction(null);
-        }
-        return () => setTopBarAction(null); // Cleanup on unmount
-    }, [isSubmitted, status, selectedCycleId, competencies, feedback, learning]); // Re-register if state changes (capture current values)
-
     const renderTabContent = () => {
         switch (activeTab) {
             case 1: return renderCompetenciesTab();
