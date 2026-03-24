@@ -7,21 +7,6 @@ export default function Evaluate() {
     const { employeeId } = useParams();
     const navigate = useNavigate();
     const { currentUser, users, cycles, getEvaluation, selfReviews, evaluations, submitEvaluation, calculateScore, getCategory, refreshData, setTopBarAction } = useApp();
-
-    // Register TopBar Action
-    useEffect(() => {
-        if (!isSubmitted && selectedCycleId && selectedEmp && isSelfReviewSubmitted) {
-            setTopBarAction({
-                label: status === 'new' ? 'Save Draft' : 'Update Draft',
-                icon: '💾',
-                type: 'secondary',
-                onClick: () => handleSubmit('draft')
-            });
-        } else {
-            setTopBarAction(null);
-        }
-        return () => setTopBarAction(null); // Cleanup on unmount
-    }, [isSubmitted, status, selectedCycleId, selectedEmp, isSelfReviewSubmitted, competencies, feedback, finalRating, subRating]);
     const team = currentUser.role === 'admin'
         ? users.filter(u => u.role === 'hr' || u.role === 'manager')
         : users.filter(u => u.managerId === currentUser.id);
@@ -432,6 +417,20 @@ export default function Evaluate() {
             'No feedback provided.'
         )
     );
+    // Register TopBar Action after all dependencies are initialized
+    useEffect(() => {
+        if (!isSubmitted && selectedCycleId && selectedEmp && isSelfReviewSubmitted) {
+            setTopBarAction({
+                label: status === 'new' ? 'Save Draft' : 'Update Draft',
+                icon: '💾',
+                type: 'secondary',
+                onClick: () => handleSubmit('draft')
+            });
+        } else {
+            setTopBarAction(null);
+        }
+        return () => setTopBarAction(null); // Cleanup on unmount
+    }, [isSubmitted, status, selectedCycleId, selectedEmp, isSelfReviewSubmitted, competencies, feedback, finalRating, subRating]);
 
     const renderTabContent = () => {
         switch (activeTab) {

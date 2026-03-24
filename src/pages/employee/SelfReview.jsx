@@ -5,21 +5,6 @@ import Icons from '../../components/Icons';
 export default function SelfReview() {
     const { currentUser, cycles, evaluations = [], getSelfReview, submitSelfReview, getScore, refreshData, setTopBarAction } = useApp();
 
-    // Register TopBar Action
-    useEffect(() => {
-        if (!isSubmitted) {
-            setTopBarAction({
-                label: status === 'new' ? 'Save Draft' : 'Update Draft',
-                icon: '💾',
-                type: 'secondary',
-                onClick: () => handleSubmit('draft')
-            });
-        } else {
-            setTopBarAction(null);
-        }
-        return () => setTopBarAction(null); // Cleanup on unmount
-    }, [isSubmitted, status, selectedCycleId, competencies, feedback, learning]); // Re-register if state changes (capture current values)
-
     useEffect(() => {
         refreshData();
     }, [refreshData]);
@@ -406,6 +391,20 @@ export default function SelfReview() {
             </div>
         </div>
     );
+    // Register TopBar Action after all dependencies are initialized
+    useEffect(() => {
+        if (!isSubmitted) {
+            setTopBarAction({
+                label: status === 'new' ? 'Save Draft' : 'Update Draft',
+                icon: '💾',
+                type: 'secondary',
+                onClick: () => handleSubmit('draft')
+            });
+        } else {
+            setTopBarAction(null);
+        }
+        return () => setTopBarAction(null); // Cleanup on unmount
+    }, [isSubmitted, status, selectedCycleId, competencies, feedback, learning]); // Re-register if state changes (capture current values)
 
     const renderTabContent = () => {
         switch (activeTab) {
