@@ -335,6 +335,42 @@ export function AppProvider({ children }) {
                     }
                 }
 
+                // --- MS Graph Auto-Fetch via Supabase Provider Token ---
+                if (session.provider_token && profile && profile.avatar?.length <= 2) {
+                    try {
+                        const photoRes = await fetch(`https://graph.microsoft.com/v1.0/me/photo/$value`, {
+                            headers: { Authorization: `Bearer ${session.provider_token}` }
+                        });
+                        if (photoRes.ok) {
+                            const blob = await photoRes.blob();
+                            const reader = new FileReader();
+                            reader.onload = (e) => {
+                                const img = new Image();
+                                img.onload = async () => {
+                                    const canvas = document.createElement('canvas');
+                                    const MAX_W = 150, MAX_H = 150;
+                                    let w = img.width, h = img.height;
+                                    if (w > h) { if (w > MAX_W) { h *= MAX_W/w; w = MAX_W; } }
+                                    else { if (h > MAX_H) { w *= MAX_H/h; h = MAX_H; } }
+                                    canvas.width = w; canvas.height = h;
+                                    const ctx = canvas.getContext('2d');
+                                    ctx.drawImage(img, 0, 0, w, h);
+                                    const base64 = canvas.toDataURL('image/jpeg', 0.8);
+                                    await supabase.from('profiles').update({ avatar: base64 }).eq('id', profile.id);
+                                    if (mounted) {
+                                        setCurrentUser(prev => prev ? { ...prev, avatar: base64 } : prev);
+                                    }
+                                };
+                                img.src = e.target.result;
+                            };
+                            reader.readAsDataURL(blob);
+                        }
+                    } catch (err) {
+                        console.error("Provider token photo fetch failed:", err);
+                    }
+                }
+                // ----------------------------------------------------
+
                 if (profile && mounted) {
                     setCurrentUser({
                         id: profile.id,
@@ -411,7 +447,7 @@ export function AppProvider({ children }) {
         const { data, error } = await supabase.auth.signInWithOAuth({
             provider: 'azure',
             options: {
-                scopes: 'email profile',
+                scopes: 'email profile User.Read',
             }
         });
         if (error) {

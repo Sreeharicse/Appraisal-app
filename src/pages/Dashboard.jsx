@@ -3,16 +3,12 @@ import { useApp } from '../context/AppContext';
 import Icons from '../components/Icons';
 import Avatar from '../components/Avatar';
 import { useNavigate } from 'react-router-dom';
-import { useMsal } from '@azure/msal-react';
 
 export default function Dashboard() {
     const { currentUser, cycles, getActiveCycle, goals, selfReviews, evaluations, users, approvals, resetAndSeedFakeData, updateUser, refreshData } = useApp();
     const navigate = useNavigate();
     const activeCycle = getActiveCycle();
     
-    const { instance, accounts } = useMsal();
-    const [isSyncingMS, setIsSyncingMS] = React.useState(false);
-
     const getGreeting = () => {
         const hour = new Date().getHours();
         if (hour < 12) return 'Good Morning';
@@ -73,96 +69,6 @@ export default function Dashboard() {
             alert('Failed to update profile photo.');
         }
     };
-
-    const syncMicrosoftProfile = async (silentMode = true) => {
-        let failsafeTimer;
-        try {
-            if (isSyncingMS) return;
-            setIsSyncingMS(true);
-            
-            // Failsafe: Reset syncing state if MSAL popup hangs indefinitely
-            failsafeTimer = setTimeout(() => {
-                setIsSyncingMS(false);
-            }, 60000);
-            
-            let account = accounts[0];
-            const selfSyncRequest = { scopes: ["User.Read"] };
-            
-            if (!account && silentMode && currentUser?.email) {
-                 try {
-                     const ssoRes = await instance.ssoSilent({ ...selfSyncRequest, loginHint: currentUser.email });
-                     account = ssoRes.account;
-                 } catch (ssoErr) {
-                     console.warn("Silent SSO failed:", ssoErr);
-                     setIsSyncingMS(false);
-                     clearTimeout(failsafeTimer);
-                     return; // Cannot silently get token
-                 }
-            } else if (!account && !silentMode) {
-                 const res = await instance.loginPopup(selfSyncRequest);
-                 account = res.account;
-            } else if (!account && silentMode) {
-                 setIsSyncingMS(false);
-                 clearTimeout(failsafeTimer);
-                 return; // Silently abort 
-            }
-
-            const tokenRes = await instance.acquireTokenSilent({ ...selfSyncRequest, account }).catch(async (err) => {
-                if (!silentMode && (err.name === 'InteractionRequiredAuthError' || err.name === 'BrowserAuthError')) {
-                    return instance.acquireTokenPopup(selfSyncRequest);
-                }
-                throw err;
-            });
-
-            const photoRes = await fetch(`https://graph.microsoft.com/v1.0/me/photo/$value`, {
-                 headers: { Authorization: `Bearer ${tokenRes.accessToken}` }
-            });
-
-            if (photoRes.ok) {
-                 const blob = await photoRes.blob();
-                 const reader = new FileReader();
-                 reader.onload = (e) => {
-                     const img = new Image();
-                     img.onload = async () => {
-                          const canvas = document.createElement('canvas');
-                          const MAX_W = 150, MAX_H = 150;
-                          let w = img.width, h = img.height;
-                          if (w > h) { if (w > MAX_W) { h *= MAX_W/w; w = MAX_W; } }
-                          else { if (h > MAX_H) { w *= MAX_H/h; h = MAX_H; } }
-                          canvas.width = w; canvas.height = h;
-                          const ctx = canvas.getContext('2d');
-                          ctx.drawImage(img, 0, 0, w, h);
-                          const base64 = canvas.toDataURL('image/jpeg', 0.8);
-                          await handleAvatarUpload(base64);
-                          if (!silentMode) alert('Profile photo extracted from Microsoft!');
-                          setIsSyncingMS(false);
-                          clearTimeout(failsafeTimer);
-                     };
-                     img.src = e.target.result;
-                 };
-                 reader.readAsDataURL(blob);
-                 return; // Prevent clearing timeout synchronously before image loads
-            } else {
-                if (!silentMode) alert('No Microsoft profile photo found org-wide.');
-                 setIsSyncingMS(false);
-            }
-            clearTimeout(failsafeTimer);
-        } catch (e) {
-            console.error("MS Graph sync error", e);
-            if (!silentMode) alert('Failed to sync. Please try again or refresh your login.');
-            setIsSyncingMS(false);
-            if (failsafeTimer) clearTimeout(failsafeTimer);
-            // clear timer if it fails normally
-        }
-    };
-
-    React.useEffect(() => {
-        // Auto-fetch ONLY if they haven't uploaded an image yet (length <= 2) and they aren't fake-admin
-        if (currentUser?.avatar?.length <= 2 && currentUser?.role !== 'admin') {
-            syncMicrosoftProfile(true);
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [currentUser?.avatar, currentUser?.email]);
 
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
