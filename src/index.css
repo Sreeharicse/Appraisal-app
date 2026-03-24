@@ -21,7 +21,6 @@
 
 .dark-theme {
   --bg-primary: #121417;
-  --bg-primary-rgb: 18, 20, 23;
   --bg-secondary: #1a1d21;
   --bg-card: #1a1d21;
   --bg-card-hover: #1e2227;
@@ -32,7 +31,8 @@
   --nm-shadow-out: 0 4px 20px rgba(0, 0, 0, 0.4);
   --nm-shadow-in: inset 0 2px 10px rgba(0, 0, 0, 0.3);
   --nm-shadow-out-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
-  --nm-shadow-in-sm: none; /* Flat active state like light theme */
+  --nm-shadow-in-sm: none;
+  /* Flat active state like light theme */
 
   --text-primary: #ffffff;
   --text-secondary: #94a3b8;
@@ -44,7 +44,6 @@
 
 .light-theme {
   --bg-primary: #ffffff;
-  --bg-primary-rgb: 255, 255, 255;
   --bg-secondary: #ffffff;
   --bg-card: #ffffff;
   --bg-card-hover: #ffffff;
@@ -198,14 +197,14 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 16px;
-  border-radius: 12px;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
   color: var(--text-secondary);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  margin-bottom: 6px;
+  transition: all 0.2s ease;
+  margin-bottom: 8px;
   text-decoration: none;
   border: 1px solid transparent;
   width: 100%;
@@ -213,29 +212,26 @@ body {
 
 .nav-item:hover {
   background: var(--bg-card-hover);
+  box-shadow: var(--nm-shadow-out-sm);
   color: var(--text-primary);
-  transform: translateX(4px);
 }
 
 .nav-item.active {
-  background: rgba(59, 130, 246, 0.08);
+  background: var(--bg-secondary);
   color: var(--blue-light);
-  font-weight: 600;
-  border: 1px solid rgba(59, 130, 246, 0.15);
+  font-weight: 700;
+  box-shadow: none;
+  border-left: 3px solid var(--blue-light);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  margin-left: -16px;
+  padding-left: 29px;
+  /* Adjust for border highlight */
 }
 
 .nav-item .icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  font-size: 16px;
   width: 20px;
-  height: 20px;
-  transition: transform 0.2s ease;
-}
-
-.nav-item.active .icon {
-  transform: scale(1.1);
-  color: var(--blue-light);
+  text-align: center;
 }
 
 .sidebar-footer {
@@ -337,43 +333,28 @@ body {
 .topbar {
   height: var(--topbar-height);
   flex-shrink: 0;
-  background: rgba(var(--bg-primary-rgb, 255, 255, 255), 0.85); /* Use fallback if variable not defined */
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: var(--bg-primary);
   border-bottom: 1px solid var(--border);
-  padding: 0 24px;
+  padding: 0 32px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin: 0;
-  position: sticky;
-  top: 0;
+  border-radius: 0;
+  box-shadow: none;
+  position: relative;
   z-index: 999;
   width: 100%;
 }
 
 .topbar h1 {
-  font-size: 1.25rem;
-  font-weight: 800;
+  font-size: 20px;
+  font-weight: 700;
   color: var(--text-primary);
-  letter-spacing: -0.025em;
-  margin: 0;
-}
-
-.sidebar-toggle-btn {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.sidebar-toggle-btn:hover {
-  background: var(--bg-card-hover) !important;
-  color: var(--blue-light) !important;
-  transform: scale(1.05);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .topbar-meta {
-  font-size: 0.8rem;
-  font-weight: 500;
+  font-size: 12px;
   color: var(--text-muted);
 }
 
