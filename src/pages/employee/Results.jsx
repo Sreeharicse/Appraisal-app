@@ -137,7 +137,7 @@ export default function Results() {
                                 return (
                                     <>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
-                                            <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Core Performance (Q1-4) <span style={{ color: 'var(--blue-light)', fontSize: '11px', fontWeight: 700 }}>45% of 90%</span></span>
+                                            <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Core Performance</span>
                                             <span style={{ fontWeight: 700, color: 'var(--blue-light)' }}>{coreAvg.toFixed(1)}/5 → {corePts} pts</span>
                                         </div>
                                         <div className="progress-bar" style={{ height: '8px' }}><div className="progress-fill" style={{ width: `${(coreAvg / 5) * 100}%`, background: 'var(--blue-light)' }} /></div>
