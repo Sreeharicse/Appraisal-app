@@ -235,7 +235,7 @@ export default function Layout({ children }) {
                 )}
             </aside>
 
-            <div className="main-content" style={{ marginLeft: collapsed ? 'calc(64px + 32px)' : 'calc(var(--sidebar-width) + 32px)', transition: 'margin-left 0.25s ease' }}>
+            <div className="main-content" style={{ marginLeft: collapsed ? '64px' : 'var(--sidebar-width)', transition: 'margin-left 0.25s ease' }}>
 
 
                 <div className="topbar">
