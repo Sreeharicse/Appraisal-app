@@ -122,56 +122,30 @@ export default function Layout({ children }) {
             <aside className="sidebar" style={{
                 width: collapsed ? '64px' : 'var(--sidebar-width)',
                 transition: 'width 0.25s ease',
-                overflow: 'hidden'
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column',
             }}>
-                {/* Toggle Button */}
-                <button
-                    onClick={() => setCollapsed(c => !c)}
-                    title={collapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
-                    style={{
-                        position: 'absolute',
-                        top: '16px',
-                        right: collapsed ? '50%' : '12px',
-                        transform: collapsed ? 'translateX(50%)' : 'none',
-                        width: '28px',
-                        height: '28px',
-                        borderRadius: '50%',
-                        border: '1px solid var(--border)',
-                        background: 'var(--bg-secondary)',
-                        color: 'var(--text-secondary)',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '14px',
-                        zIndex: 200,
-                        transition: 'all 0.25s ease',
-                        flexShrink: 0,
-                    }}
-                >
-                    {collapsed ? '›' : '‹'}
-                </button>
-
                 {/* Logo */}
                 <div className="sidebar-logo" style={{
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
                     textAlign: 'center',
-                    padding: collapsed ? '24px 8px' : '24px 16px',
-                    overflow: 'hidden',
-                    transition: 'padding 0.25s ease'
+                    padding: collapsed ? '20px 8px 16px' : '20px 16px 16px',
+                    transition: 'padding 0.25s ease',
+                    flexShrink: 0,
                 }}>
                     <img
                         src={theme === 'dark' ? logoDark : logo}
                         alt="Techxl Logo"
                         style={{
-                            width: collapsed ? '36px' : '160px',
+                            width: collapsed ? '32px' : '150px',
                             height: 'auto',
                             display: 'block',
-                            marginBottom: collapsed ? '0' : '12px',
-                            transition: 'width 0.25s ease, margin-bottom 0.25s ease',
-                            objectFit: 'contain'
+                            marginBottom: collapsed ? '0' : '10px',
+                            transition: 'width 0.25s ease',
+                            objectFit: 'contain',
                         }}
                     />
                     {!collapsed && (
@@ -181,8 +155,8 @@ export default function Layout({ children }) {
                     )}
                 </div>
 
-                {/* Nav */}
-                <nav className="sidebar-nav">
+                {/* Nav + Toggle Button Row */}
+                <nav className="sidebar-nav" style={{ flex: 1 }}>
                     {links.map((link, index) => (
                         <NavLink
                             key={index}
@@ -190,16 +164,45 @@ export default function Layout({ children }) {
                             end={link.to === '/dashboard'}
                             className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
                             title={collapsed ? link.label : ''}
-                            style={{ justifyContent: collapsed ? 'center' : 'flex-start', paddingLeft: collapsed ? '0' : undefined }}
+                            style={{ justifyContent: collapsed ? 'center' : 'flex-start', gap: collapsed ? '0' : '12px' }}
                         >
                             <span className="icon">{link.icon}</span>
                             {!collapsed && link.label}
                         </NavLink>
                     ))}
+
+                    {/* Toggle button sits at bottom of nav */}
+                    <div style={{ marginTop: '8px', display: 'flex', justifyContent: collapsed ? 'center' : 'flex-end', padding: collapsed ? '4px 0' : '4px 8px' }}>
+                        <button
+                            onClick={() => setCollapsed(c => !c)}
+                            title={collapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+                            style={{
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: '8px',
+                                border: '1px solid var(--border)',
+                                background: 'var(--bg-secondary)',
+                                color: 'var(--blue-light)',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                transition: 'all 0.2s ease',
+                                flexShrink: 0,
+                            }}
+                        >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                {collapsed
+                                    ? <><polyline points="9 18 15 12 9 6" /></>
+                                    : <><polyline points="15 18 9 12 15 6" /></>
+                                }
+                            </svg>
+                        </button>
+                    </div>
                 </nav>
 
                 {/* Footer */}
-                {!collapsed && (
+                {!collapsed ? (
                     <div className="sidebar-footer">
                         <div className="user-badge">
                             <Avatar
@@ -216,15 +219,9 @@ export default function Layout({ children }) {
                         </div>
                         <button className="logout-btn" onClick={handleLogout}>🚪 Sign Out</button>
                     </div>
-                )}
-                {collapsed && (
-                    <div style={{ marginTop: 'auto', padding: '16px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', borderTop: '1px solid var(--border)' }}>
-                        <Avatar
-                            avatarData={currentUser?.avatar}
-                            name={currentUser?.name}
-                            size={32}
-                            editable={false}
-                        />
+                ) : (
+                    <div style={{ padding: '16px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', borderTop: '1px solid var(--border)' }}>
+                        <Avatar avatarData={currentUser?.avatar} name={currentUser?.name} size={32} editable={false} />
                         <button
                             onClick={handleLogout}
                             title="Sign Out"
