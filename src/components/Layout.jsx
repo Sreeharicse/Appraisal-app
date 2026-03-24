@@ -120,14 +120,12 @@ export default function Layout({ children }) {
         <div className="app-shell">
             <aside className="sidebar">
                 <div className="sidebar-logo" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '24px 16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '8px', minHeight: '42px' }}>
-                        <img 
-                            src={theme === 'dark' ? logoDark : logo} 
-                            alt="Techxl Logo" 
-                            style={{ height: '42px', width: 'auto', display: 'block' }} 
-                        />
-                    </div>
-                    <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '4px' }}>
+                    <img 
+                        src={theme === 'dark' ? logoDark : logo} 
+                        alt="Techxl Logo" 
+                        style={{ height: '38px', width: 'auto', display: 'block', marginBottom: '12px' }} 
+                    />
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                         {ROLE_LABELS[currentUser?.role]}
                     </div>
                 </div>
