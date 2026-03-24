@@ -53,7 +53,7 @@ const ROLE_LINKS = {
 const ROLE_LABELS = { hr: 'HR Administrator', manager: 'Team Manager', employee: 'Employee', admin: 'System Administrator' };
 
 export default function Layout({ children }) {
-    const { currentUser, logout, theme, toggleTheme, notifications, markNotificationAsRead, refreshData } = useApp();
+    const { currentUser, logout, theme, toggleTheme, notifications, markNotificationAsRead, refreshData, updateUser } = useApp();
     const navigate = useNavigate();
     const location = useLocation();
     const links = ROLE_LINKS[currentUser?.role] || [];
@@ -66,6 +66,15 @@ export default function Layout({ children }) {
     }, [notifications, currentUser?.id]);
 
     const unreadCount = myNotifications.filter(n => !n.isRead).length;
+
+    const handleAvatarUpload = async (base64) => {
+        const res = await updateUser(currentUser.id, { avatar: base64 });
+        if (res.success) {
+            await refreshData();
+        } else {
+            alert('Failed to update profile photo.');
+        }
+    };
 
     // Polling: Auto-refresh data every 10 seconds to detect new notifications or changes
     useEffect(() => {
@@ -139,7 +148,13 @@ export default function Layout({ children }) {
                 </nav>
                 <div className="sidebar-footer">
                     <div className="user-badge">
-                        <Avatar avatarData={currentUser?.avatar} name={currentUser?.name} size={36} />
+                        <Avatar 
+                             avatarData={currentUser?.avatar} 
+                             name={currentUser?.name} 
+                             size={36} 
+                             editable={true}
+                             onUpload={handleAvatarUpload}
+                        />
                         <div className="user-info">
                             <div className="user-name">{currentUser?.name}</div>
                             <div className="user-role">{currentUser?.department}</div>
