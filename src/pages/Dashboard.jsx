@@ -88,7 +88,17 @@ export default function Dashboard() {
             let account = accounts[0];
             const selfSyncRequest = { scopes: ["User.Read"] };
             
-            if (!account && !silentMode) {
+            if (!account && silentMode && currentUser?.email) {
+                 try {
+                     const ssoRes = await instance.ssoSilent({ ...selfSyncRequest, loginHint: currentUser.email });
+                     account = ssoRes.account;
+                 } catch (ssoErr) {
+                     console.warn("Silent SSO failed:", ssoErr);
+                     setIsSyncingMS(false);
+                     clearTimeout(failsafeTimer);
+                     return; // Cannot silently get token
+                 }
+            } else if (!account && !silentMode) {
                  const res = await instance.loginPopup(selfSyncRequest);
                  account = res.account;
             } else if (!account && silentMode) {
@@ -148,11 +158,11 @@ export default function Dashboard() {
 
     React.useEffect(() => {
         // Auto-fetch ONLY if they haven't uploaded an image yet (length <= 2) and they aren't fake-admin
-        if (currentUser?.avatar?.length <= 2 && currentUser?.role !== 'admin' && accounts.length > 0) {
+        if (currentUser?.avatar?.length <= 2 && currentUser?.role !== 'admin') {
             syncMicrosoftProfile(true);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [currentUser?.avatar, accounts]);
+    }, [currentUser?.avatar, currentUser?.email]);
 
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
