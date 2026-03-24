@@ -123,7 +123,12 @@ export default function Layout({ children }) {
                     <img 
                         src={theme === 'dark' ? logoDark : logo} 
                         alt="Techxl Logo" 
-                        style={{ height: '38px', width: 'auto', display: 'block', marginBottom: '12px' }} 
+                        style={{ 
+                            height: theme === 'dark' ? '55px' : '42px', 
+                            width: 'auto', 
+                            display: 'block', 
+                            marginBottom: '12px' 
+                        }} 
                     />
                     <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                         {ROLE_LABELS[currentUser?.role]}
