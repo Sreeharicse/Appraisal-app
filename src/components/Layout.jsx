@@ -53,7 +53,7 @@ const ROLE_LINKS = {
 const ROLE_LABELS = { hr: 'HR Administrator', manager: 'Team Manager', employee: 'Employee', admin: 'System Administrator' };
 
 export default function Layout({ children }) {
-    const { currentUser, logout, theme, toggleTheme, notifications, markNotificationAsRead, refreshData, updateUser } = useApp();
+    const { currentUser, logout, theme, toggleTheme, notifications, markNotificationAsRead, refreshData, updateUser, topBarAction } = useApp();
     const navigate = useNavigate();
     const location = useLocation();
     const links = ROLE_LINKS[currentUser?.role] || [];
