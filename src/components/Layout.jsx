@@ -119,39 +119,6 @@ export default function Layout({ children }) {
 
     return (
         <div className="app-shell" style={{ position: 'relative' }}>
-            {/* Floating sidebar toggle — sits on the right edge of the sidebar */}
-            <button
-                onClick={() => setCollapsed(c => !c)}
-                title={collapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
-                style={{
-                    position: 'fixed',
-                    left: collapsed ? 'calc(64px - 14px)' : 'calc(var(--sidebar-width) - 14px)',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    width: '28px',
-                    height: '48px',
-                    borderRadius: '0 8px 8px 0',
-                    border: '1px solid var(--border)',
-                    borderLeft: 'none',
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--blue-light)',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 300,
-                    transition: 'left 0.25s ease',
-                    boxShadow: '2px 0 6px rgba(0,0,0,0.08)',
-                }}
-            >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    {collapsed
-                        ? <polyline points="9 18 15 12 9 6" />
-                        : <polyline points="15 18 9 12 15 6" />
-                    }
-                </svg>
-            </button>
-
             <aside className="sidebar" style={{
                 width: collapsed ? '64px' : 'var(--sidebar-width)',
                 transition: 'width 0.25s ease',
@@ -236,9 +203,27 @@ export default function Layout({ children }) {
             </aside>
 
             <div className="main-content" style={{ marginLeft: collapsed ? '64px' : 'var(--sidebar-width)', transition: 'margin-left 0.25s ease' }}>
-
-
-                <div className="topbar">
+                <div className="topbar" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <button
+                        onClick={() => setCollapsed(c => !c)}
+                        title={collapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+                        className="sidebar-toggle-btn"
+                        style={{
+                            background: 'none',
+                            border: '1px solid var(--border)',
+                            borderRadius: '8px',
+                            width: '36px',
+                            height: '36px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            color: 'var(--text-secondary)',
+                            transition: 'all 0.2s ease',
+                        }}
+                    >
+                        <Icons.Sidebar size={20} />
+                    </button>
                     <h1>{getPageTitle()}</h1>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                         <span className="topbar-meta">
