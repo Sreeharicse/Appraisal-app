@@ -56,9 +56,10 @@ export default function SelfReview() {
         }
     }, [activeCycles, selectedCycleId]);
 
-    const cycle = cycles.find(c => c.id === selectedCycleId);
+    const cycle = cycles.find(c => String(c.id) === String(selectedCycleId));
     const isSubmitted = status !== 'new' && status !== 'draft';
-    const isReadOnly = isSubmitted || (status === 'draft' && isLocked);
+    const isReadOnly = isSubmitted || (status === 'draft' && isLocked) || (cycle?.status === 'closed');
+
 
     // Load existing data when cycle or employee changes
     useEffect(() => {
@@ -481,8 +482,10 @@ export default function SelfReview() {
                                 height: '42px'
                             }}
                         >
-                            {activeCycles.map(c => (
-                                <option key={c.id} value={c.id}>{c.name}</option>
+                            {cycles.map(c => (
+                                <option key={c.id} value={c.id}>
+                                    {c.name} {c.status === 'closed' ? '(Closed)' : ''}
+                                </option>
                             ))}
                         </select>
                     </div>
@@ -496,7 +499,9 @@ export default function SelfReview() {
                     background: 'rgba(100,116,139,0.08)', border: '1px solid rgba(100,116,139,0.2)',
                     borderRadius: '12px', fontSize: '13px', color: 'var(--text-muted)'
                 }}>
-                    🔒 This review is {isSubmitted ? 'submitted and' : 'saved as a draft and'} <strong>read-only</strong>.
+                    🔒 {cycle?.status === 'closed' 
+                        ? 'This appraisal cycle is closed and strictly read-only.' 
+                        : <>This review is {isSubmitted ? 'submitted and' : 'saved as a draft and'} <strong>read-only</strong>.</>}
                 </div>}
 
                 <div style={{ minHeight: '400px' }}>
