@@ -221,40 +221,40 @@ export default function Evaluate() {
                     <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--blue-light)', marginBottom: '4px' }}>{q.label} <span style={{ color: '#ef4444', fontSize: '13px' }}>*</span></div>
                     <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px', lineHeight: '1.4', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{q.desc}</div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
                         {/* Employee Part (Read-only) */}
-                        <div style={{ padding: '10px', borderRadius: '10px', background: 'rgba(56, 189, 248, 0.05)', border: '1px solid rgba(56, 189, 248, 0.1)' }}>
-                            <div style={{ fontWeight: 700, fontSize: '12px', marginBottom: '8px', color: 'var(--blue-light)' }}>👤 Employee Perspective</div>
-                            <div style={{ marginBottom: '8px' }}>
-                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '3px' }}>Self-Rating</div>
-                                <div style={{ padding: '5px 8px', background: 'var(--bg-secondary)', borderRadius: '6px', fontSize: '12px', fontWeight: 600 }}>
+                        <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(56, 189, 248, 0.05)', border: '1px solid rgba(56, 189, 248, 0.1)' }}>
+                            <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '12px', color: 'var(--blue-light)', display: 'flex', alignItems: 'center', gap: '8px' }}>👤 Employee Perspective</div>
+                            <div style={{ marginBottom: '16px' }}>
+                                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>Self-Rating</div>
+                                <div style={{ padding: '10px 14px', background: 'var(--bg-secondary)', borderRadius: '8px', fontSize: '14px', fontWeight: 600, border: '1px solid var(--border)' }}>
                                     {RATING_OPTIONS.find(o => o.value === (empComps[q.id]?.rating || 0))?.label || 'Not rated'}
                                 </div>
                             </div>
                             <div>
-                                <div className="read-only-text" style={{ padding: '12px', paddingRight: '24px', background: 'var(--bg-secondary)', borderRadius: '8px', fontSize: '13px', height: '180px', maxHeight: '180px', overflowY: 'auto', fontStyle: empComps[q.id]?.comment ? 'normal' : 'italic', lineHeight: '1.5' }}>
+                                <div className="read-only-text" style={{ padding: '16px', paddingRight: '24px', background: 'var(--bg-secondary)', borderRadius: '10px', fontSize: '14px', height: '180px', maxHeight: '180px', overflowY: 'auto', fontStyle: empComps[q.id]?.comment ? 'normal' : 'italic', lineHeight: '1.5' }}>
                                     {empComps[q.id]?.comment || 'No comments provided.'}
                                 </div>
                             </div>
                         </div>
 
                         {/* Manager Part (Editable / Locked) */}
-                        <div style={{ padding: '10px', borderRadius: '10px', background: 'rgba(168, 85, 247, 0.05)', border: '1px solid rgba(168, 85, 247, 0.1)' }}>
-                            <div style={{ fontWeight: 700, fontSize: '12px', marginBottom: '8px', color: 'var(--purple)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(168, 85, 247, 0.05)', border: '1px solid rgba(168, 85, 247, 0.1)' }}>
+                            <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '12px', color: 'var(--purple)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 👨‍💼 Manager Perspective
-                                {isSubmitted && <span style={{ fontSize: '10px', background: 'rgba(10, 185, 129, 0.1)', color: '#10b981', padding: '1px 6px', borderRadius: '20px', fontWeight: 600 }}>✅ Submitted</span>}
-                                {!isSubmitted && status === 'draft' && <span style={{ fontSize: '10px', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', padding: '1px 6px', borderRadius: '20px', fontWeight: 600 }}>✍️ In Progress</span>}
+                                {isSubmitted && <span style={{ fontSize: '11px', background: 'rgba(10, 185, 129, 0.1)', color: '#10b981', padding: '2px 8px', borderRadius: '20px', fontWeight: 600 }}>✅ Submitted</span>}
+                                {!isSubmitted && status === 'draft' && <span style={{ fontSize: '11px', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', padding: '2px 8px', borderRadius: '20px', fontWeight: 600 }}>✍️ In Progress</span>}
                             </div>
-                            <div style={{ marginBottom: '8px' }}>
-                                <label style={{ fontSize: '11px', color: isReadOnly ? 'var(--text-muted)' : 'var(--text-secondary)', display: 'block', marginBottom: '3px' }}>Rating</label>
+                            <div style={{ marginBottom: '16px' }}>
+                                <label style={{ fontSize: '12px', color: isReadOnly ? 'var(--text-muted)' : 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Rating</label>
                                 <select className="form-select" value={competencies[q.id]?.rating || 0}
                                     disabled={isReadOnly}
                                     style={{
+                                        width: '100%',
                                         color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)',
                                         background: 'var(--bg-secondary)',
                                         opacity: 1,
-                                        fontSize: '12px',
-                                        padding: '5px 8px',
+                                        pointerEvents: isReadOnly ? 'none' : 'auto',
                                         cursor: isReadOnly ? 'not-allowed' : 'pointer'
                                     }}
                                     onChange={e => updateCompRating(q.id, parseInt(e.target.value))}>
@@ -266,17 +266,18 @@ export default function Evaluate() {
                             <div>
                                 <textarea id={`comp-${q.id}`} className="form-input" placeholder={isSubmitted ? 'Submitted.' : (isLocked ? 'Draft locked...' : 'Manager feedback (min 20 chars)...')}
                                     style={{
+                                        width: '100%',
                                         height: '180px',
                                         minHeight: '180px',
                                         maxHeight: '180px',
                                         overflowY: 'auto',
                                         resize: 'none',
-                                        fontSize: '13px',
+                                        fontSize: '14px',
                                         lineHeight: '1.5',
                                         color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)',
                                         background: 'var(--bg-secondary)',
                                         cursor: isReadOnly ? 'not-allowed' : 'text',
-                                        padding: '12px'
+                                        padding: '16px'
                                     }}
                                     value={competencies[q.id]?.comment || ''}
                                     readOnly={isReadOnly}
