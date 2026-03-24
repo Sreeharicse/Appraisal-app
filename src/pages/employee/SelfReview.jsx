@@ -175,7 +175,7 @@ export default function SelfReview() {
         setStatus(finalStatus);
         setSubmitted(true);
         setIsLocked(finalStatus === 'submitted');
-        
+
         if (finalStatus === 'submitted') {
             setPopupMessage({ title: '🎊 Review Submitted!', body: 'Your self-review has been successfully submitted to your manager for evaluation.' });
         } else {
@@ -191,6 +191,7 @@ export default function SelfReview() {
     ];
 
     // No topBarAction used anymore here
+
     if (loading && selectedCycleId) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading review data...</div>;
 
     const evaluation = evaluations.find(e =>
@@ -453,12 +454,12 @@ export default function SelfReview() {
                     )}
 
                     <div style={{ position: 'relative', display: 'flex', alignItems: 'center', minWidth: '220px' }}>
-                        <div style={{ 
-                            position: 'absolute', 
-                            left: '14px', 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: '6px', 
+                        <div style={{
+                            position: 'absolute',
+                            left: '14px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
                             pointerEvents: 'none',
                             color: 'var(--text-muted)',
                             zIndex: 1
@@ -466,13 +467,13 @@ export default function SelfReview() {
                             <Icons.Cycles style={{ width: '14px', height: '14px' }} />
                             <span style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '0.05em' }}>CYCLE</span>
                         </div>
-                        <select 
-                            className="form-select" 
-                            value={selectedCycleId} 
+                        <select
+                            className="form-select"
+                            value={selectedCycleId}
                             onChange={e => setSelectedCycleId(e.target.value)}
-                            style={{ 
-                                paddingLeft: '75px', 
-                                fontWeight: 700, 
+                            style={{
+                                paddingLeft: '75px',
+                                fontWeight: 700,
                                 fontSize: '13px',
                                 width: '100%',
                                 background: 'var(--bg-secondary)',
@@ -496,8 +497,8 @@ export default function SelfReview() {
                     background: 'rgba(100,116,139,0.08)', border: '1px solid rgba(100,116,139,0.2)',
                     borderRadius: '12px', fontSize: '13px', color: 'var(--text-muted)'
                 }}>
-                    🔒 {cycle?.status === 'closed' 
-                        ? 'This appraisal cycle is closed and strictly read-only.' 
+                    🔒 {cycle?.status === 'closed'
+                        ? 'This appraisal cycle is closed and strictly read-only.'
                         : <>This review is {isSubmitted ? 'submitted and' : 'saved as a draft and'} <strong>read-only</strong>.</>}
                 </div>}
 

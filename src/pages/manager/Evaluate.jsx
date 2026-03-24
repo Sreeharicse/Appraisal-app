@@ -497,12 +497,12 @@ export default function Evaluate() {
 
                     {/* Cycle dropdown */}
                     <div style={{ position: 'relative', display: 'flex', alignItems: 'center', minWidth: '220px' }}>
-                        <div style={{ 
-                            position: 'absolute', 
-                            left: '14px', 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: '6px', 
+                        <div style={{
+                            position: 'absolute',
+                            left: '14px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
                             pointerEvents: 'none',
                             color: 'var(--text-muted)',
                             zIndex: 1
@@ -510,13 +510,13 @@ export default function Evaluate() {
                             <Icons.Cycles style={{ width: '14px', height: '14px' }} />
                             <span style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '0.05em' }}>CYCLE</span>
                         </div>
-                        <select 
-                            className="form-select" 
-                            value={selectedCycleId} 
+                        <select
+                            className="form-select"
+                            value={selectedCycleId}
                             onChange={e => { setSelectedCycleId(e.target.value); setStatus('draft'); setHasEdited(false); }}
-                            style={{ 
-                                paddingLeft: '75px', 
-                                fontWeight: 700, 
+                            style={{
+                                paddingLeft: '75px',
+                                fontWeight: 700,
                                 fontSize: '13px',
                                 width: '100%',
                                 background: 'var(--bg-secondary)',
