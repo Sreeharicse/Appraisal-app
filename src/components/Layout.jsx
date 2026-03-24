@@ -203,28 +203,31 @@ export default function Layout({ children }) {
             </aside>
 
             <div className="main-content" style={{ marginLeft: collapsed ? '64px' : 'var(--sidebar-width)', transition: 'margin-left 0.25s ease' }}>
-                <div className="topbar" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <button
-                        onClick={() => setCollapsed(c => !c)}
-                        title={collapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
-                        className="sidebar-toggle-btn"
-                        style={{
-                            background: 'none',
-                            border: '1px solid var(--border)',
-                            borderRadius: '8px',
-                            width: '36px',
-                            height: '36px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            color: 'var(--text-secondary)',
-                            transition: 'all 0.2s ease',
-                        }}
-                    >
-                        <Icons.Sidebar size={20} />
-                    </button>
-                    <h1>{getPageTitle()}</h1>
+                <div className="topbar">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        <button
+                            onClick={() => setCollapsed(c => !c)}
+                            title={collapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+                            className="sidebar-toggle-btn"
+                            style={{
+                                background: 'none',
+                                border: '1px solid var(--border)',
+                                borderRadius: '8px',
+                                width: '36px',
+                                height: '36px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                color: 'var(--text-secondary)',
+                                transition: 'all 0.2s ease',
+                            }}
+                        >
+                            <Icons.Sidebar size={20} />
+                        </button>
+                        <h1>{getPageTitle()}</h1>
+                    </div>
+
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                         <span className="topbar-meta">
                             {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
