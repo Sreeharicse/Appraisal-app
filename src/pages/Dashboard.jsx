@@ -3,11 +3,16 @@ import { useApp } from '../context/AppContext';
 import Icons from '../components/Icons';
 import Avatar from '../components/Avatar';
 import { useNavigate } from 'react-router-dom';
+import { useMsal } from '@azure/msal-react';
+import { loginRequest } from '../auth/msalConfig';
 
 export default function Dashboard() {
     const { currentUser, cycles, getActiveCycle, goals, selfReviews, evaluations, users, approvals, resetAndSeedFakeData, updateUser, refreshData } = useApp();
     const navigate = useNavigate();
     const activeCycle = getActiveCycle();
+    
+    const { instance, accounts } = useMsal();
+    const [isSyncingMS, setIsSyncingMS] = React.useState(false);
 
     const getGreeting = () => {
         const hour = new Date().getHours();
@@ -70,6 +75,72 @@ export default function Dashboard() {
         }
     };
 
+    const syncMicrosoftProfile = async (silentMode = true) => {
+        try {
+            if (isSyncingMS) return;
+            setIsSyncingMS(true);
+            
+            let account = accounts[0];
+            if (!account && !silentMode) {
+                 const res = await instance.loginPopup(loginRequest);
+                 account = res.account;
+            } else if (!account && silentMode) {
+                 setIsSyncingMS(false);
+                 return; // Silently abort 
+            }
+
+            const tokenRes = await instance.acquireTokenSilent({ ...loginRequest, account }).catch(async (err) => {
+                if (!silentMode && (err.name === 'InteractionRequiredAuthError' || err.name === 'BrowserAuthError')) {
+                    return instance.acquireTokenPopup(loginRequest);
+                }
+                throw err;
+            });
+
+            const photoRes = await fetch(`https://graph.microsoft.com/v1.0/me/photo/$value`, {
+                 headers: { Authorization: `Bearer ${tokenRes.accessToken}` }
+            });
+
+            if (photoRes.ok) {
+                 const blob = await photoRes.blob();
+                 const reader = new FileReader();
+                 reader.onload = (e) => {
+                     const img = new Image();
+                     img.onload = async () => {
+                          const canvas = document.createElement('canvas');
+                          const MAX_W = 150, MAX_H = 150;
+                          let w = img.width, h = img.height;
+                          if (w > h) { if (w > MAX_W) { h *= MAX_W/w; w = MAX_W; } }
+                          else { if (h > MAX_H) { w *= MAX_H/h; h = MAX_H; } }
+                          canvas.width = w; canvas.height = h;
+                          const ctx = canvas.getContext('2d');
+                          ctx.drawImage(img, 0, 0, w, h);
+                          const base64 = canvas.toDataURL('image/jpeg', 0.8);
+                          await handleAvatarUpload(base64);
+                          if (!silentMode) alert('Profile photo extracted from Microsoft!');
+                          setIsSyncingMS(false);
+                     };
+                     img.src = e.target.result;
+                 };
+                 reader.readAsDataURL(blob);
+            } else {
+                 if (!silentMode) alert('No Microsoft profile photo found org-wide.');
+                 setIsSyncingMS(false);
+            }
+        } catch (e) {
+            console.error("MS Graph sync error", e);
+            if (!silentMode) alert('Failed to sync. Please try again or refresh your login.');
+            setIsSyncingMS(false);
+        }
+    };
+
+    React.useEffect(() => {
+        // Auto-fetch ONLY if they haven't uploaded an image yet (length <= 2) and they aren't fake-admin
+        if (currentUser?.avatar?.length <= 2 && currentUser?.role !== 'admin' && accounts.length > 0) {
+            syncMicrosoftProfile(true);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentUser?.avatar, accounts]);
+
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
             <div className="section-header" style={{ marginBottom: '32px', textAlign: 'left' }}>
@@ -82,9 +153,20 @@ export default function Dashboard() {
                         onUpload={handleAvatarUpload}
                         style={{ boxShadow: '0 4px 14px rgba(0,0,0,0.1)' }}
                     />
-                    <h2 className="section-title" style={{ fontSize: '28px', fontWeight: 700, margin: 0, letterSpacing: '-0.5px' }}>
-                        {getGreeting()}, <span style={{ color: 'var(--purple)' }}>{currentUser.name}</span>
-                    </h2>
+                    <div>
+                        <h2 className="section-title" style={{ fontSize: '28px', fontWeight: 700, margin: 0, letterSpacing: '-0.5px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            {getGreeting()}, <span style={{ color: 'var(--purple)' }}>{currentUser.name}</span>
+                        </h2>
+                        <button 
+                            className="btn btn-sm btn-outline" 
+                            style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', padding: '4px 10px' }}
+                            onClick={() => syncMicrosoftProfile(false)}
+                            disabled={isSyncingMS}
+                        >
+                            {isSyncingMS ? <Icons.Spinner style={{width: 12, height: 12}} /> : <span style={{ fontSize: '14px', lineHeight: 1 }}>🔄</span>}
+                            {isSyncingMS ? 'Syncing...' : 'Sync Microsoft Photo'}
+                        </button>
+                    </div>
                 </div>
                 {(currentUser.role === 'hr' || currentUser.role === 'admin') && (
                     <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>

@@ -136,7 +136,23 @@ export default function Employees() {
                 });
                 if (photoRes.ok) {
                     const blob = await photoRes.blob();
-                    setProfilePhoto(URL.createObjectURL(blob));
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            const MAX_W = 150, MAX_H = 150;
+                            let w = img.width, h = img.height;
+                            if (w > h) { if (w > MAX_W) { h *= MAX_W/w; w = MAX_W; } }
+                            else { if (h > MAX_H) { w *= MAX_H/h; h = MAX_H; } }
+                            canvas.width = w; canvas.height = h;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0, w, h);
+                            setProfilePhoto(canvas.toDataURL('image/jpeg', 0.8));
+                        };
+                        img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(blob);
                 }
             } catch (_) { /* photo is optional */ }
 
