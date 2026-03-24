@@ -166,20 +166,9 @@ export default function Dashboard() {
                         onUpload={handleAvatarUpload}
                         style={{ boxShadow: '0 4px 14px rgba(0,0,0,0.1)' }}
                     />
-                    <div>
-                        <h2 className="section-title" style={{ fontSize: '28px', fontWeight: 700, margin: 0, letterSpacing: '-0.5px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            {getGreeting()}, <span style={{ color: 'var(--purple)' }}>{currentUser.name}</span>
-                        </h2>
-                        <button 
-                            className="btn btn-sm btn-outline" 
-                            style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', padding: '4px 10px' }}
-                            onClick={() => syncMicrosoftProfile(false)}
-                            disabled={isSyncingMS}
-                        >
-                            {isSyncingMS ? <Icons.Spinner style={{width: 12, height: 12}} /> : <span style={{ fontSize: '14px', lineHeight: 1 }}>🔄</span>}
-                            {isSyncingMS ? 'Syncing...' : 'Sync Microsoft Photo'}
-                        </button>
-                    </div>
+                    <h2 className="section-title" style={{ fontSize: '28px', fontWeight: 700, margin: 0, letterSpacing: '-0.5px' }}>
+                        {getGreeting()}, <span style={{ color: 'var(--purple)' }}>{currentUser.name}</span>
+                    </h2>
                 </div>
                 {(currentUser.role === 'hr' || currentUser.role === 'admin') && (
                     <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
