@@ -157,7 +157,7 @@ export default function Results() {
                                 return (
                                     <>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
-                                            <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Behavioral Traits (Q5-10) <span style={{ color: '#06b6d4', fontSize: '11px', fontWeight: 700 }}>30% of 90%</span></span>
+                                            <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Behavioral Traits</span>
                                             <span style={{ fontWeight: 700, color: '#06b6d4' }}>{behavioralAvg.toFixed(1)}/5 → {behavioralPts} pts</span>
                                         </div>
                                         <div className="progress-bar" style={{ height: '8px' }}><div className="progress-fill" style={{ width: `${(behavioralAvg / 5) * 100}%`, background: '#06b6d4' }} /></div>
@@ -170,7 +170,7 @@ export default function Results() {
                         {/* HR Assessment 10% */}
                         <div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
-                                <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>HR Assessment & Compliance <span style={{ color: 'var(--yellow)', fontSize: '11px', fontWeight: 700 }}>10%</span></span>
+                                <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>HR Assessment & Compliance</span>
                                 {ev.hrRating > 0 ? (
                                     <span style={{ fontWeight: 700, color: 'var(--yellow)' }}>{Math.round(ev.hrRating * 10) / 10}/5 → {Math.round((ev.hrRating / 5) * 10)} pts</span>
                                 ) : (
