@@ -75,9 +75,15 @@ export default function Dashboard() {
     };
 
     const syncMicrosoftProfile = async (silentMode = true) => {
+        let failsafeTimer;
         try {
             if (isSyncingMS) return;
             setIsSyncingMS(true);
+            
+            // Failsafe: Reset syncing state if MSAL popup hangs indefinitely
+            failsafeTimer = setTimeout(() => {
+                setIsSyncingMS(false);
+            }, 60000);
             
             let account = accounts[0];
             const selfSyncRequest = { scopes: ["User.Read"] };
@@ -87,6 +93,7 @@ export default function Dashboard() {
                  account = res.account;
             } else if (!account && silentMode) {
                  setIsSyncingMS(false);
+                 clearTimeout(failsafeTimer);
                  return; // Silently abort 
             }
 
@@ -119,18 +126,23 @@ export default function Dashboard() {
                           await handleAvatarUpload(base64);
                           if (!silentMode) alert('Profile photo extracted from Microsoft!');
                           setIsSyncingMS(false);
+                          clearTimeout(failsafeTimer);
                      };
                      img.src = e.target.result;
                  };
                  reader.readAsDataURL(blob);
+                 return; // Prevent clearing timeout synchronously before image loads
             } else {
-                 if (!silentMode) alert('No Microsoft profile photo found org-wide.');
+                if (!silentMode) alert('No Microsoft profile photo found org-wide.');
                  setIsSyncingMS(false);
             }
+            clearTimeout(failsafeTimer);
         } catch (e) {
             console.error("MS Graph sync error", e);
             if (!silentMode) alert('Failed to sync. Please try again or refresh your login.');
             setIsSyncingMS(false);
+            if (failsafeTimer) clearTimeout(failsafeTimer);
+            // clear timer if it fails normally
         }
     };
 
