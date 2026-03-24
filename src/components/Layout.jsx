@@ -77,13 +77,8 @@ export default function Layout({ children }) {
         }
     };
 
-    // Polling: Auto-refresh data every 10 seconds to detect new notifications or changes
-    useEffect(() => {
-        const interval = setInterval(() => {
-            if (currentUser) refreshData();
-        }, 10000);
-        return () => clearInterval(interval);
-    }, [refreshData, currentUser]);
+    // Removed aggressive polling to stay within Supabase usage limits. 
+    // Data is refreshed on mount and after specific mutations.
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -221,11 +216,34 @@ export default function Layout({ children }) {
                                 cursor: 'pointer',
                                 color: 'var(--text-secondary)',
                                 transition: 'all 0.2s ease',
+                                flexShrink: 0,
                             }}
                         >
                             <Icons.Sidebar size={20} />
                         </button>
-                        <h1>{getPageTitle()}</h1>
+
+                        {/* Dynamic Page Action (e.g. Save Draft) */}
+                        {topBarAction && (
+                            <button
+                                onClick={topBarAction.onClick}
+                                className={`btn btn-${topBarAction.type || 'secondary'} btn-sm`}
+                                style={{
+                                    height: '36px',
+                                    padding: '0 16px',
+                                    borderRadius: '8px',
+                                    fontWeight: 700,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    animation: 'fadeIn 0.2s ease-out'
+                                }}
+                            >
+                                {topBarAction.icon}
+                                {topBarAction.label}
+                            </button>
+                        )}
+
+                        <h1 style={{ marginLeft: topBarAction ? '4px' : '0' }}>{getPageTitle()}</h1>
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>

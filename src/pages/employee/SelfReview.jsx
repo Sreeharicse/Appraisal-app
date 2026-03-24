@@ -3,7 +3,22 @@ import { useApp } from '../../context/AppContext';
 import Icons from '../../components/Icons';
 
 export default function SelfReview() {
-    const { currentUser, cycles, evaluations = [], getSelfReview, submitSelfReview, getScore, refreshData } = useApp();
+    const { currentUser, cycles, evaluations = [], getSelfReview, submitSelfReview, getScore, refreshData, setTopBarAction } = useApp();
+
+    // Register TopBar Action
+    useEffect(() => {
+        if (!isSubmitted) {
+            setTopBarAction({
+                label: status === 'new' ? 'Save Draft' : 'Update Draft',
+                icon: '💾',
+                type: 'secondary',
+                onClick: () => handleSubmit('draft')
+            });
+        } else {
+            setTopBarAction(null);
+        }
+        return () => setTopBarAction(null); // Cleanup on unmount
+    }, [isSubmitted, status, selectedCycleId, competencies, feedback, learning]); // Re-register if state changes (capture current values)
 
     useEffect(() => {
         refreshData();
@@ -437,29 +452,8 @@ export default function SelfReview() {
                     ))}
                 </div>
 
-                {/* Right: Cycle dropdown + Save Draft */}
+                {/* Right: Cycle dropdown only (Draft button moved to global topbar) */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    {!isSubmitted && (
-                        <button 
-                            type="button" 
-                            className="btn btn-secondary" 
-                            onClick={() => handleSubmit('draft')}
-                            style={{ 
-                                padding: '8px 16px', 
-                                fontSize: '13px', 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                gap: '8px',
-                                background: 'rgba(16, 185, 129, 0.05)',
-                                border: '1px solid rgba(16, 185, 129, 0.1)',
-                                color: '#10b981',
-                                fontWeight: 700
-                            }}
-                        >
-                            💾 {status === 'new' ? 'Save Draft' : 'Update Draft'}
-                        </button>
-                    )}
-
                     <div style={{ position: 'relative', display: 'flex', alignItems: 'center', minWidth: '220px' }}>
                         <div style={{ 
                             position: 'absolute', 

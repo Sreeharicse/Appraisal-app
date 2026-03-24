@@ -6,7 +6,22 @@ import Icons from '../../components/Icons';
 export default function Evaluate() {
     const { employeeId } = useParams();
     const navigate = useNavigate();
-    const { currentUser, users, cycles, getEvaluation, selfReviews, evaluations, submitEvaluation, calculateScore, getCategory, refreshData } = useApp();
+    const { currentUser, users, cycles, getEvaluation, selfReviews, evaluations, submitEvaluation, calculateScore, getCategory, refreshData, setTopBarAction } = useApp();
+
+    // Register TopBar Action
+    useEffect(() => {
+        if (!isSubmitted && selectedCycleId && selectedEmp && isSelfReviewSubmitted) {
+            setTopBarAction({
+                label: status === 'new' ? 'Save Draft' : 'Update Draft',
+                icon: '💾',
+                type: 'secondary',
+                onClick: () => handleSubmit('draft')
+            });
+        } else {
+            setTopBarAction(null);
+        }
+        return () => setTopBarAction(null); // Cleanup on unmount
+    }, [isSubmitted, status, selectedCycleId, selectedEmp, isSelfReviewSubmitted, competencies, feedback, finalRating, subRating]);
     const team = currentUser.role === 'admin'
         ? users.filter(u => u.role === 'hr' || u.role === 'manager')
         : users.filter(u => u.managerId === currentUser.id);
@@ -479,29 +494,8 @@ export default function Evaluate() {
                     </div>
                 </div>
 
-                {/* Right: Cycle dropdown + Back + Save Draft */}
+                {/* Right: Cycle dropdown + Back only (Draft button moved to global topbar) */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    {!isSubmitted && (
-                        <button 
-                            type="button" 
-                            className="btn btn-secondary" 
-                            onClick={() => handleSubmit('draft')}
-                            style={{ 
-                                padding: '8px 16px', 
-                                fontSize: '13px', 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                gap: '8px',
-                                background: 'rgba(168, 85, 247, 0.05)',
-                                border: '1px solid rgba(168, 85, 247, 0.1)',
-                                color: 'var(--purple)',
-                                fontWeight: 700
-                            }}
-                        >
-                            💾 Save Draft
-                        </button>
-                    )}
-
                     {/* Cycle dropdown */}
                     <div style={{ position: 'relative', display: 'flex', alignItems: 'center', minWidth: '220px' }}>
                         <div style={{ 

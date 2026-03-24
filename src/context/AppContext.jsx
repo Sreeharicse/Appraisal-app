@@ -38,6 +38,7 @@ export function AppProvider({ children }) {
     const [evaluations, setEvaluations] = useState([]);
     const [approvals, setApprovals] = useState([]);
     const [notifications, setNotifications] = useState([]);
+    const [topBarAction, setTopBarAction] = useState(null); // { label, icon, onClick, type }
     const [loading, setLoading] = useState(true);
     const [theme, setTheme] = useState(localStorage.getItem('app-theme') || 'dark');
     const [encryptionKey, _setEncryptionKey] = useState(localStorage.getItem('admin_encryption_key') || 'techxl-secure-2026');
@@ -70,24 +71,39 @@ export function AppProvider({ children }) {
             return;
         }
 
+        // Fetch all tables in parallel, but handle individual failures gracefully
+        const fetchTable = async (table, query = '*') => {
+            try {
+                const { data, error } = await supabase.from(table).select(query);
+                if (error) {
+                    console.error(`Error fetching ${table}:`, error);
+                    return [];
+                }
+                return data || [];
+            } catch (err) {
+                console.error(`Exception fetching ${table}:`, err);
+                return [];
+            }
+        };
+
         const [
-            { data: profilesData },
-            { data: cyclesData },
-            { data: reviewsData },
-            { data: evalsData },
-            { data: approvalsData },
-            { data: notificationsData },
-            { data: departmentsData },
-            { data: designationsData },
+            profilesData,
+            cyclesData,
+            reviewsData,
+            evalsData,
+            approvalsData,
+            notificationsData,
+            departmentsData,
+            designationsData,
         ] = await Promise.all([
-            supabase.from('profiles').select('*'),
-            supabase.from('cycles').select('*').order('created_at', { ascending: false }),
-            supabase.from('self_reviews').select('*'),
-            supabase.from('evaluations').select('*'),
-            supabase.from('approvals').select('*'),
-            supabase.from('notifications').select('*').order('created_at', { ascending: false }),
-            supabase.from('departments').select('*'),
-            supabase.from('designations').select('*'),
+            fetchTable('profiles'),
+            supabase.from('cycles').select('*').order('created_at', { ascending: false }).then(r => r.data || []),
+            fetchTable('self_reviews'),
+            fetchTable('evaluations'),
+            fetchTable('approvals'),
+            supabase.from('notifications').select('*').order('created_at', { ascending: false }).then(r => r.data || []),
+            fetchTable('departments'),
+            fetchTable('designations'),
         ]);
 
         // Map snake_case DB columns → camelCase used by the UI
@@ -1367,6 +1383,7 @@ export function AppProvider({ children }) {
             addDesignation, deleteDesignation,
             addCycle, updateCycle, deleteCycle, requestCycleDelete,
             submitSelfReview, submitEvaluation,
+            topBarAction, setTopBarAction,
             theme, toggleTheme, refreshData: fetchAllData,
             encryptionKey, setEncryptionKey, resetAndSeedFakeData,
             approveEvaluation, rejectEvaluation, saveHRDraft,
