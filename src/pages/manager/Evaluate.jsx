@@ -417,20 +417,7 @@ export default function Evaluate() {
             'No feedback provided.'
         )
     );
-    // Register TopBar Action after all dependencies are initialized
-    useEffect(() => {
-        if (!isSubmitted && selectedCycleId && selectedEmp && isSelfReviewSubmitted) {
-            setTopBarAction({
-                label: status === 'new' ? 'Save Draft' : 'Update Draft',
-                icon: '💾',
-                type: 'secondary',
-                onClick: () => handleSubmit('draft')
-            });
-        } else {
-            setTopBarAction(null);
-        }
-        return () => setTopBarAction(null); // Cleanup on unmount
-    }, [isSubmitted, status, selectedCycleId, selectedEmp, isSelfReviewSubmitted, competencies, feedback, finalRating, subRating]);
+    // No topBarAction used anymore here
 
     const renderTabContent = () => {
         switch (activeTab) {
@@ -493,8 +480,21 @@ export default function Evaluate() {
                     </div>
                 </div>
 
-                {/* Right: Cycle dropdown + Back only (Draft button moved to global topbar) */}
+                {/* Right: Cycle dropdown + Back Draft Button */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    
+                    {/* Draft Button */}
+                    {!isSubmitted && selectedEmp && isSelfReviewSubmitted && (
+                        <button 
+                            className="btn btn-secondary" 
+                            onClick={() => handleSubmit('draft')}
+                            style={{ height: '42px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)' }}
+                        >
+                            <span style={{ fontSize: '16px' }}>💾</span> 
+                            {status === 'new' ? 'Save Draft' : 'Update Draft'}
+                        </button>
+                    )}
+
                     {/* Cycle dropdown */}
                     <div style={{ position: 'relative', display: 'flex', alignItems: 'center', minWidth: '220px' }}>
                         <div style={{ 

@@ -190,22 +190,7 @@ export default function SelfReview() {
         { id: 3, label: '💬 Feedback' },
     ];
 
-    // Register TopBar Action after all dependencies are initialized, but before ANY early return
-    useEffect(() => {
-        if (!isSubmitted) {
-            setTopBarAction({
-                label: status === 'new' ? 'Save Draft' : 'Update Draft',
-                icon: '💾',
-                type: 'secondary',
-                onClick: () => handleSubmit('draft')
-            });
-        } else {
-            setTopBarAction(null);
-        }
-        return () => setTopBarAction(null); // Cleanup on unmount
-    }, [isSubmitted, status, selectedCycleId, competencies, feedback, learning]); // Re-register if state changes (capture current values)
-
-
+    // No topBarAction used anymore here
     if (loading && selectedCycleId) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading review data...</div>;
 
     const evaluation = evaluations.find(e =>
@@ -453,8 +438,20 @@ export default function SelfReview() {
                     ))}
                 </div>
 
-                {/* Right: Cycle dropdown only (Draft button moved to global topbar) */}
+                {/* Right: Cycle dropdown Context */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    
+                    {!isSubmitted && (
+                        <button 
+                            className="btn btn-secondary" 
+                            onClick={() => handleSubmit('draft')}
+                            style={{ height: '42px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)' }}
+                        >
+                            <span style={{ fontSize: '16px' }}>💾</span> 
+                            {status === 'new' ? 'Save Draft' : 'Update Draft'}
+                        </button>
+                    )}
+
                     <div style={{ position: 'relative', display: 'flex', alignItems: 'center', minWidth: '220px' }}>
                         <div style={{ 
                             position: 'absolute', 
