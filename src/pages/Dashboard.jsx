@@ -4,7 +4,6 @@ import Icons from '../components/Icons';
 import Avatar from '../components/Avatar';
 import { useNavigate } from 'react-router-dom';
 import { useMsal } from '@azure/msal-react';
-import { loginRequest } from '../auth/msalConfig';
 
 export default function Dashboard() {
     const { currentUser, cycles, getActiveCycle, goals, selfReviews, evaluations, users, approvals, resetAndSeedFakeData, updateUser, refreshData } = useApp();
@@ -81,17 +80,19 @@ export default function Dashboard() {
             setIsSyncingMS(true);
             
             let account = accounts[0];
+            const selfSyncRequest = { scopes: ["User.Read"] };
+            
             if (!account && !silentMode) {
-                 const res = await instance.loginPopup(loginRequest);
+                 const res = await instance.loginPopup(selfSyncRequest);
                  account = res.account;
             } else if (!account && silentMode) {
                  setIsSyncingMS(false);
                  return; // Silently abort 
             }
 
-            const tokenRes = await instance.acquireTokenSilent({ ...loginRequest, account }).catch(async (err) => {
+            const tokenRes = await instance.acquireTokenSilent({ ...selfSyncRequest, account }).catch(async (err) => {
                 if (!silentMode && (err.name === 'InteractionRequiredAuthError' || err.name === 'BrowserAuthError')) {
-                    return instance.acquireTokenPopup(loginRequest);
+                    return instance.acquireTokenPopup(selfSyncRequest);
                 }
                 throw err;
             });
