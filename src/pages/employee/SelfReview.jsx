@@ -28,28 +28,22 @@ export default function SelfReview() {
     const [errors, setErrors] = useState({});
 
     const DEFAULT_COMPETENCY_QUESTIONS = [
-        // Section: Job-specific
-        { id: 'q1', label: 'What do you think sets you apart in this role?', desc: 'Reflect on the unique skills, experiences, or qualities you bring to this position that differentiate you from others.', section: 'Job-specific' },
-        { id: 'q2', label: 'How do you stay updated with industry trends?', desc: 'Describe the methods, resources, or habits you use to keep your knowledge current and relevant to your field.', section: 'Job-specific' },
-        { id: 'q3', label: 'Can you walk me through a recent project?', desc: 'Share a recent project you are proud of — include your role, the challenges faced, and the outcome achieved.', section: 'Job-specific' },
-        // Section: Problem-solving
-        { id: 'q4', label: 'Describe a tough problem you solved. How did you approach it?', desc: 'Think of a complex challenge you encountered and walk through your structured thinking and resolution process.', section: 'Problem-solving' },
-        { id: 'q5', label: 'How do you prioritize tasks when faced with multiple deadlines?', desc: 'Explain your approach to managing competing priorities and how you ensure the most important work gets done first.', section: 'Problem-solving' },
-        { id: 'q6', label: 'What is your process for making tough decisions?', desc: 'Describe how you weigh options, gather information, and commit to a course of action under pressure or uncertainty.', section: 'Problem-solving' },
-        // Section: Leadership & Initiative
-        { id: 'q7', label: 'Do you lead or participate in any initiatives outside work?', desc: 'Share examples of leadership, volunteering, or community initiatives that reflect your drive beyond your core role.', section: 'Leadership & Initiative' },
-        { id: 'q8', label: 'How do you motivate your team or colleagues?', desc: 'Describe strategies or examples of how you inspire and uplift others to perform at their best.', section: 'Leadership & Initiative' },
-        { id: 'q9', label: 'Can you give an example of taking a calculated risk?', desc: 'Describe a situation where you stepped beyond your comfort zone with a deliberate risk and what the outcome was.', section: 'Leadership & Initiative' },
-        // Section: Adaptability & Resilience
-        { id: 'q10', label: 'How do you handle change or unexpected setbacks?', desc: 'Describe your mindset and approach when plans change unexpectedly or a project hits a major obstacle.', section: 'Adaptability & Resilience' },
-        { id: 'q11', label: 'Can you describe a situation where you adapted to a new process?', desc: 'Share an example where you successfully transitioned to a new workflow, tool, or team structure.', section: 'Adaptability & Resilience' },
-        { id: 'q12', label: 'How do you bounce back from failures?', desc: 'Reflect on a past failure or setback and describe the steps you took to recover, learn, and move forward.', section: 'Adaptability & Resilience' },
+        { id: 'q1', label: '1. Quality of Work', desc: 'How consistently do you deliver high-quality work in your role? Describe how you ensure your tasks are completed accurately, efficiently, and meet the required standards.' },
+        { id: 'q2', label: '2. Technical Competency', desc: 'Evaluate your technical skills required for your role. How effectively do you apply your technical knowledge to solve problems and complete assigned tasks?' },
+        { id: 'q3', label: '3. Problem Solving', desc: 'Describe your ability to analyze problems and find effective solutions. Provide examples where you identified issues and implemented solutions that improved outcomes.' },
+        { id: 'q4', label: '4. Productivity and Efficiency', desc: 'How effectively do you manage your workload and meet deadlines? Explain how you prioritize tasks and maintain productivity throughout the review period.' },
+        { id: 'q5', label: '5. Communication Skills', desc: 'Evaluate how clearly and effectively you communicate with your team, manager, and other stakeholders. Include examples of how communication helped improve project outcomes or teamwork.' },
+        { id: 'q6', label: '6. Team Collaboration', desc: 'How well do you collaborate with colleagues and contribute to team goals? Describe how you support team members and participate in collective problem solving.' },
+        { id: 'q7', label: '7. Initiative and Ownership', desc: 'Describe situations where you took initiative beyond your assigned responsibilities. How do you demonstrate ownership of tasks, projects, or issues that arise?' },
+        { id: 'q10', label: '8. Time Management', desc: 'How effectively do you manage your time while balancing multiple responsibilities? Describe strategies you use to stay organized and meet deadlines.' },
+        { id: 'q11', label: '9. Contribution to Project Success', desc: 'Explain how your work contributed to the success of your projects or team objectives. Highlight any measurable results or improvements you helped achieve.' },
+        { id: 'q14', label: '10. Professional Behavior', desc: 'Evaluate how you demonstrate professionalism in the workplace. This includes reliability, respect for colleagues, and maintaining a positive work attitude.' }
     ];
 
-    // Resolve the employee's assigned question set from the latest users array, falling back to user session ID
+    // Resolve the template questions
     const latestUserData = users.find(u => u.id === currentUser.id) || currentUser;
     const assignedSet = latestUserData.questionSetId ? questionSets.find(qs => qs.id === latestUserData.questionSetId) : null;
-    const COMPETENCY_QUESTIONS = assignedSet ? assignedSet.questions : DEFAULT_COMPETENCY_QUESTIONS;
+    const TEMPLATE_QUESTIONS = assignedSet ? assignedSet.questions : DEFAULT_COMPETENCY_QUESTIONS;
 
     const RATING_OPTIONS = [
         { value: 0, label: 'Select Rating...' },
@@ -68,10 +62,20 @@ export default function SelfReview() {
     }, [activeCycles, selectedCycleId]);
 
     const cycle = cycles.find(c => String(c.id) === String(selectedCycleId));
+    const isClosed = cycle?.status === 'closed';
     const isSubmitted = status !== 'new' && status !== 'draft';
-    const isReadOnly = isSubmitted || (status === 'draft' && isLocked) || (cycle?.status === 'closed');
+    const isReadOnly = isSubmitted || (status === 'draft' && isLocked) || isClosed;
 
-
+    // Resolve question set: If cycle is closed, use the saved snapshot. Otherwise, use the live template so HR edits still apply.
+    const existingReview = selfReviews.find(r => String(r.employeeId) === String(currentUser.id) && String(r.cycleId) === String(selectedCycleId));
+    let COMPETENCY_QUESTIONS = TEMPLATE_QUESTIONS;
+    if (isClosed) {
+        if (existingReview?.metadata?.questions && existingReview.metadata.questions.length > 0) {
+            COMPETENCY_QUESTIONS = existingReview.metadata.questions;
+        } else if (existingReview?.status === 'submitted' || existingReview?.status === 'approved') {
+            COMPETENCY_QUESTIONS = DEFAULT_COMPETENCY_QUESTIONS;
+        }
+    }
     // Load existing data when cycle or employee changes
     useEffect(() => {
         if (!selectedCycleId) return;
@@ -180,6 +184,7 @@ export default function SelfReview() {
             competencies,
             feedback,
             learning,
+            questions: COMPETENCY_QUESTIONS, // Snapshot the questions, but only use them when cycle closes
             status: finalStatus
         });
 

@@ -6,7 +6,7 @@ import Icons from '../../components/Icons';
 export default function Evaluate() {
     const { employeeId } = useParams();
     const navigate = useNavigate();
-    const { currentUser, users, cycles, getEvaluation, selfReviews, evaluations, submitEvaluation, calculateScore, getCategory, refreshData, setTopBarAction } = useApp();
+    const { currentUser, users, cycles, getEvaluation, selfReviews, evaluations, submitEvaluation, calculateScore, getCategory, refreshData, setTopBarAction, questionSets } = useApp();
     const team = currentUser.role === 'admin'
         ? users.filter(u => u.role === 'hr' || u.role === 'manager')
         : users.filter(u => u.managerId === currentUser.id);
@@ -46,7 +46,7 @@ export default function Evaluate() {
         { id: 3, label: '💬 Feedback & Summary' }
     ];
 
-    const COMPETENCY_QUESTIONS = [
+    const DEFAULT_COMPETENCY_QUESTIONS = [
         { id: 'q1', label: '1. Quality of Work', desc: 'How consistently do you deliver high-quality work in your role? Describe how you ensure your tasks are completed accurately, efficiently, and meet the required standards.' },
         { id: 'q2', label: '2. Technical Competency', desc: 'Evaluate your technical skills required for your role. How effectively do you apply your technical knowledge to solve problems and complete assigned tasks?' },
         { id: 'q3', label: '3. Problem Solving', desc: 'Describe your ability to analyze problems and find effective solutions. Provide examples where you identified issues and implemented solutions that improved outcomes.' },
@@ -79,6 +79,20 @@ export default function Evaluate() {
     const selfReview = cycle && emp ? selfReviews.find(r => String(r.employeeId) === String(selectedEmp) && String(r.cycleId) === String(cycle.id)) : null;
     const empComps = selfReview?.metadata?.competencies || {};
     const isSelfReviewSubmitted = selfReview?.status === 'submitted' || selfReview?.status === 'approved';
+
+    // Resolve question set: If cycle is closed, use the saved snapshot. Otherwise, use the live template so HR edits still apply.
+    const empAssignedSet = emp?.questionSetId ? questionSets.find(qs => qs.id === emp.questionSetId) : null;
+    const TEMPLATE_QUESTIONS = empAssignedSet ? empAssignedSet.questions : DEFAULT_COMPETENCY_QUESTIONS;
+
+    let COMPETENCY_QUESTIONS = TEMPLATE_QUESTIONS;
+    if (cycle && cycle.status === 'closed') {
+        const srQuestions = selfReview?.metadata?.questions;
+        if (srQuestions && srQuestions.length > 0) {
+            COMPETENCY_QUESTIONS = srQuestions;
+        } else if (isSelfReviewSubmitted) {
+            COMPETENCY_QUESTIONS = DEFAULT_COMPETENCY_QUESTIONS;
+        }
+    }
 
     useEffect(() => {
         if (!selectedCycleId || !selectedEmp) return;
