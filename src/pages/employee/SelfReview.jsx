@@ -28,16 +28,22 @@ export default function SelfReview() {
     const [errors, setErrors] = useState({});
 
     const DEFAULT_COMPETENCY_QUESTIONS = [
-        { id: 'q1', label: '1. Quality of Work', desc: 'How consistently do you deliver high-quality work in your role? Describe how you ensure your tasks are completed accurately, efficiently, and meet the required standards.' },
-        { id: 'q2', label: '2. Technical Competency', desc: 'Evaluate your technical skills required for your role. How effectively do you apply your technical knowledge to solve problems and complete assigned tasks?' },
-        { id: 'q3', label: '3. Problem Solving', desc: 'Describe your ability to analyze problems and find effective solutions. Provide examples where you identified issues and implemented solutions that improved outcomes.' },
-        { id: 'q4', label: '4. Productivity and Efficiency', desc: 'How effectively do you manage your workload and meet deadlines? Explain how you prioritize tasks and maintain productivity throughout the review period.' },
-        { id: 'q5', label: '5. Communication Skills', desc: 'Evaluate how clearly and effectively you communicate with your team, manager, and other stakeholders. Include examples of how communication helped improve project outcomes or teamwork.' },
-        { id: 'q6', label: '6. Team Collaboration', desc: 'How well do you collaborate with colleagues and contribute to team goals? Describe how you support team members and participate in collective problem solving.' },
-        { id: 'q7', label: '7. Initiative and Ownership', desc: 'Describe situations where you took initiative beyond your assigned responsibilities. How do you demonstrate ownership of tasks, projects, or issues that arise?' },
-        { id: 'q10', label: '8. Time Management', desc: 'How effectively do you manage your time while balancing multiple responsibilities? Describe strategies you use to stay organized and meet deadlines.' },
-        { id: 'q11', label: '9. Contribution to Project Success', desc: 'Explain how your work contributed to the success of your projects or team objectives. Highlight any measurable results or improvements you helped achieve.' },
-        { id: 'q14', label: '10. Professional Behavior', desc: 'Evaluate how you demonstrate professionalism in the workplace. This includes reliability, respect for colleagues, and maintaining a positive work attitude.' }
+        // Section: Job-specific
+        { id: 'q1', label: 'What do you think sets you apart in this role?', desc: 'Reflect on the unique skills, experiences, or qualities you bring to this position that differentiate you from others.', section: 'Job-specific' },
+        { id: 'q2', label: 'How do you stay updated with industry trends?', desc: 'Describe the methods, resources, or habits you use to keep your knowledge current and relevant to your field.', section: 'Job-specific' },
+        { id: 'q3', label: 'Can you walk me through a recent project?', desc: 'Share a recent project you are proud of — include your role, the challenges faced, and the outcome achieved.', section: 'Job-specific' },
+        // Section: Problem-solving
+        { id: 'q4', label: 'Describe a tough problem you solved. How did you approach it?', desc: 'Think of a complex challenge you encountered and walk through your structured thinking and resolution process.', section: 'Problem-solving' },
+        { id: 'q5', label: 'How do you prioritize tasks when faced with multiple deadlines?', desc: 'Explain your approach to managing competing priorities and how you ensure the most important work gets done first.', section: 'Problem-solving' },
+        { id: 'q6', label: 'What is your process for making tough decisions?', desc: 'Describe how you weigh options, gather information, and commit to a course of action under pressure or uncertainty.', section: 'Problem-solving' },
+        // Section: Leadership & Initiative
+        { id: 'q7', label: 'Do you lead or participate in any initiatives outside work?', desc: 'Share examples of leadership, volunteering, or community initiatives that reflect your drive beyond your core role.', section: 'Leadership & Initiative' },
+        { id: 'q8', label: 'How do you motivate your team or colleagues?', desc: 'Describe strategies or examples of how you inspire and uplift others to perform at their best.', section: 'Leadership & Initiative' },
+        { id: 'q9', label: 'Can you give an example of taking a calculated risk?', desc: 'Describe a situation where you stepped beyond your comfort zone with a deliberate risk and what the outcome was.', section: 'Leadership & Initiative' },
+        // Section: Adaptability & Resilience
+        { id: 'q10', label: 'How do you handle change or unexpected setbacks?', desc: 'Describe your mindset and approach when plans change unexpectedly or a project hits a major obstacle.', section: 'Adaptability & Resilience' },
+        { id: 'q11', label: 'Can you describe a situation where you adapted to a new process?', desc: 'Share an example where you successfully transitioned to a new workflow, tool, or team structure.', section: 'Adaptability & Resilience' },
+        { id: 'q12', label: 'How do you bounce back from failures?', desc: 'Reflect on a past failure or setback and describe the steps you took to recover, learn, and move forward.', section: 'Adaptability & Resilience' },
     ];
 
     // Resolve the employee's assigned question set, falling back to the default list
@@ -206,12 +212,42 @@ export default function SelfReview() {
     const mngScore = evaluation ? getScore(currentUser.id, selectedCycleId) : null;
 
     const renderCompetenciesTab = () => {
+        // Group questions by section if they have a section field
+        const sections = [];
+        const seen = new Set();
+        COMPETENCY_QUESTIONS.forEach(q => {
+            const sec = q.section || 'General';
+            if (!seen.has(sec)) { seen.add(sec); sections.push(sec); }
+        });
+        const grouped = sections.map(sec => ({
+            title: sec,
+            questions: COMPETENCY_QUESTIONS.filter(q => (q.section || 'General') === sec)
+        }));
+
+        const SECTION_ICONS = { 'Job-specific': '💼', 'Problem-solving': '🧩', 'Leadership & Initiative': '🚀', 'Adaptability & Resilience': '🌱', 'General': '📋' };
+        const SECTION_COLORS = { 'Job-specific': 'var(--blue-light)', 'Problem-solving': 'var(--purple)', 'Leadership & Initiative': '#10b981', 'Adaptability & Resilience': '#f59e0b', 'General': 'var(--text-secondary)' };
+
         return (
             <div style={{ paddingBottom: '40px' }}>
-                <div className="card-title" style={{ marginBottom: '16px' }}>Detailed Self-Assessment</div>
-                <p className="section-subtitle" style={{ marginBottom: '24px' }}>Please rate yourself and view manager feedback (if available) for each competency.</p>
+                <div className="card-title" style={{ marginBottom: '8px' }}>Detailed Self-Assessment</div>
+                <p className="section-subtitle" style={{ marginBottom: '24px' }}>Rate yourself and view manager feedback for each question.</p>
 
-                {COMPETENCY_QUESTIONS.map((q, index) => (
+                {grouped.map(({ title, questions }) => (
+                    <div key={title} style={{ marginBottom: '40px' }}>
+                        {/* Section Header */}
+                        <div style={{
+                            display: 'flex', alignItems: 'center', gap: '10px',
+                            padding: '10px 16px', borderRadius: '10px', marginBottom: '20px',
+                            background: 'var(--bg-secondary)', border: '1px solid var(--border)'
+                        }}>
+                            <span style={{ fontSize: '20px' }}>{SECTION_ICONS[title] || '📋'}</span>
+                            <div>
+                                <div style={{ fontWeight: 800, fontSize: '15px', color: SECTION_COLORS[title] || 'var(--text-primary)' }}>{title}</div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{questions.length} questions</div>
+                            </div>
+                        </div>
+
+                        {questions.map((q, index) => (
                     <div key={q.id} className="card" style={{ marginBottom: '32px', padding: '24px' }}>
                         <div style={{ fontWeight: 700, fontSize: '18px', color: 'var(--blue-light)', marginBottom: '8px' }}>{q.label} <span style={{ color: '#ef4444', fontSize: '15px' }}>*</span></div>
                         <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '24px', lineHeight: '1.5' }}>{q.desc}</div>
@@ -317,6 +353,8 @@ export default function SelfReview() {
                                 </div>
                             </div>
                         </div>
+                    </div>
+                        ))}
                     </div>
                 ))}
             </div>

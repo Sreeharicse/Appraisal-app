@@ -183,52 +183,85 @@ export default function QuestionSets() {
                 </div>
             </div>
 
-            {/* Questions Editor */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {formQuestions.map((q, i) => (
-                    <div key={q.id} className="card" style={{ borderLeft: '4px solid var(--purple)', paddingLeft: '20px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-                            <div style={{
-                                width: '28px', height: '28px', borderRadius: '8px',
-                                background: 'var(--purple)', color: '#fff',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                fontSize: '12px', fontWeight: 800, flexShrink: 0
-                            }}>
-                                {i + 1}
-                            </div>
-                            <div style={{ fontWeight: 700, fontSize: '13px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                Question {i + 1} of 10
-                            </div>
-                        </div>
+            {/* Questions Editor — grouped by section */}
+            {(() => {
+                const sections = [];
+                const seen = new Set();
+                formQuestions.forEach(q => {
+                    const sec = q.section || 'General';
+                    if (!seen.has(sec)) { seen.add(sec); sections.push(sec); }
+                });
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                            <div>
-                                <label className="form-label" style={{ fontSize: '12px' }}>Label (short title)</label>
-                                <input
-                                    className="form-input"
-                                    value={q.label}
-                                    onChange={e => updateQuestion(i, 'label', e.target.value)}
-                                    placeholder={`${i + 1}. Question Title`}
-                                    disabled={isReadOnly}
-                                    style={{ background: 'var(--bg-secondary)', fontWeight: 600 }}
-                                />
+                return sections.map(sec => {
+                    const sectionQs = formQuestions.filter(q => (q.section || 'General') === sec);
+                    const SECTION_ICONS = { 'Job-specific': '💼', 'Problem-solving': '🧩', 'Leadership & Initiative': '🚀', 'Adaptability & Resilience': '🌱', 'General': '📋' };
+                    const SECTION_COLORS = { 'Job-specific': 'var(--blue-light)', 'Problem-solving': 'var(--purple)', 'Leadership & Initiative': '#10b981', 'Adaptability & Resilience': '#f59e0b', 'General': 'var(--text-secondary)' };
+
+                    return (
+                        <div key={sec} style={{ marginBottom: '36px' }}>
+                            {/* Section Header */}
+                            <div style={{
+                                display: 'flex', alignItems: 'center', gap: '10px',
+                                padding: '10px 16px', borderRadius: '10px', marginBottom: '16px',
+                                background: 'var(--bg-secondary)', border: `1px solid ${SECTION_COLORS[sec] || 'var(--border)'}22`
+                            }}>
+                                <span style={{ fontSize: '20px' }}>{SECTION_ICONS[sec] || '📋'}</span>
+                                <div style={{ fontWeight: 800, fontSize: '14px', color: SECTION_COLORS[sec] || 'var(--text-primary)' }}>{sec}</div>
+                                <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginLeft: 'auto' }}>{sectionQs.length} questions</span>
                             </div>
-                            <div>
-                                <label className="form-label" style={{ fontSize: '12px' }}>Description (prompt for employee)</label>
-                                <textarea
-                                    className="form-input"
-                                    value={q.desc}
-                                    onChange={e => updateQuestion(i, 'desc', e.target.value)}
-                                    placeholder="Enter the full question prompt that the employee will see..."
-                                    disabled={isReadOnly}
-                                    rows={3}
-                                    style={{ background: 'var(--bg-secondary)', resize: 'vertical', minHeight: '72px' }}
-                                />
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                {sectionQs.map((q) => {
+                                    const index = formQuestions.indexOf(q);
+                                    return (
+                                        <div key={q.id} className="card" style={{ borderLeft: `4px solid ${SECTION_COLORS[sec] || 'var(--purple)'}`, paddingLeft: '20px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                                                <div style={{
+                                                    width: '28px', height: '28px', borderRadius: '8px',
+                                                    background: SECTION_COLORS[sec] || 'var(--purple)', color: '#fff',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    fontSize: '12px', fontWeight: 800, flexShrink: 0
+                                                }}>
+                                                    {index + 1}
+                                                </div>
+                                                <div style={{ fontWeight: 700, fontSize: '13px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                                    Question {index + 1}
+                                                </div>
+                                            </div>
+
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                                <div>
+                                                    <label className="form-label" style={{ fontSize: '12px' }}>Label (short title)</label>
+                                                    <input
+                                                        className="form-input"
+                                                        value={q.label}
+                                                        onChange={e => updateQuestion(index, 'label', e.target.value)}
+                                                        placeholder="Question Title"
+                                                        disabled={isReadOnly}
+                                                        style={{ background: 'var(--bg-secondary)', fontWeight: 600 }}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="form-label" style={{ fontSize: '12px' }}>Description (prompt for employee)</label>
+                                                    <textarea
+                                                        className="form-input"
+                                                        value={q.desc}
+                                                        onChange={e => updateQuestion(index, 'desc', e.target.value)}
+                                                        placeholder="Enter the full question prompt that the employee will see..."
+                                                        disabled={isReadOnly}
+                                                        rows={3}
+                                                        style={{ background: 'var(--bg-secondary)', resize: 'vertical', minHeight: '72px' }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
-                    </div>
-                ))}
-            </div>
+                    );
+                });
+            })()}
 
             {!isReadOnly && (
                 <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end' }}>
