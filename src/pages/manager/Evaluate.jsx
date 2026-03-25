@@ -65,11 +65,6 @@ export default function Evaluate() {
         { id: 'q12', label: 'How do you bounce back from failures?', desc: 'Reflect on a past failure and describe the steps you took to recover, learn, and move forward.', section: 'Adaptability & Resilience' },
     ];
 
-    // Resolve question set from the selected employee's assigned question set
-    const selectedEmpData = users.find(u => u.id === selectedEmp);
-    const empAssignedSet = selectedEmpData?.questionSetId ? questionSets.find(qs => qs.id === selectedEmpData.questionSetId) : null;
-    const COMPETENCY_QUESTIONS = empAssignedSet ? empAssignedSet.questions : DEFAULT_COMPETENCY_QUESTIONS;
-
     const RATING_OPTIONS = [
         { value: 0, label: 'Select Rating...' },
         { value: 1, label: '1 — Poor' },
@@ -90,6 +85,17 @@ export default function Evaluate() {
     const selfReview = cycle && emp ? selfReviews.find(r => String(r.employeeId) === String(selectedEmp) && String(r.cycleId) === String(cycle.id)) : null;
     const empComps = selfReview?.metadata?.competencies || {};
     const isSelfReviewSubmitted = selfReview?.status === 'submitted' || selfReview?.status === 'approved';
+
+    // Resolve question set:
+    // 1. Template: from the selected employee's assigned question set
+    const selectedEmpData = users.find(u => u.id === selectedEmp);
+    const empAssignedSet = selectedEmpData?.questionSetId ? questionSets.find(qs => qs.id === selectedEmpData.questionSetId) : null;
+    const TEMPLATE_QUESTIONS = empAssignedSet ? empAssignedSet.questions : DEFAULT_COMPETENCY_QUESTIONS;
+    
+    // 2. Snapshot: if a self-review exists with a saved question list, ALWAYS use that snapshot.
+    // This ensures managers review exactly what the employee answered, even if the HR template was edited later.
+    const srQuestions = selfReview?.metadata?.questions;
+    const COMPETENCY_QUESTIONS = (srQuestions && srQuestions.length > 0) ? srQuestions : TEMPLATE_QUESTIONS;
 
     useEffect(() => {
         if (!selectedCycleId || !selectedEmp) return;

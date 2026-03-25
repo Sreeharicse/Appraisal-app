@@ -46,10 +46,15 @@ export default function SelfReview() {
         { id: 'q12', label: 'How do you bounce back from failures?', desc: 'Reflect on a past failure or setback and describe the steps you took to recover, learn, and move forward.', section: 'Adaptability & Resilience' },
     ];
 
-    // Resolve the employee's assigned question set from the latest users array, falling back to user session ID
+    // Resolve questions:
+    // - For an active (new) cycle with no submission: use the employee's current assigned template
+    // - For a submitted/draft cycle: use the snapshot stored in metadata to preserve the original labels
+    const [snapshotQuestions, setSnapshotQuestions] = useState(null);
     const latestUserData = users.find(u => u.id === currentUser.id) || currentUser;
     const assignedSet = latestUserData.questionSetId ? questionSets.find(qs => qs.id === latestUserData.questionSetId) : null;
-    const COMPETENCY_QUESTIONS = assignedSet ? assignedSet.questions : DEFAULT_COMPETENCY_QUESTIONS;
+    const TEMPLATE_QUESTIONS = assignedSet ? assignedSet.questions : DEFAULT_COMPETENCY_QUESTIONS;
+    // Use snapshot if available (closed/submitted review), otherwise live template
+    const COMPETENCY_QUESTIONS = snapshotQuestions || TEMPLATE_QUESTIONS;
 
     const RATING_OPTIONS = [
         { value: 0, label: 'Select Rating...' },
@@ -80,33 +85,36 @@ export default function SelfReview() {
         const existing = getSelfReview(currentUser.id, selectedCycleId);
 
         if (existing) {
-
-
             const meta = existing.metadata || {};
 
-            // Initialize competencies with 10 questions if not present
+            // Use the stored question snapshot if present (closed/submitted cycle)
+            if (meta.questions && meta.questions.length > 0) {
+                setSnapshotQuestions(meta.questions);
+            } else {
+                setSnapshotQuestions(null); // Fall back to live template
+            }
+
+            // Initialize competencies with stored answers
             const loadedComps = meta.competencies || {};
             const initialComps = {};
-            COMPETENCY_QUESTIONS.forEach(q => {
+            const questionsForInit = (meta.questions && meta.questions.length > 0) ? meta.questions : TEMPLATE_QUESTIONS;
+            questionsForInit.forEach(q => {
                 initialComps[q.id] = loadedComps[q.id] || { rating: 0, comment: '' };
             });
             setCompetencies(initialComps);
 
             setFeedback(meta.feedback || '');
             setLearning(meta.learning || '');
-
             setStatus(meta.status || 'submitted');
             setSubmitted(true);
             setIsLocked(true);
         } else {
-
-
+            setSnapshotQuestions(null); // New review — use live template
             const initialComps = {};
-            COMPETENCY_QUESTIONS.forEach(q => {
+            TEMPLATE_QUESTIONS.forEach(q => {
                 initialComps[q.id] = { rating: 0, comment: '' };
             });
             setCompetencies(initialComps);
-
             setFeedback('');
             setLearning('');
             setStatus('new');
@@ -176,10 +184,10 @@ export default function SelfReview() {
         await submitSelfReview({
             cycleId: selectedCycleId,
             employeeId: currentUser.id,
-
             competencies,
             feedback,
             learning,
+            questions: COMPETENCY_QUESTIONS,  // Snapshot the active question list
             status: finalStatus
         });
 

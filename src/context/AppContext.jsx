@@ -961,7 +961,8 @@ export function AppProvider({ children }) {
             feedback: encrypt(review.feedback || ''),
             achievements: encrypt(review.achievements || ''),
             learning: encrypt(review.learning || ''),
-            status: review.status || 'draft'
+            status: review.status || 'draft',
+            questions: review.questions || [],  // Snapshot of the active question list
         };
 
         const packedComments = JSON.stringify(metadataForStorage);
@@ -972,7 +973,8 @@ export function AppProvider({ children }) {
             feedback: review.feedback || '',
             achievements: review.achievements || '',
             learning: review.learning || '',
-            status: review.status || 'draft'
+            status: review.status || 'draft',
+            questions: review.questions || [],  // Snapshot of the active question list
         };
 
 
