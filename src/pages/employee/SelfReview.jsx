@@ -3,7 +3,7 @@ import { useApp } from '../../context/AppContext';
 import Icons from '../../components/Icons';
 
 export default function SelfReview() {
-    const { currentUser, cycles, evaluations = [], getSelfReview, submitSelfReview, getScore, refreshData, setTopBarAction } = useApp();
+    const { currentUser, cycles, evaluations = [], getSelfReview, submitSelfReview, getScore, refreshData, setTopBarAction, questionSets } = useApp();
 
     useEffect(() => {
         refreshData();
@@ -27,7 +27,7 @@ export default function SelfReview() {
     const [popupMessage, setPopupMessage] = useState({ title: '', body: '' });
     const [errors, setErrors] = useState({});
 
-    const COMPETENCY_QUESTIONS = [
+    const DEFAULT_COMPETENCY_QUESTIONS = [
         { id: 'q1', label: '1. Quality of Work', desc: 'How consistently do you deliver high-quality work in your role? Describe how you ensure your tasks are completed accurately, efficiently, and meet the required standards.' },
         { id: 'q2', label: '2. Technical Competency', desc: 'Evaluate your technical skills required for your role. How effectively do you apply your technical knowledge to solve problems and complete assigned tasks?' },
         { id: 'q3', label: '3. Problem Solving', desc: 'Describe your ability to analyze problems and find effective solutions. Provide examples where you identified issues and implemented solutions that improved outcomes.' },
@@ -39,6 +39,10 @@ export default function SelfReview() {
         { id: 'q11', label: '9. Contribution to Project Success', desc: 'Explain how your work contributed to the success of your projects or team objectives. Highlight any measurable results or improvements you helped achieve.' },
         { id: 'q14', label: '10. Professional Behavior', desc: 'Evaluate how you demonstrate professionalism in the workplace. This includes reliability, respect for colleagues, and maintaining a positive work attitude.' }
     ];
+
+    // Resolve the employee's assigned question set, falling back to the default list
+    const assignedSet = currentUser.questionSetId ? questionSets.find(qs => qs.id === currentUser.questionSetId) : null;
+    const COMPETENCY_QUESTIONS = assignedSet ? assignedSet.questions : DEFAULT_COMPETENCY_QUESTIONS;
 
     const RATING_OPTIONS = [
         { value: 0, label: 'Select Rating...' },

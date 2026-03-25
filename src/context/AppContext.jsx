@@ -39,6 +39,7 @@ export function AppProvider({ children }) {
     const [approvals, setApprovals] = useState([]);
     const [notifications, setNotifications] = useState([]);
     const [topBarAction, setTopBarAction] = useState(null); // { label, icon, onClick, type }
+    const [questionSets, setQuestionSets] = useState([]);
     const [loading, setLoading] = useState(true);
     const [theme, setTheme] = useState(localStorage.getItem('app-theme') || 'dark');
     const [encryptionKey, _setEncryptionKey] = useState(localStorage.getItem('admin_encryption_key') || 'techxl-secure-2026');
@@ -95,6 +96,7 @@ export function AppProvider({ children }) {
             notificationsData,
             departmentsData,
             designationsData,
+            questionSetsData,
         ] = await Promise.all([
             fetchTable('profiles'),
             supabase.from('cycles').select('*').order('created_at', { ascending: false }).then(r => r.data || []),
@@ -104,6 +106,7 @@ export function AppProvider({ children }) {
             supabase.from('notifications').select('*').order('created_at', { ascending: false }).then(r => r.data || []),
             fetchTable('departments'),
             fetchTable('designations'),
+            fetchTable('question_sets'),
         ]);
 
         // Map snake_case DB columns → camelCase used by the UI
@@ -116,6 +119,14 @@ export function AppProvider({ children }) {
             designation: p.designation,
             avatar: p.avatar,
             managerId: p.manager_id,
+            questionSetId: p.question_set_id || null,
+        })));
+        setQuestionSets((questionSetsData || []).map(qs => ({
+            id: qs.id,
+            name: qs.name,
+            description: qs.description,
+            questions: qs.questions || [],
+            createdAt: qs.created_at,
         })));
         setDepartments((departmentsData || []).map(d => ({ id: d.id, name: d.name })));
         setDesignations((designationsData || []).map(d => ({ id: d.id, name: d.name })));
@@ -656,6 +667,7 @@ export function AppProvider({ children }) {
         if (updates.designation !== undefined) dbUpdates.designation = updates.designation;
         if (updates.avatar !== undefined) dbUpdates.avatar = updates.avatar;
         if (updates.managerId !== undefined) dbUpdates.manager_id = updates.managerId || null;
+        if (updates.questionSetId !== undefined) dbUpdates.question_set_id = updates.questionSetId || null;
 
         const { error } = await supabase.from('profiles').update(dbUpdates).eq('id', id);
 
@@ -678,6 +690,37 @@ export function AppProvider({ children }) {
         }
         // Always update local state
         setUsers(p => p.filter(u => u.id !== id));
+    };
+
+    // ──── Question Set CRUD ────
+    const createQuestionSet = async (data) => {
+        const { data: result, error } = await supabase.from('question_sets').insert({
+            name: data.name,
+            description: data.description || '',
+            questions: data.questions,
+            created_by: currentUser.id,
+        }).select().single();
+        if (error) { console.error('createQuestionSet:', error.message); return { success: false, error: error.message }; }
+        setQuestionSets(p => [...p, { id: result.id, name: result.name, description: result.description, questions: result.questions, createdAt: result.created_at }]);
+        return { success: true, data: result };
+    };
+
+    const updateQuestionSet = async (id, data) => {
+        const { error } = await supabase.from('question_sets').update({
+            name: data.name,
+            description: data.description,
+            questions: data.questions,
+        }).eq('id', id);
+        if (error) { console.error('updateQuestionSet:', error.message); return { success: false, error: error.message }; }
+        setQuestionSets(p => p.map(qs => qs.id === id ? { ...qs, ...data } : qs));
+        return { success: true };
+    };
+
+    const deleteQuestionSet = async (id) => {
+        const { error } = await supabase.from('question_sets').delete().eq('id', id);
+        if (error) { console.error('deleteQuestionSet:', error.message); return { success: false, error: error.message }; }
+        setQuestionSets(p => p.filter(qs => qs.id !== id));
+        return { success: true };
     };
 
     // ──── Notifications ────
@@ -1392,6 +1435,7 @@ export function AppProvider({ children }) {
             calculateScore, getCategory,
             createNotification, markNotificationAsRead,
             showDecrypted, setShowDecrypted, canDecrypt,
+            questionSets, createQuestionSet, updateQuestionSet, deleteQuestionSet,
         }}>
             {children}
         </AppContext.Provider>

@@ -30,6 +30,7 @@ const HR_LINKS = [
     { to: '/hr/cycles', label: 'Appraisal Cycles', icon: <Icons.Cycles /> },
     { to: '/hr/approvals', label: 'Approvals', icon: <Icons.Check /> },
     { to: '/hr/reports', label: 'Reports', icon: <Icons.Chart /> },
+    { to: '/hr/question-sets', label: 'Question Sets', icon: <Icons.Edit /> },
 ];
 
 // ADMIN LINKS - ALL links + Admin settings
@@ -41,6 +42,7 @@ const ADMIN_LINKS = [
     { to: '/hr/cycles', label: 'Appraisal Cycles', icon: <Icons.Cycles /> },
     { to: '/hr/approvals', label: 'Approvals', icon: <Icons.Check /> },
     { to: '/hr/reports', label: 'Reports', icon: <Icons.Chart /> },
+    { to: '/hr/question-sets', label: 'Question Sets', icon: <Icons.Edit /> },
     { to: '/admin/settings', label: 'Admin Settings', icon: <Icons.Edit /> },
 ];
 

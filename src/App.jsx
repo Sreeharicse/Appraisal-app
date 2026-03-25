@@ -13,6 +13,7 @@ import Cycles from './pages/hr/Cycles';
 import Approvals from './pages/hr/Approvals';
 import Reports from './pages/hr/Reports';
 import HRCycleDetail from './pages/hr/CycleDetail';
+import QuestionSets from './pages/hr/QuestionSets';
 
 // Admin pages
 import AdminSettings from './pages/admin/Settings';
@@ -74,6 +75,7 @@ function AppRoutes() {
       <Route path="/hr/cycles" element={<ProtectedRoute allowedRoles={['hr']}><Layout><Cycles /></Layout></ProtectedRoute>} />
       <Route path="/hr/approvals" element={<ProtectedRoute allowedRoles={['hr', 'admin']}><Layout><Approvals /></Layout></ProtectedRoute>} />
       <Route path="/hr/reports" element={<ProtectedRoute allowedRoles={['hr']}><Layout><Reports /></Layout></ProtectedRoute>} />
+      <Route path="/hr/question-sets" element={<ProtectedRoute allowedRoles={['hr', 'admin']}><Layout><QuestionSets /></Layout></ProtectedRoute>} />
 
       {/* Admin Routes */}
       <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={['admin']}><Layout><AdminSettings /></Layout></ProtectedRoute>} />

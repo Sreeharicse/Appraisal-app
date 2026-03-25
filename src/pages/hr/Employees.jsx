@@ -52,12 +52,12 @@ const ROLE_BADGE = {
 
 /* ═══════════════════════════════════════════════════════════ */
 export default function Employees() {
-    const { currentUser, users, addUser, updateUser, deleteUser, refreshData, departments, designations } = useApp();
+    const { currentUser, users, addUser, updateUser, deleteUser, refreshData, departments, designations, questionSets } = useApp();
     const isManager = currentUser.role === 'manager';
 
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
-    const [form, setForm] = useState({ name: '', email: '', role: 'employee', designation: '', department: '', managerId: '' });
+    const [form, setForm] = useState({ name: '', email: '', role: 'employee', designation: '', department: '', managerId: '', questionSetId: '' });
     const [search, setSearch] = useState('');
     const [toast, setToast] = useState(null); // { type: 'success'|'error', msg: string }
 
@@ -94,7 +94,7 @@ export default function Employees() {
 
     const openEdit = (u) => {
         setEditing(u);
-        setForm({ name: u.name, email: u.email, role: u.role, designation: u.designation || '', department: u.department || '', managerId: u.managerId || '' });
+        setForm({ name: u.name, email: u.email, role: u.role, designation: u.designation || '', department: u.department || '', managerId: u.managerId || '', questionSetId: u.questionSetId || '' });
         resetModal();
         setShowModal(true);
     };
@@ -458,14 +458,24 @@ export default function Employees() {
                                 </div>
                             </div>
 
-                            {/* ── Row 3: Reporting Manager ── */}
-                            <div className="form-group" style={{ marginBottom: 0 }}>
-                                <label className="form-label">Reporting Manager</label>
-                                <select className="form-select" value={form.managerId}
-                                    onChange={e => setForm(p => ({ ...p, managerId: e.target.value }))}>
-                                    <option value="">None</option>
-                                    {managers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                                </select>
+                            {/* ── Row 3: Reporting Manager + Question Set ── */}
+                            <div className="form-grid">
+                                <div className="form-group">
+                                    <label className="form-label">Reporting Manager</label>
+                                    <select className="form-select" value={form.managerId}
+                                        onChange={e => setForm(p => ({ ...p, managerId: e.target.value }))}>
+                                        <option value="">None</option>
+                                        {managers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                                    </select>
+                                </div>
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label className="form-label">📋 Question Set</label>
+                                    <select className="form-select" value={form.questionSetId}
+                                        onChange={e => setForm(p => ({ ...p, questionSetId: e.target.value }))}>
+                                        <option value="">-- Default (Standard Set) --</option>
+                                        {questionSets.map(qs => <option key={qs.id} value={qs.id}>{qs.name}</option>)}
+                                    </select>
+                                </div>
                             </div>
                         </div>
 
