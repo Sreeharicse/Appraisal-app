@@ -122,6 +122,7 @@ export function AppProvider({ children }) {
             name: qs.name,
             description: qs.description,
             questions: qs.questions || [],
+            targetDesignations: qs.target_designations || [],
             createdAt: qs.created_at,
         })));
         setDepartments((departmentsData || []).map(d => ({ id: d.id, name: d.name })));
@@ -698,10 +699,11 @@ export function AppProvider({ children }) {
             name: data.name,
             description: data.description || '',
             questions: data.questions,
+            target_designations: data.targetDesignations || [],
             created_by: currentUser.id,
         }).select().single();
         if (error) { console.error('createQuestionSet:', error.message); return { success: false, error: error.message }; }
-        setQuestionSets(p => [...p, { id: result.id, name: result.name, description: result.description, questions: result.questions, createdAt: result.created_at }]);
+        setQuestionSets(p => [...p, { id: result.id, name: result.name, description: result.description, questions: result.questions, targetDesignations: result.target_designations, createdAt: result.created_at }]);
         return { success: true, data: result };
     };
 
@@ -710,6 +712,7 @@ export function AppProvider({ children }) {
             name: data.name,
             description: data.description,
             questions: data.questions,
+            target_designations: data.targetDesignations || [],
         }).eq('id', id);
         if (error) { console.error('updateQuestionSet:', error.message); return { success: false, error: error.message }; }
         setQuestionSets(p => p.map(qs => qs.id === id ? { ...qs, ...data } : qs));

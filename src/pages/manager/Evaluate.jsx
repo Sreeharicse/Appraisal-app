@@ -80,8 +80,11 @@ export default function Evaluate() {
     const empComps = selfReview?.metadata?.competencies || {};
     const isSelfReviewSubmitted = selfReview?.status === 'submitted' || selfReview?.status === 'approved';
 
-    // Resolve question set: If cycle is closed, use the saved snapshot. Otherwise, use the live template so HR edits still apply.
-    const empAssignedSet = emp?.questionSetId ? questionSets.find(qs => qs.id === emp.questionSetId) : null;
+    // Resolve the template questions based on Job Title (Designation)
+    const empAssignedSet = emp?.designation 
+        ? questionSets.find(qs => qs.targetDesignations?.includes(emp.designation))
+        : null;
+
     const TEMPLATE_QUESTIONS = empAssignedSet ? empAssignedSet.questions : DEFAULT_COMPETENCY_QUESTIONS;
 
     let COMPETENCY_QUESTIONS = TEMPLATE_QUESTIONS;

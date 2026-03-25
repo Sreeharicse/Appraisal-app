@@ -40,9 +40,14 @@ export default function SelfReview() {
         { id: 'q14', label: '10. Professional Behavior', desc: 'Evaluate how you demonstrate professionalism in the workplace. This includes reliability, respect for colleagues, and maintaining a positive work attitude.' }
     ];
 
-    // Resolve the template questions
+    // Resolve the template questions based on Job Title (Designation)
     const latestUserData = users.find(u => u.id === currentUser.id) || currentUser;
-    const assignedSet = latestUserData.questionSetId ? questionSets.find(qs => qs.id === latestUserData.questionSetId) : null;
+    
+    // Look for a question set that includes this user's designation
+    const assignedSet = latestUserData.designation 
+        ? questionSets.find(qs => qs.targetDesignations?.includes(latestUserData.designation))
+        : null;
+
     const TEMPLATE_QUESTIONS = assignedSet ? assignedSet.questions : DEFAULT_COMPETENCY_QUESTIONS;
 
     const RATING_OPTIONS = [

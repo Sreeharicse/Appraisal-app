@@ -21,7 +21,7 @@ const DEFAULT_QUESTIONS = [
 ];
 
 export default function QuestionSets() {
-    const { questionSets, createQuestionSet, updateQuestionSet, deleteQuestionSet, currentUser } = useApp();
+    const { questionSets, createQuestionSet, updateQuestionSet, deleteQuestionSet, currentUser, designations } = useApp();
 
     const [view, setView] = useState('list'); // 'list' | 'edit'
     const [editingSet, setEditingSet] = useState(null);
@@ -29,6 +29,7 @@ export default function QuestionSets() {
     // Form state
     const [formName, setFormName] = useState('');
     const [formDesc, setFormDesc] = useState('');
+    const [formDesignations, setFormDesignations] = useState([]);
     const [formQuestions, setFormQuestions] = useState([...DEFAULT_QUESTIONS]);
     const [saving, setSaving] = useState(false);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -39,6 +40,7 @@ export default function QuestionSets() {
         setEditingSet(null);
         setFormName('');
         setFormDesc('');
+        setFormDesignations([]);
         setFormQuestions(DEFAULT_QUESTIONS.map(q => ({ ...q, label: '', desc: '' })));
         setView('edit');
     };
@@ -47,6 +49,7 @@ export default function QuestionSets() {
         setEditingSet(qs);
         setFormName(qs.name);
         setFormDesc(qs.description || '');
+        setFormDesignations(qs.targetDesignations || []);
         // Load all questions from the set without any trimming
         const qs_copy = [...(qs.questions || [])];
         setFormQuestions(qs_copy);
@@ -60,7 +63,12 @@ export default function QuestionSets() {
     const handleSave = async () => {
         if (!formName.trim()) return alert('Please enter a set name.');
         setSaving(true);
-        const payload = { name: formName.trim(), description: formDesc.trim(), questions: formQuestions };
+        const payload = { 
+            name: formName.trim(), 
+            description: formDesc.trim(), 
+            questions: formQuestions,
+            targetDesignations: formDesignations
+        };
         let result;
         if (editingSet) {
             result = await updateQuestionSet(editingSet.id, payload);
@@ -111,11 +119,28 @@ export default function QuestionSets() {
                                 <div style={{ flex: 1 }}>
                                     <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--text-primary)' }}>{qs.name}</div>
                                     {qs.description && <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>{qs.description}</div>}
-                                    <div style={{ marginTop: '10px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                        {(qs.questions || []).slice(0, 5).map((q, i) => (
-                                            <span key={i} className="badge badge-gray" style={{ fontSize: '11px' }}>{q.label?.split('.')[0] ? `Q${i + 1}` : `Q${i + 1}`}: {q.label?.split('. ').slice(1).join('. ')?.substring(0, 24)}</span>
-                                        ))}
-                                        {(qs.questions || []).length > 5 && <span className="badge badge-gray" style={{ fontSize: '11px' }}>+{(qs.questions || []).length - 5} more</span>}
+                                    
+                                    <div style={{ marginTop: '10px', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                                        {/* Target Designations Summary */}
+                                        {qs.targetDesignations && qs.targetDesignations.length > 0 && (
+                                            <div style={{ display: 'flex', gap: '4px', marginRight: '8px' }}>
+                                                {qs.targetDesignations.slice(0, 3).map((tg, i) => (
+                                                    <span key={i} className="badge badge-primary" style={{ fontSize: '10px', background: 'rgba(59, 130, 246, 0.1)', color: 'var(--blue-light)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                                                        💼 {tg}
+                                                    </span>
+                                                ))}
+                                                {qs.targetDesignations.length > 3 && (
+                                                    <span className="badge badge-gray" style={{ fontSize: '10px' }}>+{qs.targetDesignations.length - 3} more</span>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        <div style={{ display: 'flex', gap: '4px' }}>
+                                            {(qs.questions || []).slice(0, 3).map((q, i) => (
+                                                <span key={i} className="badge badge-gray" style={{ fontSize: '11px' }}>Q{i + 1}</span>
+                                            ))}
+                                            {(qs.questions || []).length > 3 && <span className="badge badge-gray" style={{ fontSize: '11px' }}>+{(qs.questions || []).length - 3} more</span>}
+                                        </div>
                                     </div>
                                 </div>
                                 <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
@@ -186,6 +211,29 @@ export default function QuestionSets() {
                             disabled={isReadOnly}
                             style={{ background: 'var(--bg-secondary)' }}
                         />
+                    </div>
+
+                    <div>
+                        <label className="form-label" style={{ marginBottom: '8px', display: 'block' }}>Target Job Titles (Designations) *</label>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px', padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                            {designations.map(d => (
+                                <label key={d.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: 'var(--text-primary)' }}>
+                                    <input 
+                                        type="checkbox" 
+                                        checked={formDesignations.includes(d.name)}
+                                        disabled={isReadOnly}
+                                        onChange={(e) => {
+                                            if (e.target.checked) setFormDesignations(p => [...p, d.name]);
+                                            else setFormDesignations(p => p.filter(x => x !== d.name));
+                                        }}
+                                    />
+                                    {d.name}
+                                </label>
+                            ))}
+                        </div>
+                        <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>
+                            Designations selected here will automatically receive these questions during active cycles.
+                        </p>
                     </div>
                 </div>
             </div>
