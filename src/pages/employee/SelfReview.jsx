@@ -3,7 +3,7 @@ import { useApp } from '../../context/AppContext';
 import Icons from '../../components/Icons';
 
 export default function SelfReview() {
-    const { currentUser, cycles, evaluations = [], getSelfReview, submitSelfReview, getScore, refreshData, setTopBarAction, questionSets } = useApp();
+    const { currentUser, users, cycles, evaluations = [], getSelfReview, submitSelfReview, getScore, refreshData, setTopBarAction, questionSets } = useApp();
 
     useEffect(() => {
         refreshData();
@@ -46,8 +46,9 @@ export default function SelfReview() {
         { id: 'q12', label: 'How do you bounce back from failures?', desc: 'Reflect on a past failure or setback and describe the steps you took to recover, learn, and move forward.', section: 'Adaptability & Resilience' },
     ];
 
-    // Resolve the employee's assigned question set, falling back to the default list
-    const assignedSet = currentUser.questionSetId ? questionSets.find(qs => qs.id === currentUser.questionSetId) : null;
+    // Resolve the employee's assigned question set from the latest users array, falling back to user session ID
+    const latestUserData = users.find(u => u.id === currentUser.id) || currentUser;
+    const assignedSet = latestUserData.questionSetId ? questionSets.find(qs => qs.id === latestUserData.questionSetId) : null;
     const COMPETENCY_QUESTIONS = assignedSet ? assignedSet.questions : DEFAULT_COMPETENCY_QUESTIONS;
 
     const RATING_OPTIONS = [

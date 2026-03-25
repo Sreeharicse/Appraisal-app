@@ -274,9 +274,9 @@ export function AppProvider({ children }) {
             if (fakeRole && mounted) {
                 const fakeUsers = {
                     'admin': { id: 'admin-001', name: 'System Administrator', email: 'admin@techxle.com', role: 'admin', department: 'IT / Operations', avatar: 'AD', managerId: null },
-                    'hr': { id: 'b065d8b6-fddf-4f21-a1d4-b26e23d40999', name: 'Surya Prabhakar Ganapathy Kannan', email: 'surya.p@techxle.com', role: 'hr', department: 'hr', avatar: 'SP', managerId: null },
-                    'manager': { id: 'b7e82aea-1d9e-4765-82e1-802f40adcb26', name: 'Haran Sinka', email: 'haran@techxle.com', role: 'manager', department: 'manager', avatar: 'HS', managerId: null },
-                    'employee': { id: '46342d06-791b-45e3-8ce2-a67eb322675c', name: 'Sreehari Palani', email: 'sreehari@techxle.com', role: 'employee', department: 'employee', avatar: 'SP', managerId: 'b7e82aea-1d9e-4765-82e1-802f40adcb26' }
+                    'hr': { id: 'b065d8b6-fddf-4f21-a1d4-b26e23d40999', name: 'Surya Prabhakar Ganapathy Kannan', email: 'surya.p@techxle.com', role: 'hr', department: 'hr', avatar: 'SP', managerId: null, questionSetId: null },
+                    'manager': { id: 'b7e82aea-1d9e-4765-82e1-802f40adcb26', name: 'Haran Sinka', email: 'haran@techxle.com', role: 'manager', department: 'manager', avatar: 'HS', managerId: null, questionSetId: null },
+                    'employee': { id: '46342d06-791b-45e3-8ce2-a67eb322675c', name: 'Sreehari Palani', email: 'sreehari@techxle.com', role: 'employee', department: 'employee', avatar: 'SP', managerId: 'b7e82aea-1d9e-4765-82e1-802f40adcb26', questionSetId: null }
                 };
                 if (fakeUsers[fakeRole]) {
                     setCurrentUser(fakeUsers[fakeRole]);
@@ -407,6 +407,7 @@ export function AppProvider({ children }) {
                         department: profile.department,
                         avatar: profile.avatar,
                         managerId: profile.manager_id,
+                        questionSetId: profile.question_set_id || null,
                     });
                 }
                 await fetchAllData();
@@ -507,6 +508,7 @@ export function AppProvider({ children }) {
             department: profile.department,
             avatar: profile.avatar,
             managerId: profile.manager_id,
+            questionSetId: profile.question_set_id || null,
         };
         setCurrentUser(user);
         await fetchAllData();
@@ -574,7 +576,8 @@ export function AppProvider({ children }) {
                 role: 'manager',
                 department: 'manager',
                 avatar: 'HS',
-                managerId: null
+                managerId: null,
+                questionSetId: null
             },
             'employee': {
                 id: '46342d06-791b-45e3-8ce2-a67eb322675c',
@@ -583,7 +586,8 @@ export function AppProvider({ children }) {
                 role: 'employee',
                 department: 'employee',
                 avatar: 'SP',
-                managerId: 'b7e82aea-1d9e-4765-82e1-802f40adcb26'
+                managerId: 'b7e82aea-1d9e-4765-82e1-802f40adcb26',
+                questionSetId: null
             }
         };
 
