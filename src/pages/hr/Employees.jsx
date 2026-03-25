@@ -87,7 +87,7 @@ export default function Employees() {
 
     const openAdd = () => {
         setEditing(null);
-        setForm({ name: '', email: '', role: 'employee', designation: '', department: '', managerId: '' });
+        setForm({ name: '', email: '', role: 'employee', designation: '', department: '', managerId: '', questionSetId: '' });
         resetModal();
         setShowModal(true);
     };

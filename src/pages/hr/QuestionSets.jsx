@@ -2,16 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 
 const DEFAULT_QUESTIONS = [
-    { id: 'q1', label: '1. Quality of Work', desc: 'How consistently do you deliver high-quality work in your role?' },
-    { id: 'q2', label: '2. Technical Competency', desc: 'Evaluate your technical skills required for your role.' },
-    { id: 'q3', label: '3. Problem Solving', desc: 'Describe your ability to analyze problems and find effective solutions.' },
-    { id: 'q4', label: '4. Productivity and Efficiency', desc: 'How effectively do you manage your workload and meet deadlines?' },
-    { id: 'q5', label: '5. Communication Skills', desc: 'Evaluate how clearly and effectively you communicate with your team.' },
-    { id: 'q6', label: '6. Team Collaboration', desc: 'How well do you collaborate with colleagues and contribute to team goals?' },
-    { id: 'q7', label: '7. Initiative and Ownership', desc: 'Describe situations where you took initiative beyond your assigned responsibilities.' },
-    { id: 'q8', label: '8. Time Management', desc: 'How effectively do you manage your time while balancing multiple responsibilities?' },
-    { id: 'q9', label: '9. Contribution to Project Success', desc: 'Explain how your work contributed to the success of your projects.' },
-    { id: 'q10', label: '10. Professional Behavior', desc: 'Evaluate how you demonstrate professionalism in the workplace.' },
+    // Job-specific
+    { id: 'q1', label: 'What do you think sets you apart in this role?', desc: 'Reflect on the unique skills, experiences, or qualities you bring to this position.', section: 'Job-specific' },
+    { id: 'q2', label: 'How do you stay updated with industry trends?', desc: 'Describe the methods or resources you use to keep your knowledge current.', section: 'Job-specific' },
+    { id: 'q3', label: 'Can you walk me through a recent project?', desc: 'Share a recent project — your role, the challenges faced, and the outcome.', section: 'Job-specific' },
+    // Problem-solving
+    { id: 'q4', label: 'Describe a tough problem you solved. How did you approach it?', desc: 'Walk through your structured thinking and resolution process.', section: 'Problem-solving' },
+    { id: 'q5', label: 'How do you prioritize tasks when faced with multiple deadlines?', desc: 'Explain your approach to managing competing priorities.', section: 'Problem-solving' },
+    { id: 'q6', label: 'What is your process for making tough decisions?', desc: 'Describe how you weigh options and commit to action under pressure.', section: 'Problem-solving' },
+    // Leadership & Initiative
+    { id: 'q7', label: 'Do you lead or participate in any initiatives outside work?', desc: 'Share examples of leadership or community initiatives beyond your core role.', section: 'Leadership & Initiative' },
+    { id: 'q8', label: 'How do you motivate your team or colleagues?', desc: 'Describe strategies or examples of how you inspire others.', section: 'Leadership & Initiative' },
+    { id: 'q9', label: 'Can you give an example of taking a calculated risk?', desc: 'Describe a situation where you stepped deliberately beyond your comfort zone.', section: 'Leadership & Initiative' },
+    // Adaptability & Resilience
+    { id: 'q10', label: 'How do you handle change or unexpected setbacks?', desc: 'Describe your mindset when plans change unexpectedly.', section: 'Adaptability & Resilience' },
+    { id: 'q11', label: 'Can you describe a situation where you adapted to a new process?', desc: 'Share an example where you transitioned to a new workflow or tool.', section: 'Adaptability & Resilience' },
+    { id: 'q12', label: 'How do you bounce back from failures?', desc: 'Reflect on a past failure and the steps you took to recover and move forward.', section: 'Adaptability & Resilience' },
 ];
 
 export default function QuestionSets() {
@@ -41,10 +47,9 @@ export default function QuestionSets() {
         setEditingSet(qs);
         setFormName(qs.name);
         setFormDesc(qs.description || '');
-        // Ensure exactly 10 questions; pad/trim as needed
+        // Load all questions from the set without any trimming
         const qs_copy = [...(qs.questions || [])];
-        while (qs_copy.length < 10) qs_copy.push({ id: `q${qs_copy.length + 1}`, label: `${qs_copy.length + 1}. New Question`, desc: '' });
-        setFormQuestions(qs_copy.slice(0, 10));
+        setFormQuestions(qs_copy);
         setView('edit');
     };
 
@@ -145,7 +150,7 @@ export default function QuestionSets() {
                         ← Back to Sets
                     </button>
                     <h2 className="section-title">{editingSet ? 'Edit Question Set' : 'New Question Set'}</h2>
-                    <p className="section-subtitle">Configure the 10 competency questions for this set</p>
+                    <p className="section-subtitle">Configure the competency questions for this set (4 sections, 12 questions)</p>
                 </div>
                 {!isReadOnly && (
                     <button className="btn btn-primary" onClick={handleSave} disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

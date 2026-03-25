@@ -122,8 +122,8 @@ export default function Approvals() {
 
                 // Calculate live preview score using Core vs. Behavioral weighting
                 const comps = ev.metadata?.competencies || {};
-                const CORE_IDS = ['q1', 'q2', 'q3', 'q4'];
-                const BEHAVIORAL_IDS = ['q5', 'q6', 'q7', 'q10', 'q11', 'q14'];
+                const CORE_IDS = ['q1', 'q2', 'q3', 'q4', 'q5', 'q6'];
+                const BEHAVIORAL_IDS = ['q7', 'q8', 'q9', 'q10', 'q11', 'q12'];
                 const coreRatings = CORE_IDS.map(id => comps[id]?.rating).filter(r => r > 0);
                 const behavioralRatings = BEHAVIORAL_IDS.map(id => comps[id]?.rating).filter(r => r > 0);
                 const coreAvg = coreRatings.length > 0 ? coreRatings.reduce((a, b) => a + b, 0) / coreRatings.length : 0;
