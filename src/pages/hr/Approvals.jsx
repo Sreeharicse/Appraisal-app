@@ -120,15 +120,11 @@ export default function Approvals() {
                 const avgHr = getAvgHrRating(ev.id);
                 const allRated = avgHr > 0;
 
-                // Calculate live preview score using Core vs. Behavioral weighting
+                // Calculate live preview score using new flat 70/20/10 formula
                 const comps = ev.metadata?.competencies || {};
-                const CORE_IDS = ['q1', 'q2', 'q3', 'q4', 'q5', 'q6'];
-                const BEHAVIORAL_IDS = ['q7', 'q8', 'q9', 'q10', 'q11', 'q12'];
-                const coreRatings = CORE_IDS.map(id => comps[id]?.rating).filter(r => r > 0);
-                const behavioralRatings = BEHAVIORAL_IDS.map(id => comps[id]?.rating).filter(r => r > 0);
-                const coreAvg = coreRatings.length > 0 ? coreRatings.reduce((a, b) => a + b, 0) / coreRatings.length : 0;
-                const behavioralAvg = behavioralRatings.length > 0 ? behavioralRatings.reduce((a, b) => a + b, 0) / behavioralRatings.length : 0;
-                const previewScoreMath = calculateScore(coreAvg, behavioralAvg, ev.subRating || 0, avgHr);
+                const allRatings = Object.values(comps).map(c => c?.rating).filter(r => r > 0);
+                const allQsAvg = allRatings.length > 0 ? allRatings.reduce((a, b) => a + b, 0) / allRatings.length : 0;
+                const previewScoreMath = calculateScore(allQsAvg, 0, ev.subRating || 0, avgHr);
                 const previewCategory = getCategory(previewScoreMath);
 
                 return (

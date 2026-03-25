@@ -115,51 +115,30 @@ export default function Results() {
                         <div className="card" style={{ gridColumn: '1 / -1' }}>
                             <div className="card-title" style={{ marginBottom: '20px', color: 'var(--text-primary)' }}>Score Breakdown</div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                                {/* Core Performance (Job-specific & Problem-solving q1-q6) 40.5% of total */}
+
+                                {/* Competency Questions — 70% of total */}
                                 <div>
                                     {(() => {
                                         const comps = ev.metadata?.competencies || {};
-                                        const CORE_IDS = ['q1', 'q2', 'q3', 'q4', 'q5', 'q6'];
-                                        const coreRatings = CORE_IDS.map(id => comps[id]?.rating).filter(r => r > 0);
-                                        const coreAvg = coreRatings.length > 0 ? coreRatings.reduce((a, b) => a + b, 0) / coreRatings.length : 0;
-                                        const corePts = Math.round((coreAvg / 5) * 0.45 * 90);
+                                        const allRatings = Object.values(comps).map(c => c?.rating).filter(r => r > 0);
+                                        const allQsAvg = allRatings.length > 0 ? allRatings.reduce((a, b) => a + b, 0) / allRatings.length : 0;
+                                        const qPts = Math.round((allQsAvg / 5) * 70);
                                         return (
                                             <>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
-                                                    <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Job-specific & Problem-solving</span>
-                                                    <span style={{ fontWeight: 700, color: 'var(--blue-light)' }}>{coreAvg.toFixed(1)}/5 → {corePts} pts</span>
+                                                    <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Competency Questions <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(70%)</span></span>
+                                                    <span style={{ fontWeight: 700, color: 'var(--blue-light)' }}>{allQsAvg.toFixed(1)}/5 → {qPts} pts</span>
                                                 </div>
-                                                <div className="progress-bar" style={{ height: '8px' }}><div className="progress-fill" style={{ width: `${(coreAvg / 5) * 100}%`, background: 'var(--blue-light)' }} /></div>
+                                                <div className="progress-bar" style={{ height: '8px' }}><div className="progress-fill" style={{ width: `${(allQsAvg / 5) * 100}%`, background: 'var(--blue-light)' }} /></div>
                                             </>
                                         );
                                     })()}
                                 </div>
 
-                                {/* Behavioral Traits (Leadership & Adaptability q7-q12) 27% of total */}
-                                <div>
-                                    {(() => {
-                                        const comps = ev.metadata?.competencies || {};
-                                        const BEHAVIORAL_IDS = ['q7', 'q8', 'q9', 'q10', 'q11', 'q12'];
-                                        const behavioralRatings = BEHAVIORAL_IDS.map(id => comps[id]?.rating).filter(r => r > 0);
-                                        const behavioralAvg = behavioralRatings.length > 0 ? behavioralRatings.reduce((a, b) => a + b, 0) / behavioralRatings.length : 0;
-                                        const behavioralPts = Math.round((behavioralAvg / 5) * 0.30 * 90);
-                                        return (
-                                            <>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
-                                                    <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Leadership & Adaptability</span>
-                                                    <span style={{ fontWeight: 700, color: '#06b6d4' }}>{behavioralAvg.toFixed(1)}/5 → {behavioralPts} pts</span>
-                                                </div>
-                                                <div className="progress-bar" style={{ height: '8px' }}><div className="progress-fill" style={{ width: `${(behavioralAvg / 5) * 100}%`, background: '#06b6d4' }} /></div>
-                                            </>
-                                        );
-                                    })()}
-                                </div>
-
-
-                                {/* HR Assessment 10% */}
+                                {/* HR Assessment — 10% */}
                                 <div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
-                                        <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>HR Assessment & Compliance</span>
+                                        <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>HR Assessment <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(10%)</span></span>
                                         {ev.hrRating > 0 ? (
                                             <span style={{ fontWeight: 700, color: 'var(--yellow)' }}>{Math.round(ev.hrRating * 10) / 10}/5 → {Math.round((ev.hrRating / 5) * 10)} pts</span>
                                         ) : (
@@ -170,6 +149,7 @@ export default function Results() {
                                         <div className="progress-fill" style={{ width: ev.hrRating > 0 ? `${(ev.hrRating / 5) * 100}%` : '0%', background: ev.hrRating > 0 ? 'var(--yellow)' : 'var(--border)' }} />
                                     </div>
                                 </div>
+
                             </div>
                         </div>
                     </div>

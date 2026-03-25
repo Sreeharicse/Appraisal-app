@@ -6,19 +6,15 @@ import { sendEmailNotification, employeeSubmitEmail, managerSubmitEmail, hrAppro
 
 const AppContext = createContext(null);
 
-export function calculateScore(coreAvg, behavioralAvg, subRating, hrRating = 0) {
-    // Core vs. Behavioral Weighting
-    // coreAvg: average of Job-specific + Problem-solving questions (q1-q6) (1-5)
-    // behavioralAvg: average of Leadership + Adaptability questions (q7-q12) (1-5)
-    // subRating: manager final sub-rating (1-5)
-    // hrRating: HR assessment (1-5)
-    // Formula within 90% manager slot: (CoreAvg * 0.45) + (BehavioralAvg * 0.30) + (SubRating * 0.25)
-    // HR gets 10% of overall
-    const corePart = (coreAvg / 5) * 0.45 * 90 || 0;       // 40.5% of total
-    const behavioralPart = (behavioralAvg / 5) * 0.30 * 90 || 0; // 27% of total
-    const subPart = (subRating / 5) * 0.25 * 90 || 0;      // 22.5% of total
-    const hrPart = (hrRating / 5) * 10 || 0;                // 10% of total
-    return Math.round(corePart + behavioralPart + subPart + hrPart);
+export function calculateScore(allQsAvg, _unused, subRating, hrRating = 0) {
+    // New flat formula:
+    // allQsAvg: simple average of ALL rated questions (q1-q12) on a 1-5 scale → 70% of total
+    // subRating: manager final sub-rating (1-5) → 20% of total
+    // hrRating: HR assessment (1-5) → 10% of total
+    const questionsPart = (allQsAvg / 5) * 70 || 0;    // 70%
+    const subPart       = (subRating  / 5) * 20 || 0;   // 20%
+    const hrPart        = (hrRating   / 5) * 10 || 0;   // 10%
+    return Math.round(questionsPart + subPart + hrPart);
 }
 
 export function getCategory(score) {
@@ -1401,22 +1397,14 @@ export function AppProvider({ children }) {
     const getEvaluation = (empId, cycleId) => evaluations.find(e => String(e.employeeId) === String(empId) && String(e.cycleId) === String(cycleId));
     const getScore = (empId, cycleId) => {
         const ev = getEvaluation(empId, cycleId);
-        // Only calculate and expose scores once HR has approved the evaluation, 
-        // OR if it's pending approval so Admin/HR can see the preliminary score in reports.
         if (!ev || (ev.status !== 'approved' && ev.status !== 'pending_approval')) return null;
 
-        // Split competencies into Core (Job-specific q1-q3 + Problem-solving q4-q6) and Behavioral (Leadership q7-q9 + Adaptability q10-q12)
+        // Flat formula: average ALL rated questions (q1-q12) for 70%, sub = 20%, hr = 10%
         const comps = ev.metadata?.competencies || {};
-        const CORE_IDS = ['q1', 'q2', 'q3', 'q4', 'q5', 'q6'];
-        const BEHAVIORAL_IDS = ['q7', 'q8', 'q9', 'q10', 'q11', 'q12'];
+        const allRatings = Object.values(comps).map(c => c?.rating).filter(r => r > 0);
+        const allQsAvg = allRatings.length > 0 ? allRatings.reduce((a, b) => a + b, 0) / allRatings.length : 0;
 
-        const coreRatings = CORE_IDS.map(id => comps[id]?.rating).filter(r => r > 0);
-        const behavioralRatings = BEHAVIORAL_IDS.map(id => comps[id]?.rating).filter(r => r > 0);
-
-        const coreAvg = coreRatings.length > 0 ? coreRatings.reduce((a, b) => a + b, 0) / coreRatings.length : 0;
-        const behavioralAvg = behavioralRatings.length > 0 ? behavioralRatings.reduce((a, b) => a + b, 0) / behavioralRatings.length : 0;
-
-        const score = calculateScore(coreAvg, behavioralAvg, ev.subRating || 0, ev.hrRating || 0);
+        const score = calculateScore(allQsAvg, 0, ev.subRating || 0, ev.hrRating || 0);
         return { score, category: getCategory(score) };
     };
 
