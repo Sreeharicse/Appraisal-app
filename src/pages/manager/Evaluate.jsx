@@ -6,7 +6,7 @@ import Icons from '../../components/Icons';
 export default function Evaluate() {
     const { employeeId } = useParams();
     const navigate = useNavigate();
-    const { currentUser, users, cycles, getEvaluation, selfReviews, evaluations, submitEvaluation, calculateScore, getCategory, refreshData, setTopBarAction, questionSets } = useApp();
+    const { currentUser, users, cycles, getEvaluation, selfReviews, evaluations, submitEvaluation, calculateScore, getCategory, refreshData, setTopBarAction } = useApp();
     const team = currentUser.role === 'admin'
         ? users.filter(u => u.role === 'hr' || u.role === 'manager')
         : users.filter(u => u.managerId === currentUser.id);
@@ -46,23 +46,17 @@ export default function Evaluate() {
         { id: 3, label: '💬 Feedback & Summary' }
     ];
 
-    const DEFAULT_COMPETENCY_QUESTIONS = [
-        // Section: Job-specific
-        { id: 'q1', label: 'What do you think sets you apart in this role?', desc: 'Reflect on the unique skills, experiences, or qualities you bring to this position.', section: 'Job-specific' },
-        { id: 'q2', label: 'How do you stay updated with industry trends?', desc: 'Describe the methods or resources you use to keep your knowledge current and relevant.', section: 'Job-specific' },
-        { id: 'q3', label: 'Can you walk me through a recent project?', desc: 'Share a recent project — include your role, challenges faced, and the outcome achieved.', section: 'Job-specific' },
-        // Section: Problem-solving
-        { id: 'q4', label: 'Describe a tough problem you solved. How did you approach it?', desc: 'Walk through your structured thinking and resolution process for a complex challenge.', section: 'Problem-solving' },
-        { id: 'q5', label: 'How do you prioritize tasks when faced with multiple deadlines?', desc: 'Explain your approach to managing competing priorities effectively.', section: 'Problem-solving' },
-        { id: 'q6', label: 'What is your process for making tough decisions?', desc: 'Describe how you weigh options and commit to action under pressure or uncertainty.', section: 'Problem-solving' },
-        // Section: Leadership & Initiative
-        { id: 'q7', label: 'Do you lead or participate in any initiatives outside work?', desc: 'Share examples of leadership or community initiatives that reflect your drive.', section: 'Leadership & Initiative' },
-        { id: 'q8', label: 'How do you motivate your team or colleagues?', desc: 'Describe strategies or examples of how you inspire others to perform at their best.', section: 'Leadership & Initiative' },
-        { id: 'q9', label: 'Can you give an example of taking a calculated risk?', desc: 'Describe a situation where you stepped beyond your comfort zone deliberately.', section: 'Leadership & Initiative' },
-        // Section: Adaptability & Resilience
-        { id: 'q10', label: 'How do you handle change or unexpected setbacks?', desc: 'Describe your mindset and approach when plans change unexpectedly.', section: 'Adaptability & Resilience' },
-        { id: 'q11', label: 'Can you describe a situation where you adapted to a new process?', desc: 'Share an example where you successfully transitioned to a new workflow or tool.', section: 'Adaptability & Resilience' },
-        { id: 'q12', label: 'How do you bounce back from failures?', desc: 'Reflect on a past failure and describe the steps you took to recover, learn, and move forward.', section: 'Adaptability & Resilience' },
+    const COMPETENCY_QUESTIONS = [
+        { id: 'q1', label: '1. Quality of Work', desc: 'How consistently do you deliver high-quality work in your role? Describe how you ensure your tasks are completed accurately, efficiently, and meet the required standards.' },
+        { id: 'q2', label: '2. Technical Competency', desc: 'Evaluate your technical skills required for your role. How effectively do you apply your technical knowledge to solve problems and complete assigned tasks?' },
+        { id: 'q3', label: '3. Problem Solving', desc: 'Describe your ability to analyze problems and find effective solutions. Provide examples where you identified issues and implemented solutions that improved outcomes.' },
+        { id: 'q4', label: '4. Productivity and Efficiency', desc: 'How effectively do you manage your workload and meet deadlines? Explain how you prioritize tasks and maintain productivity throughout the review period.' },
+        { id: 'q5', label: '5. Communication Skills', desc: 'Evaluate how clearly and effectively you communicate with your team, manager, and other stakeholders. Include examples of how communication helped improve project outcomes or teamwork.' },
+        { id: 'q6', label: '6. Team Collaboration', desc: 'How well do you collaborate with colleagues and contribute to team goals? Describe how you support team members and participate in collective problem solving.' },
+        { id: 'q7', label: '7. Initiative and Ownership', desc: 'Describe situations where you took initiative beyond your assigned responsibilities. How do you demonstrate ownership of tasks, projects, or issues that arise?' },
+        { id: 'q10', label: '8. Time Management', desc: 'How effectively do you manage your time while balancing multiple responsibilities? Describe strategies you use to stay organized and meet deadlines.' },
+        { id: 'q11', label: '9. Contribution to Project Success', desc: 'Explain how your work contributed to the success of your projects or team objectives. Highlight any measurable results or improvements you helped achieve.' },
+        { id: 'q14', label: '10. Professional Behavior', desc: 'Evaluate how you demonstrate professionalism in the workplace. This includes reliability, respect for colleagues, and maintaining a positive work attitude.' }
     ];
 
     const RATING_OPTIONS = [
@@ -85,23 +79,6 @@ export default function Evaluate() {
     const selfReview = cycle && emp ? selfReviews.find(r => String(r.employeeId) === String(selectedEmp) && String(r.cycleId) === String(cycle.id)) : null;
     const empComps = selfReview?.metadata?.competencies || {};
     const isSelfReviewSubmitted = selfReview?.status === 'submitted' || selfReview?.status === 'approved';
-
-    // Resolve question set:
-    // 1. Template: from the selected employee's assigned question set
-    const selectedEmpData = users.find(u => u.id === selectedEmp);
-    const empAssignedSet = selectedEmpData?.questionSetId ? questionSets.find(qs => qs.id === selectedEmpData.questionSetId) : null;
-    const TEMPLATE_QUESTIONS = empAssignedSet ? empAssignedSet.questions : DEFAULT_COMPETENCY_QUESTIONS;
-    
-    // 2. Snapshot: if a self-review exists with a saved question list, ALWAYS use that snapshot.
-    // This ensures managers review exactly what the employee answered.
-    // Legacy fix: if submitted but no snapshot exists, freeze to DEFAULT_COMPETENCY_QUESTIONS.
-    const srQuestions = selfReview?.metadata?.questions;
-    let COMPETENCY_QUESTIONS = TEMPLATE_QUESTIONS;
-    if (srQuestions && srQuestions.length > 0) {
-        COMPETENCY_QUESTIONS = srQuestions;
-    } else if (isSelfReviewSubmitted) {
-        COMPETENCY_QUESTIONS = DEFAULT_COMPETENCY_QUESTIONS;
-    }
 
     useEffect(() => {
         if (!selectedCycleId || !selectedEmp) return;
@@ -183,19 +160,19 @@ export default function Evaluate() {
             // Validate overall feedback
             if (!feedback || feedback.trim().length < 20) {
                 alert('Please provide a detailed final assessment (min 20 chars).');
-                setActiveTab(3);
+                setActiveTab(5);
                 return;
             }
 
             // Validate Final Rating
             if (!finalRating) {
                 alert('Please select a Final Rating Classification.');
-                setShowRatingModal(true);
+                setActiveTab(3); // Changed from 5 to 3
                 return;
             }
             if (!subRating || parseFloat(subRating) < 1 || parseFloat(subRating) > 5) {
                 alert('Please provide a valid Sub-Rating between 1 and 5.');
-                setShowRatingModal(true);
+                setActiveTab(3); // Changed from 5 to 3
                 return;
             }
         }
@@ -234,127 +211,100 @@ export default function Evaluate() {
         setHasEdited(true);
     };
 
-    const renderCompetenciesTab = () => {
-        // Group questions by section if they have a section field
-        const sections = [];
-        const seen = new Set();
-        COMPETENCY_QUESTIONS.forEach(q => {
-            const sec = q.section || 'General';
-            if (!seen.has(sec)) { seen.add(sec); sections.push(sec); }
-        });
-        const grouped = sections.map(sec => ({
-            title: sec,
-            questions: COMPETENCY_QUESTIONS.filter(q => (q.section || 'General') === sec)
-        }));
 
-        const SECTION_ICONS = { 
-            'Job-specific': '💼', 'Problem-solving': '🧩', 'Leadership & Initiative': '🚀', 'Adaptability & Resilience': '🌱', 
-            'Strategic Thinking': '🧠', 'Leadership & Ownership': '🏆', 'Decision Making': '📊', 'Innovation & Improvement': '🚀', 
-            'Collaboration & Influence': '🤝', 'Performance & Results': '📈', 'General': '📋' 
-        };
-        const SECTION_COLORS = { 
-            'Job-specific': 'var(--blue-light)', 'Problem-solving': 'var(--purple)', 'Leadership & Initiative': '#10b981', 'Adaptability & Resilience': '#f59e0b', 
-            'Strategic Thinking': '#8b5cf6', 'Leadership & Ownership': '#f59e0b', 'Decision Making': '#06b6d4', 'Innovation & Improvement': '#10b981', 
-            'Collaboration & Influence': '#ec4899', 'Performance & Results': '#3b82f6', 'General': 'var(--text-secondary)' 
-        };
+    const renderCompetenciesTab = () => (
+        <div>
+            <div className="card-title" style={{ marginBottom: '8px' }}>Competency Evaluation</div>
+            <p className="section-subtitle" style={{ marginBottom: '16px' }}>Compare employee self-ratings with your own assessment.</p>
+            {COMPETENCY_QUESTIONS.map((q) => (
+                <div key={q.id} className="card" style={{ marginBottom: '12px', padding: '14px' }}>
+                    <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--blue-light)', marginBottom: '4px' }}>{q.label} <span style={{ color: '#ef4444', fontSize: '13px' }}>*</span></div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px', lineHeight: '1.4', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{q.desc}</div>
 
-        return (
-            <div>
-                <div className="card-title" style={{ marginBottom: '8px' }}>Competency Evaluation</div>
-                <p className="section-subtitle" style={{ marginBottom: '24px' }}>Compare employee self-ratings with your own assessment.</p>
-
-                {grouped.map(({ title, questions }) => (
-                    <div key={title} style={{ marginBottom: '40px' }}>
-                        {/* Section Header */}
-                        <div style={{
-                            display: 'flex', alignItems: 'center', gap: '10px',
-                            padding: '10px 16px', borderRadius: '10px', marginBottom: '20px',
-                            background: 'var(--bg-secondary)', border: '1px solid var(--border)'
-                        }}>
-                            <span style={{ fontSize: '20px' }}>{SECTION_ICONS[title] || '📋'}</span>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                        {/* Employee Part (Read-only) */}
+                        <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(56, 189, 248, 0.05)', border: '1px solid rgba(56, 189, 248, 0.1)' }}>
+                            <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '12px', color: 'var(--blue-light)', display: 'flex', alignItems: 'center', gap: '8px' }}>👤 Employee Perspective</div>
+                            <div style={{ marginBottom: '16px' }}>
+                                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>Self-Rating</div>
+                                <div style={{ padding: '10px 14px', background: 'var(--bg-secondary)', borderRadius: '8px', fontSize: '14px', fontWeight: 600, border: '1px solid var(--border)' }}>
+                                    {RATING_OPTIONS.find(o => o.value === (empComps[q.id]?.rating || 0))?.label || 'Not rated'}
+                                </div>
+                            </div>
                             <div>
-                                <div style={{ fontWeight: 800, fontSize: '15px', color: SECTION_COLORS[title] || 'var(--text-primary)' }}>{title}</div>
-                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{questions.length} questions</div>
+                                <div className="read-only-text" style={{ padding: '16px', paddingRight: '24px', background: 'var(--bg-secondary)', borderRadius: '10px', fontSize: '14px', height: '180px', maxHeight: '180px', overflowY: 'auto', fontStyle: empComps[q.id]?.comment ? 'normal' : 'italic', lineHeight: '1.5' }}>
+                                    {empComps[q.id]?.comment || 'No comments provided.'}
+                                </div>
                             </div>
                         </div>
 
-                        {questions.map((q) => (
-                            <div key={q.id} className="card" style={{ marginBottom: '12px', padding: '14px' }}>
-                                <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--blue-light)', marginBottom: '4px' }}>{q.label} <span style={{ color: '#ef4444', fontSize: '13px' }}>*</span></div>
-                                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px', lineHeight: '1.4', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{q.desc}</div>
-
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-                                    {/* Employee Part (Read-only) */}
-                                    <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(56, 189, 248, 0.05)', border: '1px solid rgba(56, 189, 248, 0.1)' }}>
-                                        <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '12px', color: 'var(--blue-light)', display: 'flex', alignItems: 'center', gap: '8px' }}>👤 Employee Perspective</div>
-                                        <div style={{ marginBottom: '16px' }}>
-                                            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>Self-Rating</div>
-                                            <div style={{ padding: '10px 14px', background: 'var(--bg-secondary)', borderRadius: '8px', fontSize: '14px', fontWeight: 600, border: '1px solid var(--border)' }}>
-                                                {RATING_OPTIONS.find(o => o.value === (empComps[q.id]?.rating || 0))?.label || 'Not rated'}
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <div className="read-only-text" style={{ padding: '16px', paddingRight: '24px', background: 'var(--bg-secondary)', borderRadius: '10px', fontSize: '14px', height: '180px', maxHeight: '180px', overflowY: 'auto', fontStyle: empComps[q.id]?.comment ? 'normal' : 'italic', lineHeight: '1.5' }}>
-                                                {empComps[q.id]?.comment || 'No comments provided.'}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Manager Part (Editable / Locked) */}
-                                    <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(168, 85, 247, 0.05)', border: '1px solid rgba(168, 85, 247, 0.1)' }}>
-                                        <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '12px', color: 'var(--purple)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            👨‍💼 Manager Perspective
-                                            {isSubmitted && <span style={{ fontSize: '11px', background: 'rgba(10, 185, 129, 0.1)', color: '#10b981', padding: '2px 8px', borderRadius: '20px', fontWeight: 600 }}>✅ Submitted</span>}
-                                            {!isSubmitted && status === 'draft' && <span style={{ fontSize: '11px', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', padding: '2px 8px', borderRadius: '20px', fontWeight: 600 }}>✍️ In Progress</span>}
-                                        </div>
-                                        <div style={{ marginBottom: '16px' }}>
-                                            <label style={{ fontSize: '12px', color: isReadOnly ? 'var(--text-muted)' : 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Rating</label>
-                                            <select className="form-select" value={competencies[q.id]?.rating || 0}
-                                                disabled={isReadOnly}
-                                                style={{
-                                                    width: '100%',
-                                                    color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)',
-                                                    background: 'var(--bg-secondary)',
-                                                    opacity: 1,
-                                                    pointerEvents: isReadOnly ? 'none' : 'auto',
-                                                    cursor: isReadOnly ? 'not-allowed' : 'pointer'
-                                                }}
-                                                onChange={e => updateCompRating(q.id, parseInt(e.target.value))}>
-                                                {RATING_OPTIONS.map(opt => (
-                                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <textarea id={`comp-${q.id}`} className="form-input" placeholder={isSubmitted ? 'Submitted.' : (isLocked ? 'Draft locked...' : 'Manager feedback (min 20 chars)...')}
-                                                style={{
-                                                    width: '100%',
-                                                    height: '180px',
-                                                    minHeight: '180px',
-                                                    maxHeight: '180px',
-                                                    overflowY: 'auto',
-                                                    resize: 'none',
-                                                    fontSize: '14px',
-                                                    lineHeight: '1.5',
-                                                    color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)',
-                                                    background: 'var(--bg-secondary)',
-                                                    cursor: isReadOnly ? 'not-allowed' : 'text',
-                                                    padding: '16px'
-                                                }}
-                                                value={competencies[q.id]?.comment || ''}
-                                                readOnly={isReadOnly}
-                                                onChange={e => { if (!isReadOnly) updateCompComment(q.id, e.target.value); }}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
+                        {/* Manager Part (Editable / Locked) */}
+                        <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(168, 85, 247, 0.05)', border: '1px solid rgba(168, 85, 247, 0.1)' }}>
+                            <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '12px', color: 'var(--purple)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                👨‍💼 Manager Perspective
+                                {isSubmitted && <span style={{ fontSize: '11px', background: 'rgba(10, 185, 129, 0.1)', color: '#10b981', padding: '2px 8px', borderRadius: '20px', fontWeight: 600 }}>✅ Submitted</span>}
+                                {!isSubmitted && status === 'draft' && <span style={{ fontSize: '11px', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', padding: '2px 8px', borderRadius: '20px', fontWeight: 600 }}>✍️ In Progress</span>}
                             </div>
-                        ))}
+                            <div style={{ marginBottom: '16px' }}>
+                                <label style={{ fontSize: '12px', color: isReadOnly ? 'var(--text-muted)' : 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Rating</label>
+                                <select className="form-select" value={competencies[q.id]?.rating || 0}
+                                    disabled={isReadOnly}
+                                    style={{
+                                        width: '100%',
+                                        color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)',
+                                        background: 'var(--bg-secondary)',
+                                        opacity: 1,
+                                        pointerEvents: isReadOnly ? 'none' : 'auto',
+                                        cursor: isReadOnly ? 'not-allowed' : 'pointer'
+                                    }}
+                                    onChange={e => updateCompRating(q.id, parseInt(e.target.value))}>
+                                    {RATING_OPTIONS.map(opt => (
+                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <textarea id={`comp-${q.id}`} className="form-input" placeholder={isSubmitted ? 'Submitted.' : (isLocked ? 'Draft locked...' : 'Manager feedback (min 20 chars)...')}
+                                    style={{
+                                        width: '100%',
+                                        height: '180px',
+                                        minHeight: '180px',
+                                        maxHeight: '180px',
+                                        overflowY: 'auto',
+                                        resize: 'none',
+                                        fontSize: '14px',
+                                        lineHeight: '1.5',
+                                        color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)',
+                                        background: 'var(--bg-secondary)',
+                                        cursor: isReadOnly ? 'not-allowed' : 'text',
+                                        padding: '16px'
+                                    }}
+                                    value={competencies[q.id]?.comment || ''}
+                                    readOnly={isReadOnly}
+                                    onChange={e => { if (!isReadOnly) updateCompComment(q.id, e.target.value); }}
+                                />
+                            </div>
+                        </div>
                     </div>
-                ))}
-            </div>
-        );
-    };
+                </div>
+            ))}
+        </div>
+    );
+
+    const renderManagerReadOnlyBox = (content, placeholder) => (
+        <div className="read-only-text" style={{
+            padding: '12px',
+            background: 'rgba(168, 85, 247, 0.05)',
+            border: '1px solid rgba(168, 85, 247, 0.1)',
+            borderRadius: '12px',
+            height: '180px',
+            overflowY: 'scroll',
+            paddingRight: '36px',
+            color: content ? 'var(--text-primary)' : 'var(--text-muted)'
+        }}>
+            {content || placeholder}
+        </div>
+    );
 
     const renderEmployeeReadOnlyTab = (title, subtitle, content, placeholder) => (
         <div className="card" style={{ marginBottom: '32px', padding: '24px' }}>
@@ -409,7 +359,7 @@ export default function Evaluate() {
                         border: '1px solid rgba(16,185,129,0.25)',
                         color: '#10b981', fontWeight: 700, fontSize: '15px'
                     }}>
-                        ✅ Evaluation Submitted & Locked
+                        ✅ Evaluation Submitted &amp; Locked
                     </div>
                 ) : (
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px' }}>
@@ -436,6 +386,7 @@ export default function Evaluate() {
         </div>
     );
 
+    // Helper for cycle status badge
     const getCycleEvalInfo = (cycleId, empId) => {
         const ev = evaluations.find(e => String(e.employeeId) === String(empId) && String(e.cycleId) === String(cycleId));
         const sr = selfReviews.find(r => String(r.employeeId) === String(empId) && String(r.cycleId) === String(cycleId));
@@ -449,7 +400,6 @@ export default function Evaluate() {
         if (ev?.subRating) { pct = Math.round((parseFloat(ev.subRating) / 5) * 100); }
         return { statusLabel, statusColor, pct };
     };
-
     const renderLearningTab = () => (
         renderEmployeeReadOnlyTab(
             'Learning & Development',
@@ -467,6 +417,7 @@ export default function Evaluate() {
             'No feedback provided.'
         )
     );
+    // No topBarAction used anymore here
 
     const renderTabContent = () => {
         switch (activeTab) {
@@ -531,15 +482,15 @@ export default function Evaluate() {
 
                 {/* Right: Cycle dropdown + Back Draft Button */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    
+
                     {/* Draft Button */}
                     {!isSubmitted && selectedEmp && isSelfReviewSubmitted && (
-                        <button 
-                            className="btn btn-secondary" 
+                        <button
+                            className="btn btn-secondary"
                             onClick={() => handleSubmit('draft')}
                             style={{ height: '42px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)' }}
                         >
-                            <span style={{ fontSize: '16px' }}>💾</span> 
+                            <span style={{ fontSize: '16px' }}>💾</span>
                             {status === 'new' ? 'Save Draft' : 'Update Draft'}
                         </button>
                     )}
@@ -705,7 +656,7 @@ export default function Evaluate() {
                                     setShowRatingModal(false);
                                     handleSubmit('pending_approval');
                                 }}>
-                                🚀 Confirm & Submit
+                                🚀 Confirm &amp; Submit
                             </button>
                         </div>
                     </div>
@@ -732,3 +683,4 @@ export default function Evaluate() {
         </div>
     );
 }
+

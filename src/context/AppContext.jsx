@@ -12,8 +12,8 @@ export function calculateScore(allQsAvg, _unused, subRating, hrRating = 0) {
     // subRating: manager final sub-rating (1-5) → 20% of total
     // hrRating: HR assessment (1-5) → 10% of total
     const questionsPart = (allQsAvg / 5) * 70 || 0;    // 70%
-    const subPart       = (subRating  / 5) * 20 || 0;   // 20%
-    const hrPart        = (hrRating   / 5) * 10 || 0;   // 10%
+    const subPart = (subRating / 5) * 20 || 0;   // 20%
+    const hrPart = (hrRating / 5) * 10 || 0;   // 10%
     return Math.round(questionsPart + subPart + hrPart);
 }
 
@@ -373,8 +373,8 @@ export function AppProvider({ children }) {
                                     const canvas = document.createElement('canvas');
                                     const MAX_W = 150, MAX_H = 150;
                                     let w = img.width, h = img.height;
-                                    if (w > h) { if (w > MAX_W) { h *= MAX_W/w; w = MAX_W; } }
-                                    else { if (h > MAX_H) { w *= MAX_H/h; h = MAX_H; } }
+                                    if (w > h) { if (w > MAX_W) { h *= MAX_W / w; w = MAX_W; } }
+                                    else { if (h > MAX_H) { w *= MAX_H / h; h = MAX_H; } }
                                     canvas.width = w; canvas.height = h;
                                     const ctx = canvas.getContext('2d');
                                     ctx.drawImage(img, 0, 0, w, h);
@@ -961,8 +961,7 @@ export function AppProvider({ children }) {
             feedback: encrypt(review.feedback || ''),
             achievements: encrypt(review.achievements || ''),
             learning: encrypt(review.learning || ''),
-            status: review.status || 'draft',
-            questions: review.questions || [],  // Snapshot of the active question list
+            status: review.status || 'draft'
         };
 
         const packedComments = JSON.stringify(metadataForStorage);
@@ -973,8 +972,7 @@ export function AppProvider({ children }) {
             feedback: review.feedback || '',
             achievements: review.achievements || '',
             learning: review.learning || '',
-            status: review.status || 'draft',
-            questions: review.questions || [],  // Snapshot of the active question list
+            status: review.status || 'draft'
         };
 
 

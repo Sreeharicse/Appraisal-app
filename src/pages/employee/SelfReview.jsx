@@ -46,15 +46,10 @@ export default function SelfReview() {
         { id: 'q12', label: 'How do you bounce back from failures?', desc: 'Reflect on a past failure or setback and describe the steps you took to recover, learn, and move forward.', section: 'Adaptability & Resilience' },
     ];
 
-    // Resolve questions:
-    // - For an active (new) cycle with no submission: use the employee's current assigned template
-    // - For a submitted/draft cycle: use the snapshot stored in metadata to preserve the original labels
-    const [snapshotQuestions, setSnapshotQuestions] = useState(null);
+    // Resolve the employee's assigned question set from the latest users array, falling back to user session ID
     const latestUserData = users.find(u => u.id === currentUser.id) || currentUser;
     const assignedSet = latestUserData.questionSetId ? questionSets.find(qs => qs.id === latestUserData.questionSetId) : null;
-    const TEMPLATE_QUESTIONS = assignedSet ? assignedSet.questions : DEFAULT_COMPETENCY_QUESTIONS;
-    // Use snapshot if available (closed/submitted review), otherwise live template
-    const COMPETENCY_QUESTIONS = snapshotQuestions || TEMPLATE_QUESTIONS;
+    const COMPETENCY_QUESTIONS = assignedSet ? assignedSet.questions : DEFAULT_COMPETENCY_QUESTIONS;
 
     const RATING_OPTIONS = [
         { value: 0, label: 'Select Rating...' },
@@ -85,36 +80,33 @@ export default function SelfReview() {
         const existing = getSelfReview(currentUser.id, selectedCycleId);
 
         if (existing) {
+
+
             const meta = existing.metadata || {};
 
-            // Use the stored question snapshot if present (closed/submitted cycle)
-            if (meta.questions && meta.questions.length > 0) {
-                setSnapshotQuestions(meta.questions);
-            } else {
-                setSnapshotQuestions(DEFAULT_COMPETENCY_QUESTIONS); // Force legacy reviews to use the original 12 queries
-            }
-
-            // Initialize competencies with stored answers
+            // Initialize competencies with 10 questions if not present
             const loadedComps = meta.competencies || {};
             const initialComps = {};
-            const questionsForInit = (meta.questions && meta.questions.length > 0) ? meta.questions : DEFAULT_COMPETENCY_QUESTIONS;
-            questionsForInit.forEach(q => {
+            COMPETENCY_QUESTIONS.forEach(q => {
                 initialComps[q.id] = loadedComps[q.id] || { rating: 0, comment: '' };
             });
             setCompetencies(initialComps);
 
             setFeedback(meta.feedback || '');
             setLearning(meta.learning || '');
+
             setStatus(meta.status || 'submitted');
             setSubmitted(true);
             setIsLocked(true);
         } else {
-            setSnapshotQuestions(null); // New review — use live template
+
+
             const initialComps = {};
-            TEMPLATE_QUESTIONS.forEach(q => {
+            COMPETENCY_QUESTIONS.forEach(q => {
                 initialComps[q.id] = { rating: 0, comment: '' };
             });
             setCompetencies(initialComps);
+
             setFeedback('');
             setLearning('');
             setStatus('new');
@@ -184,10 +176,10 @@ export default function SelfReview() {
         await submitSelfReview({
             cycleId: selectedCycleId,
             employeeId: currentUser.id,
+
             competencies,
             feedback,
             learning,
-            questions: COMPETENCY_QUESTIONS,  // Snapshot the active question list
             status: finalStatus
         });
 
@@ -233,15 +225,15 @@ export default function SelfReview() {
             questions: COMPETENCY_QUESTIONS.filter(q => (q.section || 'General') === sec)
         }));
 
-        const SECTION_ICONS = { 
-            'Job-specific': '💼', 'Problem-solving': '🧩', 'Leadership & Initiative': '🚀', 'Adaptability & Resilience': '🌱', 
-            'Strategic Thinking': '🧠', 'Leadership & Ownership': '🏆', 'Decision Making': '📊', 'Innovation & Improvement': '🚀', 
-            'Collaboration & Influence': '🤝', 'Performance & Results': '📈', 'General': '📋' 
+        const SECTION_ICONS = {
+            'Job-specific': '💼', 'Problem-solving': '🧩', 'Leadership & Initiative': '🚀', 'Adaptability & Resilience': '🌱',
+            'Strategic Thinking': '🧠', 'Leadership & Ownership': '🏆', 'Decision Making': '📊', 'Innovation & Improvement': '🚀',
+            'Collaboration & Influence': '🤝', 'Performance & Results': '📈', 'General': '📋'
         };
-        const SECTION_COLORS = { 
-            'Job-specific': 'var(--blue-light)', 'Problem-solving': 'var(--purple)', 'Leadership & Initiative': '#10b981', 'Adaptability & Resilience': '#f59e0b', 
-            'Strategic Thinking': '#8b5cf6', 'Leadership & Ownership': '#f59e0b', 'Decision Making': '#06b6d4', 'Innovation & Improvement': '#10b981', 
-            'Collaboration & Influence': '#ec4899', 'Performance & Results': '#3b82f6', 'General': 'var(--text-secondary)' 
+        const SECTION_COLORS = {
+            'Job-specific': 'var(--blue-light)', 'Problem-solving': 'var(--purple)', 'Leadership & Initiative': '#10b981', 'Adaptability & Resilience': '#f59e0b',
+            'Strategic Thinking': '#8b5cf6', 'Leadership & Ownership': '#f59e0b', 'Decision Making': '#06b6d4', 'Innovation & Improvement': '#10b981',
+            'Collaboration & Influence': '#ec4899', 'Performance & Results': '#3b82f6', 'General': 'var(--text-secondary)'
         };
 
         return (
@@ -265,112 +257,112 @@ export default function SelfReview() {
                         </div>
 
                         {questions.map((q, index) => (
-                    <div key={q.id} className="card" style={{ marginBottom: '32px', padding: '24px' }}>
-                        <div style={{ fontWeight: 700, fontSize: '18px', color: 'var(--blue-light)', marginBottom: '8px' }}>{q.label} <span style={{ color: '#ef4444', fontSize: '15px' }}>*</span></div>
-                        <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '24px', lineHeight: '1.5' }}>{q.desc}</div>
+                            <div key={q.id} className="card" style={{ marginBottom: '32px', padding: '24px' }}>
+                                <div style={{ fontWeight: 700, fontSize: '18px', color: 'var(--blue-light)', marginBottom: '8px' }}>{q.label} <span style={{ color: '#ef4444', fontSize: '15px' }}>*</span></div>
+                                <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '24px', lineHeight: '1.5' }}>{q.desc}</div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-                            {/* Employee Section */}
-                            <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(56, 189, 248, 0.05)', border: '1px solid rgba(56, 189, 248, 0.1)' }}>
-                                <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '12px', color: 'var(--blue-light)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    👤 Employee Perspective
-                                </div>
-                                <div style={{ marginBottom: '16px' }}>
-                                    <label className="form-label" style={{ fontSize: '12px' }}>Rating</label>
-                                    <select
-                                        className="form-select"
-                                        style={{
-                                            width: '100%',
-                                            color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)',
-                                            background: 'var(--bg-secondary)',
-                                            opacity: 1,
-                                            pointerEvents: isReadOnly ? 'none' : 'auto',
-                                            cursor: isReadOnly ? 'not-allowed' : 'pointer'
-                                        }}
-                                        tabIndex={isReadOnly ? -1 : 0}
-                                        value={competencies[q.id]?.rating || 0}
-                                        onChange={e => {
-                                            const val = parseInt(e.target.value);
-                                            setCompetencies(p => ({
-                                                ...p,
-                                                [q.id]: { ...p[q.id], rating: val }
-                                            }));
-                                            if (val > 0 && errors[`comp-${q.id}`]) {
-                                                setErrors(p => ({ ...p, [`comp-${q.id}`]: null }));
-                                            }
-                                        }}
-                                    >
-                                        {RATING_OPTIONS.map(opt => (
-                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                        ))}
-                                    </select>
-                                    {errors[`comp-${q.id}`] && <div style={{ color: 'var(--red)', fontSize: '12px', marginTop: '4px', fontWeight: 600 }}>{errors[`comp-${q.id}`]}</div>}
-                                </div>
-                                <div>
-                                    <label className="form-label" style={{ fontSize: '12px' }}>Comments / Examples</label>
-                                    <textarea
-                                        id={`comp-${q.id}`}
-                                        className="form-input"
-                                        placeholder="Provide detailed explanation with examples and achievements..."
-                                        style={{
-                                            height: '180px',
-                                            overflowY: 'scroll',
-                                            width: '100%',
-                                            fontSize: '14px',
-                                            color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)',
-                                            background: 'var(--bg-secondary)',
-                                            cursor: isReadOnly ? 'not-allowed' : 'text',
-                                            border: errors[`comp-${q.id}`]?.includes('chars') ? '1px solid var(--red)' : undefined
-                                        }}
-                                        readOnly={isReadOnly}
-                                        value={competencies[q.id]?.comment || ''}
-                                        onChange={e => {
-                                            if (isReadOnly) return;
-                                            setCompetencies(p => ({
-                                                ...p,
-                                                [q.id]: { ...p[q.id], comment: e.target.value }
-                                            }));
-                                            if (errors[`comp-${q.id}`]) setErrors(p => ({ ...p, [`comp-${q.id}`]: null }));
-                                        }}
-                                    />
-                                </div>
-                            </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                                    {/* Employee Section */}
+                                    <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(56, 189, 248, 0.05)', border: '1px solid rgba(56, 189, 248, 0.1)' }}>
+                                        <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '12px', color: 'var(--blue-light)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            👤 Employee Perspective
+                                        </div>
+                                        <div style={{ marginBottom: '16px' }}>
+                                            <label className="form-label" style={{ fontSize: '12px' }}>Rating</label>
+                                            <select
+                                                className="form-select"
+                                                style={{
+                                                    width: '100%',
+                                                    color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)',
+                                                    background: 'var(--bg-secondary)',
+                                                    opacity: 1,
+                                                    pointerEvents: isReadOnly ? 'none' : 'auto',
+                                                    cursor: isReadOnly ? 'not-allowed' : 'pointer'
+                                                }}
+                                                tabIndex={isReadOnly ? -1 : 0}
+                                                value={competencies[q.id]?.rating || 0}
+                                                onChange={e => {
+                                                    const val = parseInt(e.target.value);
+                                                    setCompetencies(p => ({
+                                                        ...p,
+                                                        [q.id]: { ...p[q.id], rating: val }
+                                                    }));
+                                                    if (val > 0 && errors[`comp-${q.id}`]) {
+                                                        setErrors(p => ({ ...p, [`comp-${q.id}`]: null }));
+                                                    }
+                                                }}
+                                            >
+                                                {RATING_OPTIONS.map(opt => (
+                                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                ))}
+                                            </select>
+                                            {errors[`comp-${q.id}`] && <div style={{ color: 'var(--red)', fontSize: '12px', marginTop: '4px', fontWeight: 600 }}>{errors[`comp-${q.id}`]}</div>}
+                                        </div>
+                                        <div>
+                                            <label className="form-label" style={{ fontSize: '12px' }}>Comments / Examples</label>
+                                            <textarea
+                                                id={`comp-${q.id}`}
+                                                className="form-input"
+                                                placeholder="Provide detailed explanation with examples and achievements..."
+                                                style={{
+                                                    height: '180px',
+                                                    overflowY: 'scroll',
+                                                    width: '100%',
+                                                    fontSize: '14px',
+                                                    color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)',
+                                                    background: 'var(--bg-secondary)',
+                                                    cursor: isReadOnly ? 'not-allowed' : 'text',
+                                                    border: errors[`comp-${q.id}`]?.includes('chars') ? '1px solid var(--red)' : undefined
+                                                }}
+                                                readOnly={isReadOnly}
+                                                value={competencies[q.id]?.comment || ''}
+                                                onChange={e => {
+                                                    if (isReadOnly) return;
+                                                    setCompetencies(p => ({
+                                                        ...p,
+                                                        [q.id]: { ...p[q.id], comment: e.target.value }
+                                                    }));
+                                                    if (errors[`comp-${q.id}`]) setErrors(p => ({ ...p, [`comp-${q.id}`]: null }));
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
 
-                            {/* Manager Section */}
-                            <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(168, 85, 247, 0.05)', border: '1px solid rgba(168, 85, 247, 0.1)' }}>
-                                <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '12px', color: 'var(--purple)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    👨‍💼 Manager Perspective
-                                </div>
-                                <div style={{ marginBottom: '16px' }}>
-                                    <label className="form-label" style={{ fontSize: '12px' }}>Rating</label>
-                                    <div style={{
-                                        padding: '8px 12px',
-                                        background: 'var(--bg-secondary)',
-                                        borderRadius: '8px',
-                                        fontSize: '13px',
-                                        color: mngComps[q.id]?.rating ? 'var(--text-primary)' : 'var(--text-muted)'
-                                    }}>
-                                        {RATING_OPTIONS.find(o => o.value === (mngComps[q.id]?.rating || 0))?.label || 'Not yet rated'}
+                                    {/* Manager Section */}
+                                    <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(168, 85, 247, 0.05)', border: '1px solid rgba(168, 85, 247, 0.1)' }}>
+                                        <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '12px', color: 'var(--purple)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            👨‍💼 Manager Perspective
+                                        </div>
+                                        <div style={{ marginBottom: '16px' }}>
+                                            <label className="form-label" style={{ fontSize: '12px' }}>Rating</label>
+                                            <div style={{
+                                                padding: '8px 12px',
+                                                background: 'var(--bg-secondary)',
+                                                borderRadius: '8px',
+                                                fontSize: '13px',
+                                                color: mngComps[q.id]?.rating ? 'var(--text-primary)' : 'var(--text-muted)'
+                                            }}>
+                                                {RATING_OPTIONS.find(o => o.value === (mngComps[q.id]?.rating || 0))?.label || 'Not yet rated'}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="form-label" style={{ fontSize: '12px' }}>Comments / Feedback</label>
+                                            <div className="read-only-text" style={{
+                                                padding: '12px',
+                                                background: 'var(--bg-secondary)',
+                                                borderRadius: '8px',
+                                                fontSize: '13px',
+                                                height: '180px',
+                                                overflowY: 'scroll',
+                                                color: mngComps[q.id]?.comment ? 'var(--text-primary)' : 'var(--text-muted)',
+                                                whiteSpace: 'pre-wrap'
+                                            }}>
+                                                {mngComps[q.id]?.comment || 'No manager feedback provided yet.'}
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                                <div>
-                                    <label className="form-label" style={{ fontSize: '12px' }}>Comments / Feedback</label>
-                                    <div className="read-only-text" style={{
-                                        padding: '12px',
-                                        background: 'var(--bg-secondary)',
-                                        borderRadius: '8px',
-                                        fontSize: '13px',
-                                        height: '180px',
-                                        overflowY: 'scroll',
-                                        color: mngComps[q.id]?.comment ? 'var(--text-primary)' : 'var(--text-muted)',
-                                        whiteSpace: 'pre-wrap'
-                                    }}>
-                                        {mngComps[q.id]?.comment || 'No manager feedback provided yet.'}
-                                    </div>
-                                </div>
                             </div>
-                        </div>
-                    </div>
                         ))}
                     </div>
                 ))}
@@ -500,14 +492,14 @@ export default function SelfReview() {
 
                 {/* Right: Cycle dropdown Context */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    
+
                     {!isSubmitted && (
-                        <button 
-                            className="btn btn-secondary" 
+                        <button
+                            className="btn btn-secondary"
                             onClick={() => handleSubmit('draft')}
                             style={{ height: '42px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)' }}
                         >
-                            <span style={{ fontSize: '16px' }}>💾</span> 
+                            <span style={{ fontSize: '16px' }}>💾</span>
                             {status === 'new' ? 'Save Draft' : 'Update Draft'}
                         </button>
                     )}
