@@ -44,7 +44,7 @@ export default function Dashboard() {
     }, [teamMembers, evaluations, selfReviews, activeCycle]);
 
     // -- HR / Admin Stats
-    const totalEmployees = users.filter(u => u.role !== 'admin').length;
+    const totalEmployees = users.length;
     const pendingHRApprovals = evaluations.filter(ev => {
         if (ev.status !== 'pending_approval') return false;
         const emp = users.find(u => u.id === ev.employeeId);
