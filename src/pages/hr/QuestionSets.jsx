@@ -39,7 +39,7 @@ export default function QuestionSets() {
         setEditingSet(null);
         setFormName('');
         setFormDesc('');
-        setFormQuestions(DEFAULT_QUESTIONS.map(q => ({ ...q })));
+        setFormQuestions(DEFAULT_QUESTIONS.map(q => ({ ...q, label: '', desc: '' })));
         setView('edit');
     };
 
