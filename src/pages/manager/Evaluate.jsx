@@ -87,12 +87,17 @@ export default function Evaluate() {
 
     const TEMPLATE_QUESTIONS = empAssignedSet ? empAssignedSet.questions : DEFAULT_COMPETENCY_QUESTIONS;
 
+    // Resolve question set: If cycle is closed OR review is already submitted, use the saved snapshot. 
+    // Otherwise, use the live designation-based template so HR edits still apply to drafts.
+    const isActuallySubmitted = selfReview?.status === 'submitted' || selfReview?.status === 'approved';
+    const isClosed = cycle?.status === 'closed';
+
     let COMPETENCY_QUESTIONS = TEMPLATE_QUESTIONS;
-    if (cycle && cycle.status === 'closed') {
-        const srQuestions = selfReview?.metadata?.questions;
-        if (srQuestions && srQuestions.length > 0) {
-            COMPETENCY_QUESTIONS = srQuestions;
-        } else if (isSelfReviewSubmitted) {
+
+    if (isClosed || isActuallySubmitted) {
+        if (selfReview?.metadata?.questions && selfReview.metadata.questions.length > 0) {
+            COMPETENCY_QUESTIONS = selfReview.metadata.questions;
+        } else if (isActuallySubmitted) {
             COMPETENCY_QUESTIONS = DEFAULT_COMPETENCY_QUESTIONS;
         }
     }

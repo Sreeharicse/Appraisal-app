@@ -71,13 +71,17 @@ export default function SelfReview() {
     const isSubmitted = status !== 'new' && status !== 'draft';
     const isReadOnly = isSubmitted || (status === 'draft' && isLocked) || isClosed;
 
-    // Resolve question set: If cycle is closed, use the saved snapshot. Otherwise, use the live template so HR edits still apply.
+    // Resolve question set: If cycle is closed OR review is already submitted, use the saved snapshot. 
+    // Otherwise, use the live designation-based template so HR edits still apply to drafts.
     const existingReview = selfReviews.find(r => String(r.employeeId) === String(currentUser.id) && String(r.cycleId) === String(selectedCycleId));
     let COMPETENCY_QUESTIONS = TEMPLATE_QUESTIONS;
-    if (isClosed) {
+    
+    const isActuallySubmitted = existingReview?.status === 'submitted' || existingReview?.status === 'approved';
+
+    if (isClosed || isActuallySubmitted) {
         if (existingReview?.metadata?.questions && existingReview.metadata.questions.length > 0) {
             COMPETENCY_QUESTIONS = existingReview.metadata.questions;
-        } else if (existingReview?.status === 'submitted' || existingReview?.status === 'approved') {
+        } else if (isActuallySubmitted) {
             COMPETENCY_QUESTIONS = DEFAULT_COMPETENCY_QUESTIONS;
         }
     }
@@ -189,7 +193,7 @@ export default function SelfReview() {
             competencies,
             feedback,
             learning,
-            questions: COMPETENCY_QUESTIONS, // Snapshot the questions, but only use them when cycle closes
+            questions: COMPETENCY_QUESTIONS, // Permanent snapshot: Once submitted, these questions are locked forever
             status: finalStatus
         });
 
