@@ -91,13 +91,13 @@ export default function SelfReview() {
             if (meta.questions && meta.questions.length > 0) {
                 setSnapshotQuestions(meta.questions);
             } else {
-                setSnapshotQuestions(null); // Fall back to live template
+                setSnapshotQuestions(DEFAULT_COMPETENCY_QUESTIONS); // Force legacy reviews to use the original 12 queries
             }
 
             // Initialize competencies with stored answers
             const loadedComps = meta.competencies || {};
             const initialComps = {};
-            const questionsForInit = (meta.questions && meta.questions.length > 0) ? meta.questions : TEMPLATE_QUESTIONS;
+            const questionsForInit = (meta.questions && meta.questions.length > 0) ? meta.questions : DEFAULT_COMPETENCY_QUESTIONS;
             questionsForInit.forEach(q => {
                 initialComps[q.id] = loadedComps[q.id] || { rating: 0, comment: '' };
             });

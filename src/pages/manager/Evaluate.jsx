@@ -93,9 +93,15 @@ export default function Evaluate() {
     const TEMPLATE_QUESTIONS = empAssignedSet ? empAssignedSet.questions : DEFAULT_COMPETENCY_QUESTIONS;
     
     // 2. Snapshot: if a self-review exists with a saved question list, ALWAYS use that snapshot.
-    // This ensures managers review exactly what the employee answered, even if the HR template was edited later.
+    // This ensures managers review exactly what the employee answered.
+    // Legacy fix: if submitted but no snapshot exists, freeze to DEFAULT_COMPETENCY_QUESTIONS.
     const srQuestions = selfReview?.metadata?.questions;
-    const COMPETENCY_QUESTIONS = (srQuestions && srQuestions.length > 0) ? srQuestions : TEMPLATE_QUESTIONS;
+    let COMPETENCY_QUESTIONS = TEMPLATE_QUESTIONS;
+    if (srQuestions && srQuestions.length > 0) {
+        COMPETENCY_QUESTIONS = srQuestions;
+    } else if (isSelfReviewSubmitted) {
+        COMPETENCY_QUESTIONS = DEFAULT_COMPETENCY_QUESTIONS;
+    }
 
     useEffect(() => {
         if (!selectedCycleId || !selectedEmp) return;
