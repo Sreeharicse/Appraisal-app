@@ -28,7 +28,7 @@ function getSectionIcon(name) {
 }
 
 export default function QuestionSets() {
-    const { questionSets, createQuestionSet, updateQuestionSet, deleteQuestionSet, currentUser } = useApp();
+    const { questionSets, createQuestionSet, updateQuestionSet, deleteQuestionSet, currentUser, users } = useApp();
 
     const [view, setView] = useState('list'); // 'list' | 'edit'
     const [editingSet, setEditingSet] = useState(null);
@@ -179,21 +179,32 @@ export default function QuestionSets() {
                                         {(qs.questions || []).length > 5 && <span className="badge badge-gray" style={{ fontSize: '11px' }}>+{(qs.questions || []).length - 5} more</span>}
                                     </div>
                                 </div>
-                                <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-                                    <button className="btn btn-secondary" onClick={() => openEdit(qs)} style={{ fontSize: '12px', padding: '6px 14px' }}>
-                                        {isReadOnly ? '👁 View' : '✏️ Edit'}
-                                    </button>
-                                    {!isReadOnly && (
-                                        deleteConfirm === qs.id ? (
-                                            <div style={{ display: 'flex', gap: '6px' }}>
-                                                <button className="btn" onClick={() => handleDelete(qs.id)} style={{ fontSize: '12px', padding: '6px 12px', background: 'var(--red)', color: '#fff', border: 'none' }}>Confirm</button>
-                                                <button className="btn btn-secondary" onClick={() => setDeleteConfirm(null)} style={{ fontSize: '12px', padding: '6px 12px' }}>Cancel</button>
-                                            </div>
-                                        ) : (
-                                            <button className="btn btn-secondary" onClick={() => setDeleteConfirm(qs.id)} style={{ fontSize: '12px', padding: '6px 14px', color: 'var(--red)' }}>🗑 Delete</button>
-                                        )
-                                    )}
+                                    <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                                    {(() => {
+                                        const isAssigned = users.some(u => String(u.questionSetId) === String(qs.id));
+                                        return (
+                                            <>
+                                                <button className="btn btn-secondary" onClick={() => openEdit(qs)} style={{ fontSize: '12px', padding: '6px 14px' }}>
+                                                    {isReadOnly || isAssigned ? '👁 View' : '✏️ Edit'}
+                                                </button>
+                                                {!isReadOnly && !isAssigned && (
+                                                    deleteConfirm === qs.id ? (
+                                                        <div style={{ display: 'flex', gap: '6px' }}>
+                                                            <button className="btn" onClick={() => handleDelete(qs.id)} style={{ fontSize: '12px', padding: '6px 12px', background: 'var(--red)', color: '#fff', border: 'none' }}>Confirm</button>
+                                                            <button className="btn btn-secondary" onClick={() => setDeleteConfirm(null)} style={{ fontSize: '12px', padding: '6px 12px' }}>Cancel</button>
+                                                        </div>
+                                                    ) : (
+                                                        <button className="btn btn-secondary" onClick={() => setDeleteConfirm(qs.id)} style={{ fontSize: '12px', padding: '6px 14px', color: 'var(--red)' }}>🗑 Delete</button>
+                                                    )
+                                                )}
+                                                {!isReadOnly && isAssigned && (
+                                                    <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>🔒 Assigned</span>
+                                                )}
+                                            </>
+                                        );
+                                    })()}
                                 </div>
+
                             </div>
                         ))}
                     </div>
@@ -204,6 +215,10 @@ export default function QuestionSets() {
 
     /* ── EDIT VIEW ── */
     const sectionsCount = formSections.length;
+    
+    // Lock the form if it's already assigned to any user
+    const isCurrentSetAssigned = editingSet && users.some(u => String(u.questionSetId) === String(editingSet.id));
+    const isFormReadOnly = isReadOnly || isCurrentSetAssigned;
 
     return (
         <div style={{ maxWidth: '900px', margin: '0 auto' }}>
@@ -212,10 +227,17 @@ export default function QuestionSets() {
                     <button className="btn btn-secondary" onClick={() => setView('list')} style={{ fontSize: '12px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         ← Back to Sets
                     </button>
-                    <h2 className="section-title">{editingSet ? 'Edit Question Set' : 'New Question Set'}</h2>
-                    <p className="section-subtitle">Configure sections and competency questions for this set ({sectionsCount} sections, {formQuestions.length} questions)</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <h2 className="section-title">{editingSet ? (isFormReadOnly ? 'View Question Set' : 'Edit Question Set') : 'New Question Set'}</h2>
+                        {isCurrentSetAssigned && <span className="badge badge-purple" style={{ fontSize: '12px' }}>🔒 Locked (Assigned)</span>}
+                    </div>
+                    <p className="section-subtitle">
+                        {isCurrentSetAssigned 
+                            ? "This set is currently assigned to employees and cannot be edited to preserve active cycle integrity." 
+                            : `Configure sections and competency questions for this set (${sectionsCount} sections, ${formQuestions.length} questions)`}
+                    </p>
                 </div>
-                {!isReadOnly && (
+                {!isFormReadOnly && (
                     <button className="btn btn-primary" onClick={handleSave} disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         {saving ? '⏳ Saving...' : '💾 Save Set'}
                     </button>
@@ -229,12 +251,12 @@ export default function QuestionSets() {
                     <div>
                         <label className="form-label">Set Name *</label>
                         <input className="form-input" value={formName} onChange={e => setFormName(e.target.value)}
-                            placeholder="e.g. Engineering Team Set" disabled={isReadOnly} style={{ background: 'var(--bg-secondary)' }} />
+                            placeholder="e.g. Engineering Team Set" disabled={isFormReadOnly} style={{ background: 'var(--bg-secondary)' }} />
                     </div>
                     <div>
                         <label className="form-label">Description</label>
                         <input className="form-input" value={formDesc} onChange={e => setFormDesc(e.target.value)}
-                            placeholder="Brief description of when to use this set" disabled={isReadOnly} style={{ background: 'var(--bg-secondary)' }} />
+                            placeholder="Brief description of when to use this set" disabled={isFormReadOnly} style={{ background: 'var(--bg-secondary)' }} />
                     </div>
                 </div>
             </div>
@@ -254,7 +276,7 @@ export default function QuestionSets() {
                             background: 'var(--bg-secondary)', border: `1px solid ${color}33`
                         }}>
                             {/* Icon picker */}
-                            {!isReadOnly ? (
+                            {!isFormReadOnly ? (
                                 <input
                                     value={sec.icon}
                                     onChange={e => setSectionIcon(sec.name, e.target.value)}
@@ -272,7 +294,7 @@ export default function QuestionSets() {
                             )}
 
                             {/* Section name input */}
-                            {!isReadOnly ? (
+                            {!isFormReadOnly ? (
                                 <input
                                     value={sec.name}
                                     onChange={e => renameSection(sec.name, e.target.value)}
@@ -293,7 +315,7 @@ export default function QuestionSets() {
                             </span>
 
                             {/* Delete Section */}
-                            {!isReadOnly && formSections.length > 1 && (
+                            {!isFormReadOnly && formSections.length > 1 && (
                                 <button
                                     onClick={() => deleteSection(sec.name)}
                                     title="Remove this section and its questions"
@@ -324,7 +346,7 @@ export default function QuestionSets() {
                                                 Question {globalIndex + 1}
                                             </div>
                                             {/* Remove question button */}
-                                            {!isReadOnly && sectionQs.length > 1 && (
+                                            {!isFormReadOnly && sectionQs.length > 1 && (
                                                 <button
                                                     onClick={() => removeQuestion(q.id)}
                                                     title="Remove this question"
@@ -341,7 +363,7 @@ export default function QuestionSets() {
                                                 <input className="form-input" value={q.label}
                                                     onChange={e => updateQuestion(q.id, 'label', e.target.value)}
                                                     placeholder="Question Title"
-                                                    disabled={isReadOnly}
+                                                    disabled={isFormReadOnly}
                                                     style={{ background: 'var(--bg-secondary)', fontWeight: 600 }} />
                                             </div>
                                             <div>
@@ -349,7 +371,7 @@ export default function QuestionSets() {
                                                 <textarea className="form-input" value={q.desc}
                                                     onChange={e => updateQuestion(q.id, 'desc', e.target.value)}
                                                     placeholder="Enter the full question prompt that the employee will see..."
-                                                    disabled={isReadOnly} rows={3}
+                                                    disabled={isFormReadOnly} rows={3}
                                                     style={{ background: 'var(--bg-secondary)', resize: 'vertical', minHeight: '72px' }} />
                                             </div>
                                         </div>
@@ -359,7 +381,7 @@ export default function QuestionSets() {
                         </div>
 
                         {/* Add Question to this section */}
-                        {!isReadOnly && (
+                        {!isFormReadOnly && (
                             <button
                                 onClick={() => addQuestion(sec.name)}
                                 style={{
@@ -376,7 +398,7 @@ export default function QuestionSets() {
             })}
 
             {/* Add Section button */}
-            {!isReadOnly && (
+            {!isFormReadOnly && (
                 <div style={{ marginBottom: '32px' }}>
                     <button
                         onClick={addSection}
@@ -391,7 +413,7 @@ export default function QuestionSets() {
                 </div>
             )}
 
-            {!isReadOnly && (
+            {!isFormReadOnly && (
                 <div style={{ marginTop: '8px', display: 'flex', justifyContent: 'flex-end' }}>
                     <button className="btn btn-primary" onClick={handleSave} disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         {saving ? '⏳ Saving...' : '💾 Save Question Set'}
