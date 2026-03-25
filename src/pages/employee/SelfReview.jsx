@@ -3,7 +3,7 @@ import { useApp } from '../../context/AppContext';
 import Icons from '../../components/Icons';
 
 export default function SelfReview() {
-    const { currentUser, users, cycles, evaluations = [], getSelfReview, submitSelfReview, getScore, refreshData, setTopBarAction, questionSets } = useApp();
+    const { currentUser, users, cycles, evaluations = [], selfReviews = [], getSelfReview, submitSelfReview, getScore, refreshData, setTopBarAction, questionSets } = useApp();
 
     useEffect(() => {
         refreshData();
