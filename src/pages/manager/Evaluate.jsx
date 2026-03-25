@@ -171,19 +171,19 @@ export default function Evaluate() {
             // Validate overall feedback
             if (!feedback || feedback.trim().length < 20) {
                 alert('Please provide a detailed final assessment (min 20 chars).');
-                setActiveTab(5);
+                setActiveTab(3);
                 return;
             }
 
             // Validate Final Rating
             if (!finalRating) {
                 alert('Please select a Final Rating Classification.');
-                setActiveTab(3); // Changed from 5 to 3
+                setShowRatingModal(true);
                 return;
             }
             if (!subRating || parseFloat(subRating) < 1 || parseFloat(subRating) > 5) {
                 alert('Please provide a valid Sub-Rating between 1 and 5.');
-                setActiveTab(3); // Changed from 5 to 3
+                setShowRatingModal(true);
                 return;
             }
         }
@@ -222,100 +222,127 @@ export default function Evaluate() {
         setHasEdited(true);
     };
 
+    const renderCompetenciesTab = () => {
+        // Group questions by section if they have a section field
+        const sections = [];
+        const seen = new Set();
+        COMPETENCY_QUESTIONS.forEach(q => {
+            const sec = q.section || 'General';
+            if (!seen.has(sec)) { seen.add(sec); sections.push(sec); }
+        });
+        const grouped = sections.map(sec => ({
+            title: sec,
+            questions: COMPETENCY_QUESTIONS.filter(q => (q.section || 'General') === sec)
+        }));
 
-    const renderCompetenciesTab = () => (
-        <div>
-            <div className="card-title" style={{ marginBottom: '8px' }}>Competency Evaluation</div>
-            <p className="section-subtitle" style={{ marginBottom: '16px' }}>Compare employee self-ratings with your own assessment.</p>
-            {COMPETENCY_QUESTIONS.map((q) => (
-                <div key={q.id} className="card" style={{ marginBottom: '12px', padding: '14px' }}>
-                    <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--blue-light)', marginBottom: '4px' }}>{q.label} <span style={{ color: '#ef4444', fontSize: '13px' }}>*</span></div>
-                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px', lineHeight: '1.4', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{q.desc}</div>
+        const SECTION_ICONS = { 
+            'Job-specific': '💼', 'Problem-solving': '🧩', 'Leadership & Initiative': '🚀', 'Adaptability & Resilience': '🌱', 
+            'Strategic Thinking': '🧠', 'Leadership & Ownership': '🏆', 'Decision Making': '📊', 'Innovation & Improvement': '🚀', 
+            'Collaboration & Influence': '🤝', 'Performance & Results': '📈', 'General': '📋' 
+        };
+        const SECTION_COLORS = { 
+            'Job-specific': 'var(--blue-light)', 'Problem-solving': 'var(--purple)', 'Leadership & Initiative': '#10b981', 'Adaptability & Resilience': '#f59e0b', 
+            'Strategic Thinking': '#8b5cf6', 'Leadership & Ownership': '#f59e0b', 'Decision Making': '#06b6d4', 'Innovation & Improvement': '#10b981', 
+            'Collaboration & Influence': '#ec4899', 'Performance & Results': '#3b82f6', 'General': 'var(--text-secondary)' 
+        };
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-                        {/* Employee Part (Read-only) */}
-                        <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(56, 189, 248, 0.05)', border: '1px solid rgba(56, 189, 248, 0.1)' }}>
-                            <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '12px', color: 'var(--blue-light)', display: 'flex', alignItems: 'center', gap: '8px' }}>👤 Employee Perspective</div>
-                            <div style={{ marginBottom: '16px' }}>
-                                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>Self-Rating</div>
-                                <div style={{ padding: '10px 14px', background: 'var(--bg-secondary)', borderRadius: '8px', fontSize: '14px', fontWeight: 600, border: '1px solid var(--border)' }}>
-                                    {RATING_OPTIONS.find(o => o.value === (empComps[q.id]?.rating || 0))?.label || 'Not rated'}
-                                </div>
-                            </div>
+        return (
+            <div>
+                <div className="card-title" style={{ marginBottom: '8px' }}>Competency Evaluation</div>
+                <p className="section-subtitle" style={{ marginBottom: '24px' }}>Compare employee self-ratings with your own assessment.</p>
+
+                {grouped.map(({ title, questions }) => (
+                    <div key={title} style={{ marginBottom: '40px' }}>
+                        {/* Section Header */}
+                        <div style={{
+                            display: 'flex', alignItems: 'center', gap: '10px',
+                            padding: '10px 16px', borderRadius: '10px', marginBottom: '20px',
+                            background: 'var(--bg-secondary)', border: '1px solid var(--border)'
+                        }}>
+                            <span style={{ fontSize: '20px' }}>{SECTION_ICONS[title] || '📋'}</span>
                             <div>
-                                <div className="read-only-text" style={{ padding: '16px', paddingRight: '24px', background: 'var(--bg-secondary)', borderRadius: '10px', fontSize: '14px', height: '180px', maxHeight: '180px', overflowY: 'auto', fontStyle: empComps[q.id]?.comment ? 'normal' : 'italic', lineHeight: '1.5' }}>
-                                    {empComps[q.id]?.comment || 'No comments provided.'}
-                                </div>
+                                <div style={{ fontWeight: 800, fontSize: '15px', color: SECTION_COLORS[title] || 'var(--text-primary)' }}>{title}</div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{questions.length} questions</div>
                             </div>
                         </div>
 
-                        {/* Manager Part (Editable / Locked) */}
-                        <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(168, 85, 247, 0.05)', border: '1px solid rgba(168, 85, 247, 0.1)' }}>
-                            <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '12px', color: 'var(--purple)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                👨‍💼 Manager Perspective
-                                {isSubmitted && <span style={{ fontSize: '11px', background: 'rgba(10, 185, 129, 0.1)', color: '#10b981', padding: '2px 8px', borderRadius: '20px', fontWeight: 600 }}>✅ Submitted</span>}
-                                {!isSubmitted && status === 'draft' && <span style={{ fontSize: '11px', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', padding: '2px 8px', borderRadius: '20px', fontWeight: 600 }}>✍️ In Progress</span>}
+                        {questions.map((q) => (
+                            <div key={q.id} className="card" style={{ marginBottom: '12px', padding: '14px' }}>
+                                <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--blue-light)', marginBottom: '4px' }}>{q.label} <span style={{ color: '#ef4444', fontSize: '13px' }}>*</span></div>
+                                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px', lineHeight: '1.4', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{q.desc}</div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                                    {/* Employee Part (Read-only) */}
+                                    <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(56, 189, 248, 0.05)', border: '1px solid rgba(56, 189, 248, 0.1)' }}>
+                                        <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '12px', color: 'var(--blue-light)', display: 'flex', alignItems: 'center', gap: '8px' }}>👤 Employee Perspective</div>
+                                        <div style={{ marginBottom: '16px' }}>
+                                            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>Self-Rating</div>
+                                            <div style={{ padding: '10px 14px', background: 'var(--bg-secondary)', borderRadius: '8px', fontSize: '14px', fontWeight: 600, border: '1px solid var(--border)' }}>
+                                                {RATING_OPTIONS.find(o => o.value === (empComps[q.id]?.rating || 0))?.label || 'Not rated'}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div className="read-only-text" style={{ padding: '16px', paddingRight: '24px', background: 'var(--bg-secondary)', borderRadius: '10px', fontSize: '14px', height: '180px', maxHeight: '180px', overflowY: 'auto', fontStyle: empComps[q.id]?.comment ? 'normal' : 'italic', lineHeight: '1.5' }}>
+                                                {empComps[q.id]?.comment || 'No comments provided.'}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Manager Part (Editable / Locked) */}
+                                    <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(168, 85, 247, 0.05)', border: '1px solid rgba(168, 85, 247, 0.1)' }}>
+                                        <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '12px', color: 'var(--purple)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            👨‍💼 Manager Perspective
+                                            {isSubmitted && <span style={{ fontSize: '11px', background: 'rgba(10, 185, 129, 0.1)', color: '#10b981', padding: '2px 8px', borderRadius: '20px', fontWeight: 600 }}>✅ Submitted</span>}
+                                            {!isSubmitted && status === 'draft' && <span style={{ fontSize: '11px', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', padding: '2px 8px', borderRadius: '20px', fontWeight: 600 }}>✍️ In Progress</span>}
+                                        </div>
+                                        <div style={{ marginBottom: '16px' }}>
+                                            <label style={{ fontSize: '12px', color: isReadOnly ? 'var(--text-muted)' : 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Rating</label>
+                                            <select className="form-select" value={competencies[q.id]?.rating || 0}
+                                                disabled={isReadOnly}
+                                                style={{
+                                                    width: '100%',
+                                                    color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)',
+                                                    background: 'var(--bg-secondary)',
+                                                    opacity: 1,
+                                                    pointerEvents: isReadOnly ? 'none' : 'auto',
+                                                    cursor: isReadOnly ? 'not-allowed' : 'pointer'
+                                                }}
+                                                onChange={e => updateCompRating(q.id, parseInt(e.target.value))}>
+                                                {RATING_OPTIONS.map(opt => (
+                                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <textarea id={`comp-${q.id}`} className="form-input" placeholder={isSubmitted ? 'Submitted.' : (isLocked ? 'Draft locked...' : 'Manager feedback (min 20 chars)...')}
+                                                style={{
+                                                    width: '100%',
+                                                    height: '180px',
+                                                    minHeight: '180px',
+                                                    maxHeight: '180px',
+                                                    overflowY: 'auto',
+                                                    resize: 'none',
+                                                    fontSize: '14px',
+                                                    lineHeight: '1.5',
+                                                    color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)',
+                                                    background: 'var(--bg-secondary)',
+                                                    cursor: isReadOnly ? 'not-allowed' : 'text',
+                                                    padding: '16px'
+                                                }}
+                                                value={competencies[q.id]?.comment || ''}
+                                                readOnly={isReadOnly}
+                                                onChange={e => { if (!isReadOnly) updateCompComment(q.id, e.target.value); }}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div style={{ marginBottom: '16px' }}>
-                                <label style={{ fontSize: '12px', color: isReadOnly ? 'var(--text-muted)' : 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Rating</label>
-                                <select className="form-select" value={competencies[q.id]?.rating || 0}
-                                    disabled={isReadOnly}
-                                    style={{
-                                        width: '100%',
-                                        color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)',
-                                        background: 'var(--bg-secondary)',
-                                        opacity: 1,
-                                        pointerEvents: isReadOnly ? 'none' : 'auto',
-                                        cursor: isReadOnly ? 'not-allowed' : 'pointer'
-                                    }}
-                                    onChange={e => updateCompRating(q.id, parseInt(e.target.value))}>
-                                    {RATING_OPTIONS.map(opt => (
-                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div>
-                                <textarea id={`comp-${q.id}`} className="form-input" placeholder={isSubmitted ? 'Submitted.' : (isLocked ? 'Draft locked...' : 'Manager feedback (min 20 chars)...')}
-                                    style={{
-                                        width: '100%',
-                                        height: '180px',
-                                        minHeight: '180px',
-                                        maxHeight: '180px',
-                                        overflowY: 'auto',
-                                        resize: 'none',
-                                        fontSize: '14px',
-                                        lineHeight: '1.5',
-                                        color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)',
-                                        background: 'var(--bg-secondary)',
-                                        cursor: isReadOnly ? 'not-allowed' : 'text',
-                                        padding: '16px'
-                                    }}
-                                    value={competencies[q.id]?.comment || ''}
-                                    readOnly={isReadOnly}
-                                    onChange={e => { if (!isReadOnly) updateCompComment(q.id, e.target.value); }}
-                                />
-                            </div>
-                        </div>
+                        ))}
                     </div>
-                </div>
-            ))}
-        </div>
-    );
-
-    const renderManagerReadOnlyBox = (content, placeholder) => (
-        <div className="read-only-text" style={{
-            padding: '12px',
-            background: 'rgba(168, 85, 247, 0.05)',
-            border: '1px solid rgba(168, 85, 247, 0.1)',
-            borderRadius: '12px',
-            height: '180px',
-            overflowY: 'scroll',
-            paddingRight: '36px',
-            color: content ? 'var(--text-primary)' : 'var(--text-muted)'
-        }}>
-            {content || placeholder}
-        </div>
-    );
+                ))}
+            </div>
+        );
+    };
 
     const renderEmployeeReadOnlyTab = (title, subtitle, content, placeholder) => (
         <div className="card" style={{ marginBottom: '32px', padding: '24px' }}>
@@ -370,7 +397,7 @@ export default function Evaluate() {
                         border: '1px solid rgba(16,185,129,0.25)',
                         color: '#10b981', fontWeight: 700, fontSize: '15px'
                     }}>
-                        ✅ Evaluation Submitted &amp; Locked
+                        ✅ Evaluation Submitted & Locked
                     </div>
                 ) : (
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px' }}>
@@ -397,7 +424,6 @@ export default function Evaluate() {
         </div>
     );
 
-    // Helper for cycle status badge
     const getCycleEvalInfo = (cycleId, empId) => {
         const ev = evaluations.find(e => String(e.employeeId) === String(empId) && String(e.cycleId) === String(cycleId));
         const sr = selfReviews.find(r => String(r.employeeId) === String(empId) && String(r.cycleId) === String(cycleId));
@@ -411,6 +437,7 @@ export default function Evaluate() {
         if (ev?.subRating) { pct = Math.round((parseFloat(ev.subRating) / 5) * 100); }
         return { statusLabel, statusColor, pct };
     };
+
     const renderLearningTab = () => (
         renderEmployeeReadOnlyTab(
             'Learning & Development',
@@ -428,7 +455,6 @@ export default function Evaluate() {
             'No feedback provided.'
         )
     );
-    // No topBarAction used anymore here
 
     const renderTabContent = () => {
         switch (activeTab) {
@@ -667,7 +693,7 @@ export default function Evaluate() {
                                     setShowRatingModal(false);
                                     handleSubmit('pending_approval');
                                 }}>
-                                🚀 Confirm &amp; Submit
+                                🚀 Confirm & Submit
                             </button>
                         </div>
                     </div>
@@ -694,4 +720,3 @@ export default function Evaluate() {
         </div>
     );
 }
-

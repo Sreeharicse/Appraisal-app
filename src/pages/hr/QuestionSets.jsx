@@ -141,6 +141,8 @@ export default function QuestionSets() {
         );
     }
 
+    const sectionsCount = new Set(formQuestions.map(q => q.section || 'General')).size;
+
     /* ── EDIT VIEW ── */
     return (
         <div style={{ maxWidth: '900px', margin: '0 auto' }}>
@@ -150,7 +152,7 @@ export default function QuestionSets() {
                         ← Back to Sets
                     </button>
                     <h2 className="section-title">{editingSet ? 'Edit Question Set' : 'New Question Set'}</h2>
-                    <p className="section-subtitle">Configure the competency questions for this set (4 sections, 12 questions)</p>
+                    <p className="section-subtitle">Configure the competency questions for this set ({sectionsCount} sections, {formQuestions.length} questions)</p>
                 </div>
                 {!isReadOnly && (
                     <button className="btn btn-primary" onClick={handleSave} disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -199,8 +201,16 @@ export default function QuestionSets() {
 
                 return sections.map(sec => {
                     const sectionQs = formQuestions.filter(q => (q.section || 'General') === sec);
-                    const SECTION_ICONS = { 'Job-specific': '💼', 'Problem-solving': '🧩', 'Leadership & Initiative': '🚀', 'Adaptability & Resilience': '🌱', 'General': '📋' };
-                    const SECTION_COLORS = { 'Job-specific': 'var(--blue-light)', 'Problem-solving': 'var(--purple)', 'Leadership & Initiative': '#10b981', 'Adaptability & Resilience': '#f59e0b', 'General': 'var(--text-secondary)' };
+                    const SECTION_ICONS = { 
+                        'Job-specific': '💼', 'Problem-solving': '🧩', 'Leadership & Initiative': '🚀', 'Adaptability & Resilience': '🌱', 
+                        'Strategic Thinking': '🧠', 'Leadership & Ownership': '🏆', 'Decision Making': '📊', 'Innovation & Improvement': '🚀', 
+                        'Collaboration & Influence': '🤝', 'Performance & Results': '📈', 'General': '📋' 
+                    };
+                    const SECTION_COLORS = { 
+                        'Job-specific': 'var(--blue-light)', 'Problem-solving': 'var(--purple)', 'Leadership & Initiative': '#10b981', 'Adaptability & Resilience': '#f59e0b', 
+                        'Strategic Thinking': '#8b5cf6', 'Leadership & Ownership': '#f59e0b', 'Decision Making': '#06b6d4', 'Innovation & Improvement': '#10b981', 
+                        'Collaboration & Influence': '#ec4899', 'Performance & Results': '#3b82f6', 'General': 'var(--text-secondary)' 
+                    };
 
                     return (
                         <div key={sec} style={{ marginBottom: '36px' }}>

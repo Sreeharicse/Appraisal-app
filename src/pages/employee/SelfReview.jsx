@@ -224,8 +224,16 @@ export default function SelfReview() {
             questions: COMPETENCY_QUESTIONS.filter(q => (q.section || 'General') === sec)
         }));
 
-        const SECTION_ICONS = { 'Job-specific': '💼', 'Problem-solving': '🧩', 'Leadership & Initiative': '🚀', 'Adaptability & Resilience': '🌱', 'General': '📋' };
-        const SECTION_COLORS = { 'Job-specific': 'var(--blue-light)', 'Problem-solving': 'var(--purple)', 'Leadership & Initiative': '#10b981', 'Adaptability & Resilience': '#f59e0b', 'General': 'var(--text-secondary)' };
+        const SECTION_ICONS = { 
+            'Job-specific': '💼', 'Problem-solving': '🧩', 'Leadership & Initiative': '🚀', 'Adaptability & Resilience': '🌱', 
+            'Strategic Thinking': '🧠', 'Leadership & Ownership': '🏆', 'Decision Making': '📊', 'Innovation & Improvement': '🚀', 
+            'Collaboration & Influence': '🤝', 'Performance & Results': '📈', 'General': '📋' 
+        };
+        const SECTION_COLORS = { 
+            'Job-specific': 'var(--blue-light)', 'Problem-solving': 'var(--purple)', 'Leadership & Initiative': '#10b981', 'Adaptability & Resilience': '#f59e0b', 
+            'Strategic Thinking': '#8b5cf6', 'Leadership & Ownership': '#f59e0b', 'Decision Making': '#06b6d4', 'Innovation & Improvement': '#10b981', 
+            'Collaboration & Influence': '#ec4899', 'Performance & Results': '#3b82f6', 'General': 'var(--text-secondary)' 
+        };
 
         return (
             <div style={{ paddingBottom: '40px' }}>
