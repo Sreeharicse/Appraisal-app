@@ -6,7 +6,7 @@ import Icons from '../../components/Icons';
 export default function Evaluate() {
     const { employeeId } = useParams();
     const navigate = useNavigate();
-    const { currentUser, users, cycles, getEvaluation, selfReviews, evaluations, submitEvaluation, calculateScore, getCategory, refreshData, setTopBarAction, questionSets } = useApp();
+    const { currentUser, users, cycles, getEvaluation, selfReviews, evaluations, submitEvaluation, calculateScore, getCategory, refreshData, setTopBarAction, questionSets, employeeOverrides } = useApp();
     const team = currentUser.role === 'admin'
         ? users.filter(u => u.role === 'hr' || u.role === 'manager')
         : users.filter(u => u.managerId === currentUser.id);
@@ -80,11 +80,22 @@ export default function Evaluate() {
     const empComps = selfReview?.metadata?.competencies || {};
     const isSelfReviewSubmitted = selfReview?.status === 'submitted' || selfReview?.status === 'approved';
 
-    // Resolve the template questions based on Job Title (Designation)
-    const empAssignedSet = emp?.designation
-        ? questionSets.find(qs => qs.targetDesignations?.includes(emp.designation))
-        : null;
+    // 2-Tier Question Set Resolution (mirrors SelfReview.jsx logic, but for the evaluated employee):
+    // Priority 1: Cycle-specific employee override (set by HR per employee per cycle)
+    // Priority 2: Job Title (designation) based mapping (global default)
+    const resolveEmpQuestionSet = (empId, cycleId) => {
+        const override = employeeOverrides?.find(
+            o => String(o.employeeId) === String(empId) && String(o.cycleId) === String(cycleId)
+        );
+        if (override) return questionSets.find(qs => qs.id === override.questionSetId) || null;
 
+        if (emp?.designation) {
+            return questionSets.find(qs => qs.targetDesignations?.includes(emp.designation)) || null;
+        }
+        return null;
+    };
+
+    const empAssignedSet = resolveEmpQuestionSet(selectedEmp, selectedCycleId);
     const TEMPLATE_QUESTIONS = empAssignedSet ? empAssignedSet.questions : DEFAULT_COMPETENCY_QUESTIONS;
 
     // Resolve question set: If cycle is closed OR review is already submitted, use the saved snapshot. 

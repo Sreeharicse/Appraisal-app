@@ -3,7 +3,7 @@ import { useApp } from '../../context/AppContext';
 import Icons from '../../components/Icons';
 
 export default function SelfReview() {
-    const { currentUser, users, cycles, evaluations = [], selfReviews = [], getSelfReview, submitSelfReview, getScore, refreshData, setTopBarAction, questionSets } = useApp();
+    const { currentUser, users, cycles, evaluations = [], selfReviews = [], getSelfReview, submitSelfReview, getScore, refreshData, setTopBarAction, questionSets, employeeOverrides } = useApp();
 
     useEffect(() => {
         refreshData();
@@ -40,14 +40,27 @@ export default function SelfReview() {
         { id: 'q14', label: '10. Professional Behavior', desc: 'Evaluate how you demonstrate professionalism in the workplace. This includes reliability, respect for colleagues, and maintaining a positive work attitude.' }
     ];
 
-    // Resolve the template questions based on Job Title (Designation)
+    // 2-Tier Question Set Resolution:
+    // Priority 1: Cycle-specific employee override (set by HR per employee per cycle)
+    // Priority 2: Job Title (designation) based mapping (global default)
     const latestUserData = users.find(u => u.id === currentUser.id) || currentUser;
 
-    // Look for a question set that includes this user's designation
-    const assignedSet = latestUserData.designation
-        ? questionSets.find(qs => qs.targetDesignations?.includes(latestUserData.designation))
-        : null;
+    const resolveQuestionSet = (cycleId) => {
+        // Priority 1: Cycle-specific override for this employee
+        const override = employeeOverrides?.find(
+            o => String(o.employeeId) === String(currentUser.id) && String(o.cycleId) === String(cycleId)
+        );
+        if (override) return questionSets.find(qs => qs.id === override.questionSetId) || null;
 
+        // Priority 2: Designation (Job Title) mapping
+        if (latestUserData?.designation) {
+            return questionSets.find(qs => qs.targetDesignations?.includes(latestUserData.designation)) || null;
+        }
+        return null;
+    };
+
+    // Will be recomputed whenever selectedCycleId changes
+    const assignedSet = resolveQuestionSet(selectedCycleId);
     const TEMPLATE_QUESTIONS = assignedSet ? assignedSet.questions : DEFAULT_COMPETENCY_QUESTIONS;
 
     const RATING_OPTIONS = [

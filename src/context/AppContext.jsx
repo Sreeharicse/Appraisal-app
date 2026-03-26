@@ -36,6 +36,7 @@ export function AppProvider({ children }) {
     const [notifications, setNotifications] = useState([]);
     const [topBarAction, setTopBarAction] = useState(null); // { label, icon, onClick, type }
     const [questionSets, setQuestionSets] = useState([]);
+    const [employeeOverrides, setEmployeeOverrides] = useState([]);
     const [loading, setLoading] = useState(true);
     const [theme, setTheme] = useState(localStorage.getItem('app-theme') || 'dark');
     const [encryptionKey, _setEncryptionKey] = useState(localStorage.getItem('admin_encryption_key') || 'techxl-secure-2026');
@@ -62,6 +63,9 @@ export function AppProvider({ children }) {
 
                 const fakeNotifications = localStorage.getItem('fake_notifications');
                 if (fakeNotifications) setNotifications(JSON.parse(fakeNotifications));
+
+                const fakeOverrides = localStorage.getItem('fake_employee_overrides');
+                if (fakeOverrides) setEmployeeOverrides(JSON.parse(fakeOverrides));
             } catch (e) {
                 console.error("Failed to parse local fake data in refresh", e);
             }
@@ -93,6 +97,7 @@ export function AppProvider({ children }) {
             departmentsData,
             designationsData,
             questionSetsData,
+            overridesData,
         ] = await Promise.all([
             fetchTable('profiles'),
             supabase.from('cycles').select('*').order('created_at', { ascending: false }).then(r => r.data || []),
@@ -103,6 +108,7 @@ export function AppProvider({ children }) {
             fetchTable('departments'),
             fetchTable('designations'),
             fetchTable('question_sets'),
+            fetchTable('employee_cycle_overrides'),
         ]);
 
         // Map snake_case DB columns → camelCase used by the UI
@@ -134,6 +140,12 @@ export function AppProvider({ children }) {
             endDate: c.end_date,
             status: c.status,
             createdBy: c.created_by,
+        })));
+
+        setEmployeeOverrides((overridesData || []).map(o => ({
+            employeeId: o.employee_id,
+            cycleId: o.cycle_id,
+            questionSetId: o.question_set_id,
         })));
 
         setSelfReviews((reviewsData || []).map(r => {
@@ -1394,6 +1406,59 @@ export function AppProvider({ children }) {
         return { success: true };
     };
 
+    // ──── Employee Cycle Overrides ────
+    const saveEmployeeOverride = async (employeeId, cycleId, questionSetId) => {
+        if (localStorage.getItem('fake_session_role')) {
+            setEmployeeOverrides(p => {
+                const filtered = p.filter(o => !(o.employeeId === employeeId && o.cycleId === cycleId));
+                const updated = [...filtered, { employeeId, cycleId, questionSetId }];
+                localStorage.setItem('fake_employee_overrides', JSON.stringify(updated));
+                return updated;
+            });
+            return { success: true };
+        }
+
+        const { error } = await supabase.from('employee_cycle_overrides').upsert({
+            employee_id: employeeId,
+            cycle_id: cycleId,
+            question_set_id: questionSetId
+        }, { onConflict: 'employee_id,cycle_id' });
+
+        if (error) {
+            console.error('Supabase error saving override:', error.message);
+            return { success: false, error: error.message };
+        }
+
+        setEmployeeOverrides(p => {
+            const filtered = p.filter(o => !(o.employeeId === employeeId && o.cycleId === cycleId));
+            return [...filtered, { employeeId, cycleId, questionSetId }];
+        });
+        return { success: true };
+    };
+
+    const deleteEmployeeOverride = async (employeeId, cycleId) => {
+        if (localStorage.getItem('fake_session_role')) {
+            setEmployeeOverrides(p => {
+                const updated = p.filter(o => !(o.employeeId === employeeId && o.cycleId === cycleId));
+                localStorage.setItem('fake_employee_overrides', JSON.stringify(updated));
+                return updated;
+            });
+            return { success: true };
+        }
+
+        const { error } = await supabase.from('employee_cycle_overrides')
+            .delete()
+            .match({ employee_id: employeeId, cycle_id: cycleId });
+
+        if (error) {
+            console.error('Supabase error deleting override:', error.message);
+            return { success: false, error: error.message };
+        }
+
+        setEmployeeOverrides(p => p.filter(o => !(o.employeeId === employeeId && o.cycleId === cycleId)));
+        return { success: true };
+    };
+
     // ──── Helpers (pure, not async — use local state) ────
     const getActiveCycle = () => cycles.find(c => c.status === 'active');
     const getUserById = (id) => users.find(u => u.id === id);
@@ -1433,6 +1498,7 @@ export function AppProvider({ children }) {
             createNotification, markNotificationAsRead,
             showDecrypted, setShowDecrypted, canDecrypt,
             questionSets, createQuestionSet, updateQuestionSet, deleteQuestionSet,
+            employeeOverrides, saveEmployeeOverride, deleteEmployeeOverride,
         }}>
             {children}
         </AppContext.Provider>
