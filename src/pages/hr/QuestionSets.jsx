@@ -380,51 +380,97 @@ export default function QuestionSets() {
                     </div>
 
                     <div>
-                        <label className="form-label" style={{ fontWeight: 600, marginBottom: '12px', display: 'block' }}>Target Job Titles (Designations)</label>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', padding: '20px', background: 'var(--bg-secondary)', borderRadius: '16px', border: '1px solid var(--border)' }}>
-                            {designations.map(d => {
-                                const assignedSetName = busyDesignationsMap[d.name];
-                                const isSelected = formDesignations.includes(d.name);
-                                const isBusy = !!assignedSetName && !isSelected;
+                        <label className="form-label" style={{ fontWeight: 600, marginBottom: '16px', display: 'block', color: 'var(--text-secondary)', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            Target Job Titles (Designations)
+                        </label>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                            {/* Available Section */}
+                            <div>
+                                <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--blue-light)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'currentColor' }} />
+                                    Available for Mapping
+                                </div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                                    {designations.filter(d => !busyDesignationsMap[d.name] || formDesignations.includes(d.name)).map(d => {
+                                        const isSelected = formDesignations.includes(d.name);
+                                        return (
+                                            <button
+                                                key={d.id}
+                                                type="button"
+                                                onClick={() => {
+                                                    if (isSelected) {
+                                                        setFormDesignations(p => p.filter(x => x !== d.name));
+                                                    } else {
+                                                        setFormDesignations(p => [...p, d.name]);
+                                                    }
+                                                }}
+                                                className={`badge ${isSelected ? 'badge-primary' : 'badge-gray'}`}
+                                                style={{ 
+                                                    border: '1px solid',
+                                                    borderColor: isSelected ? 'var(--blue-light)' : 'var(--border)',
+                                                    cursor: isReadOnly ? 'not-allowed' : 'pointer', 
+                                                    padding: '8px 16px', 
+                                                    fontSize: '13px',
+                                                    borderRadius: '10px',
+                                                    transition: 'all 0.2s',
+                                                    background: isSelected ? 'var(--blue-light)' : 'var(--bg-card)',
+                                                    color: isSelected ? 'white' : 'var(--text-primary)',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '8px',
+                                                    fontWeight: isSelected ? 700 : 500,
+                                                    boxShadow: isSelected ? '0 4px 12px rgba(59, 130, 246, 0.2)' : 'none'
+                                                }}
+                                                disabled={isReadOnly}
+                                            >
+                                                {isSelected && <span style={{ fontSize: '14px' }}>✓</span>}
+                                                {d.name}
+                                            </button>
+                                        );
+                                    })}
+                                    {designations.filter(d => !busyDesignationsMap[d.name] || formDesignations.includes(d.name)).length === 0 && (
+                                        <div style={{ fontSize: '13px', color: 'var(--text-muted)', italic: 'true', padding: '10px' }}>No available titles found.</div>
+                                    )}
+                                </div>
+                            </div>
 
-                                return (
-                                    <button
-                                        key={d.id}
-                                        type="button"
-                                        title={isBusy ? `Already mapped to "${assignedSetName}"` : ''}
-                                        onClick={() => {
-                                            if (isBusy) return;
-                                            if (isSelected) {
-                                                setFormDesignations(p => p.filter(x => x !== d.name));
-                                            } else {
-                                                setFormDesignations(p => [...p, d.name]);
-                                            }
-                                        }}
-                                        className={`badge ${isSelected ? 'badge-primary' : isBusy ? 'badge-busy' : 'badge-gray'}`}
-                                        style={{ 
-                                            border: 'none', 
-                                            cursor: isBusy || isReadOnly ? 'not-allowed' : 'pointer', 
-                                            padding: '10px 18px', 
-                                            fontSize: '13px',
-                                            borderRadius: '10px',
-                                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                                            background: isSelected ? 'var(--blue-light)' : isBusy ? 'rgba(0,0,0,0.03)' : 'rgba(0,0,0,0.05)',
-                                            color: isSelected ? 'white' : isBusy ? 'var(--text-muted)' : 'var(--text-secondary)',
-                                            opacity: isBusy ? 0.6 : 1,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '6px',
-                                            boxShadow: isSelected ? '0 4px 12px rgba(59, 130, 246, 0.2)' : 'none',
-                                            position: 'relative'
-                                        }}
-                                        disabled={isReadOnly || isBusy}
-                                    >
-                                        <span>{d.name}</span>
-                                        {isBusy && <span style={{ fontSize: '10px', fontWeight: 600, color: 'var(--red)', background: 'rgba(239, 68, 68, 0.1)', padding: '1px 6px', borderRadius: '4px' }}>MAPPED</span>}
-                                        {isSelected && <span style={{ fontSize: '10px' }}>✓</span>}
-                                    </button>
-                                );
-                            })}
+                            {/* Busy/Mapped Section */}
+                            {designations.some(d => busyDesignationsMap[d.name] && !formDesignations.includes(d.name)) && (
+                                <div style={{ borderTop: '1px dashed var(--border)', paddingTop: '20px' }}>
+                                    <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'currentColor' }} />
+                                        Assigned to Other Sets
+                                    </div>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', opacity: 0.7 }}>
+                                        {designations.filter(d => busyDesignationsMap[d.name] && !formDesignations.includes(d.name)).map(d => (
+                                            <div
+                                                key={d.id}
+                                                title={`Currently used in "${busyDesignationsMap[d.name]}"`}
+                                                style={{ 
+                                                    padding: '6px 14px', 
+                                                    fontSize: '12px',
+                                                    borderRadius: '8px',
+                                                    background: 'var(--bg-secondary)',
+                                                    color: 'var(--text-muted)',
+                                                    border: '1px solid var(--border)',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '6px',
+                                                    cursor: 'help',
+                                                    userSelect: 'none'
+                                                }}
+                                            >
+                                                <span style={{ fontSize: '14px', opacity: 0.5 }}>🔒</span>
+                                                {d.name}
+                                                <span style={{ fontSize: '10px', background: 'rgba(0,0,0,0.05)', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                                                    {busyDesignationsMap[d.name]}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
