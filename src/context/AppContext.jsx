@@ -129,6 +129,7 @@ export function AppProvider({ children }) {
             description: qs.description,
             questions: qs.questions || [],
             targetDesignations: qs.target_designations || [],
+            isCommon: !!qs.is_common,
             createdAt: qs.created_at,
         })));
         setDepartments((departmentsData || []).map(d => ({ id: d.id, name: d.name })));
@@ -713,26 +714,80 @@ export function AppProvider({ children }) {
             description: data.description || '',
             questions: data.questions,
             target_designations: data.targetDesignations || [],
+            is_common: !!data.isCommon,
             created_by: currentUser.id,
         }).select().single();
         if (error) { console.error('createQuestionSet:', error.message); return { success: false, error: error.message }; }
-        setQuestionSets(p => [...p, { id: result.id, name: result.name, description: result.description, questions: result.questions, targetDesignations: result.target_designations, createdAt: result.created_at }]);
+        
+        // If this one is common, ensure others are NOT (legacy cleanup for safety)
+        if (!!data.isCommon) {
+            await supabase.from('question_sets').update({ is_common: false }).neq('id', result.id);
+        }
+
+        setQuestionSets(p => {
+            let updated = p;
+            if (data.isCommon) {
+                updated = updated.map(qs => ({ ...qs, isCommon: false }));
+            }
+            return [...updated, { 
+                id: result.id, 
+                name: result.name, 
+                description: result.description, 
+                questions: result.questions, 
+                targetDesignations: result.target_designations,
+                isCommon: !!result.is_common,
+                createdAt: result.created_at 
+            }];
+        });
         return { success: true, data: result };
     };
 
     const updateQuestionSet = async (id, data) => {
-        const { error } = await supabase.from('question_sets').update({
+        const payload = {
             name: data.name,
             description: data.description,
             questions: data.questions,
             target_designations: data.targetDesignations || [],
-        }).eq('id', id);
+        };
+        if (data.isCommon !== undefined) payload.is_common = !!data.isCommon;
+
+        const { error } = await supabase.from('question_sets').update(payload).eq('id', id);
         if (error) { console.error('updateQuestionSet:', error.message); return { success: false, error: error.message }; }
-        setQuestionSets(p => p.map(qs => qs.id === id ? { ...qs, ...data } : qs));
+        
+        if (!!data.isCommon) {
+            await supabase.from('question_sets').update({ is_common: false }).neq('id', id);
+        }
+
+        setQuestionSets(p => p.map(qs => {
+            if (qs.id === id) return { ...qs, ...data };
+            if (data.isCommon) return { ...qs, isCommon: false };
+            return qs;
+        }));
+        return { success: true };
+    };
+
+    const setCommonQuestionSet = async (id) => {
+        // 1. Remove common flag from all
+        const { error: clearError } = await supabase.from('question_sets').update({ is_common: false }).neq('id', id);
+        if (clearError) return { success: false, error: clearError.message };
+
+        // 2. Set common flag for target
+        const { error: setError } = await supabase.from('question_sets').update({ is_common: true }).eq('id', id);
+        if (setError) return { success: false, error: setError.message };
+
+        setQuestionSets(p => p.map(qs => ({
+            ...qs,
+            isCommon: qs.id === id
+        })));
         return { success: true };
     };
 
     const deleteQuestionSet = async (id) => {
+        const target = questionSets.find(q => q.id === id);
+        if (target?.isCommon) {
+            return { success: false, error: 'Cannot delete the Common Question Set. Mark another set as Common first.' };
+        }
+
         const { error } = await supabase.from('question_sets').delete().eq('id', id);
         if (error) { console.error('deleteQuestionSet:', error.message); return { success: false, error: error.message }; }
         setQuestionSets(p => p.filter(qs => qs.id !== id));
@@ -1529,7 +1584,7 @@ export function AppProvider({ children }) {
             calculateScore, getCategory,
             createNotification, markNotificationAsRead,
             showDecrypted, setShowDecrypted, canDecrypt,
-            questionSets, createQuestionSet, updateQuestionSet, deleteQuestionSet,
+            questionSets, createQuestionSet, updateQuestionSet, deleteQuestionSet, setCommonQuestionSet,
             employeeOverrides, saveEmployeeOverride, deleteEmployeeOverride,
         }}>
             {children}

@@ -96,6 +96,11 @@ export default function Employees() {
     const openEdit = (u) => {
         setEditing(u);
         setForm({ name: u.name, email: u.email, role: u.role, designation: u.designation || '', department: u.department || '', managerId: u.managerId || '' });
+        
+        // Preselect common question set if available
+        const commonSet = questionSets.find(qs => qs.isCommon);
+        setOverrideForm({ cycleId: '', questionSetId: commonSet ? commonSet.id : '' });
+        
         resetModal();
         setShowModal(true);
     };

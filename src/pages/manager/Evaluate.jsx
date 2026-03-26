@@ -90,9 +90,12 @@ export default function Evaluate() {
         if (override) return questionSets.find(qs => qs.id === override.questionSetId) || null;
 
         if (emp?.designation) {
-            return questionSets.find(qs => qs.targetDesignations?.includes(emp.designation)) || null;
+            const byDesignation = questionSets.find(qs => qs.targetDesignations?.includes(emp.designation));
+            if (byDesignation) return byDesignation;
         }
-        return null;
+
+        // Priority 3: Common Question Set (Universal Default)
+        return questionSets.find(qs => qs.isCommon) || null;
     };
 
     const empAssignedSet = resolveEmpQuestionSet(selectedEmp, selectedCycleId);

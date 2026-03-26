@@ -33,6 +33,7 @@ export default function QuestionSets() {
     const [formDesc, setFormDesc] = useState('');
     const [formDesignations, setFormDesignations] = useState([]);
     const [formSections, setFormSections] = useState([]);
+    const [formIsCommon, setFormIsCommon] = useState(false);
     const [saving, setSaving] = useState(false);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
 
@@ -43,6 +44,7 @@ export default function QuestionSets() {
         setFormName('');
         setFormDesc('');
         setFormDesignations([]);
+        setFormIsCommon(false);
         // Convert default sections to empty placeholders for a fresh set if desired, 
         // but here we'll provide the standard structure as a starting point.
         setFormSections(DEFAULT_SECTIONS.map(s => ({
@@ -58,6 +60,7 @@ export default function QuestionSets() {
         setFormName(qs.name);
         setFormDesc(qs.description || '');
         setFormDesignations(qs.targetDesignations || []);
+        setFormIsCommon(!!qs.isCommon);
         
         // Handle backward compatibility: If qs.questions is flat, group it by 'section'
         const rawQs = qs.questions || [];
@@ -151,7 +154,8 @@ export default function QuestionSets() {
             name: formName.trim(), 
             description: formDesc.trim(), 
             questions: formSections, // Storing as nested array
-            targetDesignations: formDesignations
+            targetDesignations: formDesignations,
+            isCommon: formIsCommon
         };
         let result;
         if (editingSet) {
@@ -206,7 +210,14 @@ export default function QuestionSets() {
                             return (
                                 <div key={qs.id} className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
                                     <div style={{ flex: 1 }}>
-                                        <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--text-primary)' }}>{qs.name}</div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--text-primary)' }}>{qs.name}</div>
+                                            {qs.isCommon && (
+                                                <span className="badge" style={{ fontSize: '10px', background: 'rgba(16, 185, 129, 0.1)', color: 'var(--green-light)', border: '1px solid rgba(16, 185, 129, 0.2)', padding: '2px 6px' }}>
+                                                    ⭐ Default (Common)
+                                                </span>
+                                            )}
+                                        </div>
                                         {qs.description && <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>{qs.description}</div>}
                                         
                                         <div style={{ marginTop: '10px', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -299,24 +310,45 @@ export default function QuestionSets() {
                     </div>
 
                     <div>
-                        <label className="form-label" style={{ marginBottom: '8px', display: 'block' }}>Target Job Titles (Designations) *</label>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px', padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                        <label className="form-label" style={{ marginBottom: '8px', display: 'block' }}>Target Job Titles (Designations)</label>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
                             {designations.map(d => (
-                                <label key={d.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: 'var(--text-primary)' }}>
-                                    <input 
-                                        type="checkbox" 
-                                        checked={formDesignations.includes(d.name)}
-                                        disabled={isReadOnly}
-                                        onChange={(e) => {
-                                            if (e.target.checked) setFormDesignations(p => [...p, d.name]);
-                                            else setFormDesignations(p => p.filter(x => x !== d.name));
-                                        }}
-                                    />
+                                <button
+                                    key={d.id}
+                                    type="button"
+                                    onClick={() => {
+                                        if (formDesignations.includes(d.name)) {
+                                            setFormDesignations(p => p.filter(x => x !== d.name));
+                                        } else {
+                                            setFormDesignations(p => [...p, d.name]);
+                                        }
+                                    }}
+                                    className={`badge ${formDesignations.includes(d.name) ? 'badge-primary' : 'badge-gray'}`}
+                                    style={{ border: 'none', cursor: 'pointer', padding: '6px 12px', fontSize: '12px' }}
+                                    disabled={isReadOnly}
+                                >
                                     {d.name}
-                                </label>
+                                </button>
                             ))}
                         </div>
                     </div>
+
+                    {!isReadOnly && (
+                        <div style={{ marginTop: '16px' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '16px', background: 'rgba(16, 185, 129, 0.05)', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.1)' }}>
+                                <input 
+                                    type="checkbox" 
+                                    checked={formIsCommon} 
+                                    onChange={e => setFormIsCommon(e.target.checked)}
+                                    style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                                />
+                                <div>
+                                    <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--green-light)' }}>Set as Common Question Set</div>
+                                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>This set will be the default for all employees who don't have a specific mapping. Only one set can be common.</div>
+                                </div>
+                            </label>
+                        </div>
+                    )}
                 </div>
             </div>
 

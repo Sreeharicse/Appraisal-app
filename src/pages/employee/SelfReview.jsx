@@ -54,9 +54,12 @@ export default function SelfReview() {
 
         // Priority 2: Designation (Job Title) mapping
         if (latestUserData?.designation) {
-            return questionSets.find(qs => qs.targetDesignations?.includes(latestUserData.designation)) || null;
+            const byDesignation = questionSets.find(qs => qs.targetDesignations?.includes(latestUserData.designation));
+            if (byDesignation) return byDesignation;
         }
-        return null;
+
+        // Priority 3: Common Question Set (Universal Default)
+        return questionSets.find(qs => qs.isCommon) || null;
     };
 
     // Will be recomputed whenever selectedCycleId changes
