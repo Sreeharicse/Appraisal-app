@@ -303,22 +303,6 @@ export default function Cycles() {
                                     </select>
                                 </div>
                             </div>
-                            <div className="form-group" style={{ marginTop: '16px' }}>
-                                <label className="form-label">Override Question Set (Optional)</label>
-                                <select 
-                                    className="form-select" 
-                                    value={form.questionSetId} 
-                                    onChange={e => setForm(p => ({ ...p, questionSetId: e.target.value }))}
-                                >
-                                    <option value="">-- Default (Use Employee Designation Mapping) --</option>
-                                    {questionSets.map(qs => (
-                                        <option key={qs.id} value={qs.id}>{qs.name}</option>
-                                    ))}
-                                </select>
-                                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                                    Selecting a set here forces all employees in this cycle to use it, overriding their Job Titles.
-                                </div>
-                            </div>
                         </div>
                         <div className="modal-footer">
                             <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>

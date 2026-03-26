@@ -63,7 +63,7 @@ export default function SelfReview() {
     const isSubmitted = status !== 'new' && status !== 'draft';
     const isReadOnly = isSubmitted || (status === 'draft' && isLocked) || isClosed;
 
-    // --- 4-Tier Question Set Resolution Hierarchy ---
+    // --- 2-Tier Question Set Resolution Hierarchy ---
     const latestUserData = users.find(u => u.id === currentUser.id) || currentUser;
     let assignedSet = null;
 
@@ -72,11 +72,7 @@ export default function SelfReview() {
     if (specificOverride) {
         assignedSet = questionSets.find(qs => qs.id === specificOverride.questionSetId);
     }
-    // 2. Priority 2: Cycle-Level Override
-    if (!assignedSet && cycle?.questionSetId) {
-        assignedSet = questionSets.find(qs => qs.id === cycle.questionSetId);
-    }
-    // 3. Priority 3: Designation Mapping
+    // 2. Priority 2: Designation Mapping
     if (!assignedSet && latestUserData?.designation) {
         assignedSet = questionSets.find(qs => qs.targetDesignations?.includes(latestUserData.designation));
     }

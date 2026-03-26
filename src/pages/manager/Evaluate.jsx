@@ -80,7 +80,7 @@ export default function Evaluate() {
     const empComps = selfReview?.metadata?.competencies || {};
     const isSelfReviewSubmitted = selfReview?.status === 'submitted' || selfReview?.status === 'approved';
 
-    // --- 4-Tier Question Set Resolution Hierarchy ---
+    // --- 2-Tier Question Set Resolution Hierarchy ---
     let assignedSet = null;
 
     // 1. Priority 1: Cycle-Specific Employee Override (Highest Priority)
@@ -88,11 +88,7 @@ export default function Evaluate() {
     if (specificOverride) {
         assignedSet = questionSets.find(qs => qs.id === specificOverride.questionSetId);
     }
-    // 2. Priority 2: Cycle-Level Override
-    if (!assignedSet && cycle?.questionSetId) {
-        assignedSet = questionSets.find(qs => qs.id === cycle.questionSetId);
-    }
-    // 3. Priority 3: Designation Mapping
+    // 2. Priority 2: Designation Mapping
     if (!assignedSet && emp?.designation) {
         assignedSet = questionSets.find(qs => qs.targetDesignations?.includes(emp.designation));
     }
