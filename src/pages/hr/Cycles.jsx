@@ -3,10 +3,10 @@ import { useApp } from '../../context/AppContext';
 import Icons from '../../components/Icons';
 
 export default function Cycles() {
-    const { currentUser, users, cycles, selfReviews, evaluations, approvals, addCycle, updateCycle, deleteCycle, requestCycleDelete, getScore } = useApp();
+    const { currentUser, users, cycles, selfReviews, evaluations, approvals, addCycle, updateCycle, deleteCycle, requestCycleDelete, getScore, questionSets } = useApp();
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
-    const [form, setForm] = useState({ name: '', startDate: '', endDate: '', status: 'draft' });
+    const [form, setForm] = useState({ name: '', startDate: '', endDate: '', status: 'draft', questionSetId: '' });
 
     // Deletion Flow State
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -15,8 +15,8 @@ export default function Cycles() {
     const [confirmName, setConfirmName] = useState('');
     const [deleteRequested, setDeleteRequested] = useState({});
 
-    const openAdd = () => { setEditing(null); setForm({ name: '', startDate: '', endDate: '', status: 'draft' }); setShowModal(true); };
-    const openEdit = (c) => { setEditing(c); setForm({ name: c.name, startDate: c.startDate, endDate: c.endDate, status: c.status }); setShowModal(true); };
+    const openAdd = () => { setEditing(null); setForm({ name: '', startDate: '', endDate: '', status: 'draft', questionSetId: '' }); setShowModal(true); };
+    const openEdit = (c) => { setEditing(c); setForm({ name: c.name, startDate: c.startDate, endDate: c.endDate, status: c.status, questionSetId: c.questionSetId || '' }); setShowModal(true); };
 
     const handleSave = async () => {
         if (!form.name || !form.startDate || !form.endDate) return;
@@ -301,6 +301,22 @@ export default function Cycles() {
                                         <option value="active">Active</option>
                                         <option value="closed">Closed</option>
                                     </select>
+                                </div>
+                            </div>
+                            <div className="form-group" style={{ marginTop: '16px' }}>
+                                <label className="form-label">Override Question Set (Optional)</label>
+                                <select 
+                                    className="form-select" 
+                                    value={form.questionSetId} 
+                                    onChange={e => setForm(p => ({ ...p, questionSetId: e.target.value }))}
+                                >
+                                    <option value="">-- Default (Use Employee Designation Mapping) --</option>
+                                    {questionSets.map(qs => (
+                                        <option key={qs.id} value={qs.id}>{qs.name}</option>
+                                    ))}
+                                </select>
+                                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                                    Selecting a set here forces all employees in this cycle to use it, overriding their Job Titles.
                                 </div>
                             </div>
                         </div>

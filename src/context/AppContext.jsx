@@ -134,6 +134,7 @@ export function AppProvider({ children }) {
             endDate: c.end_date,
             status: c.status,
             createdBy: c.created_by,
+            questionSetId: c.question_set_id || null,
         })));
 
         setSelfReviews((reviewsData || []).map(r => {
@@ -772,7 +773,7 @@ export function AppProvider({ children }) {
     // ──── Cycles CRUD ────
     const addCycle = async (cycle) => {
         if (localStorage.getItem('fake_session_role')) {
-            const mapped = { id: crypto.randomUUID(), name: cycle.name, startDate: cycle.startDate, endDate: cycle.endDate, status: cycle.status || 'draft', createdBy: currentUser?.id };
+            const mapped = { id: crypto.randomUUID(), name: cycle.name, startDate: cycle.startDate, endDate: cycle.endDate, status: cycle.status || 'draft', createdBy: currentUser?.id, questionSetId: cycle.questionSetId || null };
             setCycles(p => {
                 const updated = [...p, mapped];
                 localStorage.setItem('fake_cycles', JSON.stringify(updated));
@@ -800,13 +801,14 @@ export function AppProvider({ children }) {
             end_date: cycle.endDate,
             status: cycle.status || 'draft',
             created_by: currentUser?.id,
+            question_set_id: cycle.questionSetId || null,
         }).select().single();
         if (error) {
             console.error('Supabase error adding cycle:', error.message);
             return null;
         }
         if (data) {
-            const mapped = { id: data.id, name: data.name, startDate: data.start_date, endDate: data.end_date, status: data.status, createdBy: data.created_by };
+            const mapped = { id: data.id, name: data.name, startDate: data.start_date, endDate: data.end_date, status: data.status, createdBy: data.created_by, questionSetId: data.question_set_id || null };
             setCycles(p => [...p, mapped]);
 
             if (mapped.status === 'active') {
@@ -852,6 +854,7 @@ export function AppProvider({ children }) {
         if (updates.startDate !== undefined) dbUpdates.start_date = updates.startDate;
         if (updates.endDate !== undefined) dbUpdates.end_date = updates.endDate;
         if (updates.status !== undefined) dbUpdates.status = updates.status;
+        if (updates.questionSetId !== undefined) dbUpdates.question_set_id = updates.questionSetId || null;
 
         const { error } = await supabase.from('cycles').update(dbUpdates).eq('id', id);
         if (!error) {
