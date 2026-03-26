@@ -102,8 +102,11 @@ export default function SelfReview() {
 
     const isActuallySubmitted = existingReview?.status === 'submitted' || existingReview?.status === 'approved';
 
-    if (isClosed || isActuallySubmitted) {
-        if (existingReview?.metadata?.questions && existingReview.metadata.questions.length > 0) {
+    const hasSnapshot = existingReview?.metadata?.questions && existingReview.metadata.questions.length > 0;
+    
+    // Priority: Snapshot (Submitted/Draft) > Resolved Set
+    if (isClosed || hasSnapshot) {
+        if (hasSnapshot) {
             COMPETENCY_QUESTIONS = existingReview.metadata.questions;
         } else if (isActuallySubmitted) {
             COMPETENCY_QUESTIONS = DEFAULT_COMPETENCY_QUESTIONS;

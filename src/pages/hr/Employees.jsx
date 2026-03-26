@@ -456,23 +456,31 @@ export default function Employees() {
                                         onChange={e => setForm(p => ({ ...p, name: e.target.value }))} />
                                 </div>
                                 <div className="form-group">
-                                    <label className="form-label" style={{ color: profileReviewStarted ? 'var(--text-muted)' : 'inherit' }}>Job Title / Designation</label>
+                                    <label className="form-label">Job Title / Designation</label>
                                     <select 
                                         className="form-select" 
                                         value={form.designation}
-                                        disabled={profileReviewStarted}
                                         onChange={e => setForm(p => ({ ...p, designation: e.target.value }))}
-                                        style={{ 
-                                            background: profileReviewStarted ? 'rgba(0,0,0,0.02)' : 'var(--bg-secondary)',
-                                            cursor: profileReviewStarted ? 'not-allowed' : 'pointer'
-                                        }}
                                     >
                                         <option value="">-- Select Title --</option>
                                         {designations.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
                                     </select>
                                     {profileReviewStarted && (
-                                        <div style={{ fontSize: '11px', color: '#ef4444', marginTop: '6px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            <AlertCircle /> Question Set cannot be changed once review is started
+                                        <div style={{ 
+                                            fontSize: '11px', 
+                                            color: 'var(--blue)', 
+                                            marginTop: '6px', 
+                                            fontWeight: 600, 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            gap: '4px',
+                                            padding: '4px 8px',
+                                            background: 'rgba(59, 130, 246, 0.05)',
+                                            borderRadius: '4px',
+                                            border: '1px solid rgba(59, 130, 246, 0.1)'
+                                        }}>
+                                            <Icons.Info style={{ width: 14, height: 14 }} /> 
+                                            Designation updated. Question Set remains unchanged as review has already started.
                                         </div>
                                     )}
                                 </div>

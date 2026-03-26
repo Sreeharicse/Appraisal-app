@@ -116,8 +116,11 @@ export default function Evaluate() {
 
     let COMPETENCY_QUESTIONS = TEMPLATE_QUESTIONS;
 
-    if (isClosed || isActuallySubmitted) {
-        if (selfReview?.metadata?.questions && selfReview.metadata.questions.length > 0) {
+    const hasSnapshot = selfReview?.metadata?.questions && selfReview.metadata.questions.length > 0;
+    
+    // Priority: Snapshot (Submitted/Draft) > Resolved Set
+    if (isClosed || hasSnapshot) {
+        if (hasSnapshot) {
             COMPETENCY_QUESTIONS = selfReview.metadata.questions;
         } else if (isActuallySubmitted) {
             COMPETENCY_QUESTIONS = DEFAULT_COMPETENCY_QUESTIONS;
