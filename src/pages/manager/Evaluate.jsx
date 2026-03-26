@@ -95,7 +95,15 @@ export default function Evaluate() {
         }
 
         // Priority 3: Common Question Set (Universal Default)
-        return questionSets.find(qs => qs.isCommon) || null;
+        const commonSet = questionSets.find(qs => qs.isCommon);
+        if (commonSet) return commonSet;
+
+        // Priority 4: Smart Search (Set named "Common")
+        const namedCommon = questionSets.find(qs => qs.name.toLowerCase().includes('common'));
+        if (namedCommon) return namedCommon;
+
+        // Priority 5: First available set
+        return questionSets[0] || null;
     };
 
     const empAssignedSet = resolveEmpQuestionSet(selectedEmp, selectedCycleId);

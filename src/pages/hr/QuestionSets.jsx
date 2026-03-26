@@ -213,7 +213,30 @@ export default function QuestionSets() {
                             const qCount = qs.questions?.[0]?.questions ? qs.questions.reduce((sum, s) => sum + s.questions.length, 0) : (qs.questions || []).length;
 
                             return (
-                                <div key={qs.id} className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+                                <div 
+                                    key={qs.id} 
+                                    className="card" 
+                                    style={{ 
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        justifyContent: 'space-between', 
+                                        gap: '16px',
+                                        border: qs.isCommon ? '1px solid rgba(234, 179, 8, 0.4)' : '1px solid var(--border)',
+                                        background: qs.isCommon ? 'linear-gradient(to right, rgba(234, 179, 8, 0.05), transparent)' : 'var(--bg-card)',
+                                        position: 'relative',
+                                        overflow: 'hidden'
+                                    }}
+                                >
+                                    {qs.isCommon && (
+                                        <div style={{
+                                            position: 'absolute',
+                                            top: 0,
+                                            left: 0,
+                                            width: '4px',
+                                            height: '100%',
+                                            background: '#eab308'
+                                        }} />
+                                    )}
                                     <div style={{ flex: 1 }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                             <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--text-primary)' }}>{qs.name}</div>
@@ -251,6 +274,11 @@ export default function QuestionSets() {
                                                         <span className="badge badge-gray" style={{ fontSize: '10px' }}>+{qs.targetDesignations.length - 3} more</span>
                                                     )}
                                                 </div>
+                                            )}
+                                            {!qs.isCommon && qs.name.toLowerCase().includes('common') && (
+                                                <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                                                    (Recommended for Default)
+                                                </span>
                                             )}
                                         </div>
                                     </div>
