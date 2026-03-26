@@ -172,39 +172,33 @@ export default function Approvals() {
                                     </div>
                                 </div>
 
-                                {/* Compact Breakdown Bars */}
+                                {/* Compact Breakdown Bars (70/20/10 alignment) */}
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                    {/* Core */}
+                                    {/* Competencies (70%) */}
                                     <div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
-                                            <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Core Performance <span style={{ color: 'var(--blue-light)', fontWeight: 700 }}>45%</span></span>
-                                            <span style={{ fontWeight: 700, color: 'var(--blue-light)' }}>{coreAvg.toFixed(1)}/5</span>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '4px' }}>
+                                            <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Competencies Avg <span style={{ color: 'var(--blue-light)', fontWeight: 700 }}>70%</span></span>
+                                            <span style={{ fontWeight: 700, color: 'var(--blue-light)' }}>{allQsAvg > 0 ? allQsAvg.toFixed(1) : '—'}/5</span>
                                         </div>
-                                        <div className="progress-bar" style={{ height: '6px' }}><div className="progress-fill" style={{ width: `${(coreAvg / 5) * 100}%`, background: 'var(--blue-light)' }} /></div>
+                                        <div className="progress-bar" style={{ height: '5px' }}><div className="progress-fill" style={{ width: `${(allQsAvg / 5) * 100}%`, background: 'var(--blue-light)' }} /></div>
                                     </div>
-                                    {/* Behavioral */}
+
+                                    {/* Manager Sub-Rating (20%) */}
                                     <div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
-                                            <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Behavioral Traits <span style={{ color: '#06b6d4', fontWeight: 700 }}>30%</span></span>
-                                            <span style={{ fontWeight: 700, color: '#06b6d4' }}>{behavioralAvg.toFixed(1)}/5</span>
-                                        </div>
-                                        <div className="progress-bar" style={{ height: '6px' }}><div className="progress-fill" style={{ width: `${(behavioralAvg / 5) * 100}%`, background: '#06b6d4' }} /></div>
-                                    </div>
-                                    {/* Sub-Rating */}
-                                    <div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
-                                            <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Sub-Rating <span style={{ color: 'var(--purple)', fontWeight: 700 }}>25%</span></span>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '4px' }}>
+                                            <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Manager Sub-Rating <span style={{ color: 'var(--purple)', fontWeight: 700 }}>20%</span></span>
                                             <span style={{ fontWeight: 700, color: 'var(--purple)' }}>{ev.subRating || '—'}/5</span>
                                         </div>
-                                        <div className="progress-bar" style={{ height: '6px' }}><div className="progress-fill" style={{ width: `${((ev.subRating || 0) / 5) * 100}%`, background: 'var(--purple)' }} /></div>
+                                        <div className="progress-bar" style={{ height: '5px' }}><div className="progress-fill" style={{ width: `${((ev.subRating || 0) / 5) * 100}%`, background: 'var(--purple)' }} /></div>
                                     </div>
-                                    {/* HR */}
+
+                                    {/* HR Assessment (10%) */}
                                     <div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '4px' }}>
                                             <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>HR Assessment <span style={{ color: 'var(--yellow)', fontWeight: 700 }}>10%</span></span>
                                             <span style={{ fontWeight: 700, color: allRated ? 'var(--yellow)' : 'var(--text-muted)' }}>{allRated ? avgHr.toFixed(1) : '—'}/5</span>
                                         </div>
-                                        <div className="progress-bar" style={{ height: '6px' }}><div className="progress-fill" style={{ width: allRated ? `${(avgHr / 5) * 100}%` : '0%', background: 'var(--yellow)' }} /></div>
+                                        <div className="progress-bar" style={{ height: '5px' }}><div className="progress-fill" style={{ width: allRated ? `${(avgHr / 5) * 100}%` : '0%', background: 'var(--yellow)' }} /></div>
                                     </div>
                                 </div>
                             </div>
