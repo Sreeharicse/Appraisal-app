@@ -115,7 +115,7 @@ export default function HRDashboard() {
                         <div>
                             <div className="card-title" style={{ fontSize: '14px', marginBottom: '8px' }}>Cycle Progress</div>
                             <div style={{ fontSize: '28px', fontWeight: 800 }}>
-                                {employees.length ? Math.round((evaluations.filter(e => e.status !== 'draft').length / employees.length) * 100) : 0}%
+                                {employees.length ? Math.round((evaluations.filter(e => e.status === 'approved').length / employees.length) * 100) : 0}%
                             </div>
                         </div>
                         <div style={{ padding: '12px', background: 'var(--bg-card)', borderRadius: '12px', color: 'var(--purple)' }}>

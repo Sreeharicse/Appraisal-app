@@ -171,7 +171,13 @@ export default function Reports() {
             </div>
 
             {employeeScores.length === 0 && (
-                <div className="alert alert-warning">⚠️ No evaluated employees yet. Scores will appear once managers submit evaluations.</div>
+                <div className="alert alert-warning" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px 20px', borderRadius: '12px' }}>
+                    <Icons.Chart style={{ width: '20px', height: '20px', color: 'var(--yellow)' }} />
+                    <div>
+                        <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '2px' }}>Analytics Pending Approval</div>
+                        <div style={{ fontSize: '12px', opacity: 0.8 }}>Individual reports and cycle analytics will be available here once appraisals are officially <b>approved by HR</b>.</div>
+                    </div>
+                </div>
             )}
 
             {employeeScores.length > 0 && (

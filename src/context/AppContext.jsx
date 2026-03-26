@@ -230,6 +230,7 @@ export function AppProvider({ children }) {
                 feedback: isJson ? (metadata.feedback || '') : (decrypt(e.feedback) || e.feedback),
                 metadata: metadata,
                 status: e.status,
+                appraisalStatus: e.status === 'approved' ? 'HR Approved' : (e.status === 'pending_approval' ? 'Manager Completed' : 'Pending'),
                 rejectionComment: rejComment,
                 submittedAt: e.submitted_at,
             };
@@ -1468,9 +1469,15 @@ export function AppProvider({ children }) {
     const getTeamEmployees = (managerId) => users.filter(u => String(u.managerId) === String(managerId));
     const getSelfReview = (empId, cycleId) => selfReviews.find(r => String(r.employeeId) === String(empId) && String(r.cycleId) === String(cycleId));
     const getEvaluation = (empId, cycleId) => evaluations.find(e => String(e.employeeId) === String(empId) && String(e.cycleId) === String(cycleId));
-    const getScore = (empId, cycleId) => {
+    const getScore = (empId, cycleId, includePending = false) => {
         const ev = getEvaluation(empId, cycleId);
-        if (!ev || (ev.status !== 'approved' && ev.status !== 'pending_approval')) return null;
+        if (!ev) return null;
+        
+        // Only return scores for 'approved' evaluations unless specifically requested (e.g. for HR preview)
+        const isApproved = ev.status === 'approved';
+        const isAllowed = isApproved || (includePending && ev.status === 'pending_approval');
+        
+        if (!isAllowed) return null;
 
         // Flat formula: average ALL rated questions (q1-q12) for 70%, sub = 20%, hr = 10%
         const comps = ev.metadata?.competencies || {};
