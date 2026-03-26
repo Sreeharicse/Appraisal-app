@@ -310,6 +310,15 @@ export default function QuestionSets() {
 
     const totalQuestionsCount = formSections.reduce((sum, s) => sum + s.questions.length, 0);
 
+    // Identify job titles already used in other question sets
+    const busyDesignationsMap = (questionSets || []).reduce((acc, qs) => {
+        if (editingSet && qs.id === editingSet.id) return acc;
+        (qs.targetDesignations || []).forEach(dName => {
+            acc[dName] = qs.name;
+        });
+        return acc;
+    }, {});
+
     /* ── EDIT VIEW ── */
     return (
         <div style={{ maxWidth: '1000px', margin: '0 auto', paddingBottom: '100px', animation: 'fadeIn 0.5s ease-out' }}>
@@ -372,34 +381,50 @@ export default function QuestionSets() {
 
                     <div>
                         <label className="form-label" style={{ fontWeight: 600, marginBottom: '12px', display: 'block' }}>Target Job Titles (Designations)</label>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', padding: '16px', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px solid var(--border)' }}>
-                            {designations.map(d => (
-                                <button
-                                    key={d.id}
-                                    type="button"
-                                    onClick={() => {
-                                        if (formDesignations.includes(d.name)) {
-                                            setFormDesignations(p => p.filter(x => x !== d.name));
-                                        } else {
-                                            setFormDesignations(p => [...p, d.name]);
-                                        }
-                                    }}
-                                    className={`badge ${formDesignations.includes(d.name) ? 'badge-primary' : 'badge-gray'}`}
-                                    style={{ 
-                                        border: 'none', 
-                                        cursor: 'pointer', 
-                                        padding: '8px 16px', 
-                                        fontSize: '13px',
-                                        borderRadius: '8px',
-                                        transition: 'all 0.2s',
-                                        background: formDesignations.includes(d.name) ? 'var(--blue-light)' : 'rgba(0,0,0,0.05)',
-                                        color: formDesignations.includes(d.name) ? 'white' : 'var(--text-secondary)'
-                                    }}
-                                    disabled={isReadOnly}
-                                >
-                                    {d.name}
-                                </button>
-                            ))}
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', padding: '20px', background: 'var(--bg-secondary)', borderRadius: '16px', border: '1px solid var(--border)' }}>
+                            {designations.map(d => {
+                                const assignedSetName = busyDesignationsMap[d.name];
+                                const isSelected = formDesignations.includes(d.name);
+                                const isBusy = !!assignedSetName && !isSelected;
+
+                                return (
+                                    <button
+                                        key={d.id}
+                                        type="button"
+                                        title={isBusy ? `Already mapped to "${assignedSetName}"` : ''}
+                                        onClick={() => {
+                                            if (isBusy) return;
+                                            if (isSelected) {
+                                                setFormDesignations(p => p.filter(x => x !== d.name));
+                                            } else {
+                                                setFormDesignations(p => [...p, d.name]);
+                                            }
+                                        }}
+                                        className={`badge ${isSelected ? 'badge-primary' : isBusy ? 'badge-busy' : 'badge-gray'}`}
+                                        style={{ 
+                                            border: 'none', 
+                                            cursor: isBusy || isReadOnly ? 'not-allowed' : 'pointer', 
+                                            padding: '10px 18px', 
+                                            fontSize: '13px',
+                                            borderRadius: '10px',
+                                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                            background: isSelected ? 'var(--blue-light)' : isBusy ? 'rgba(0,0,0,0.03)' : 'rgba(0,0,0,0.05)',
+                                            color: isSelected ? 'white' : isBusy ? 'var(--text-muted)' : 'var(--text-secondary)',
+                                            opacity: isBusy ? 0.6 : 1,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '6px',
+                                            boxShadow: isSelected ? '0 4px 12px rgba(59, 130, 246, 0.2)' : 'none',
+                                            position: 'relative'
+                                        }}
+                                        disabled={isReadOnly || isBusy}
+                                    >
+                                        <span>{d.name}</span>
+                                        {isBusy && <span style={{ fontSize: '10px', fontWeight: 600, color: 'var(--red)', background: 'rgba(239, 68, 68, 0.1)', padding: '1px 6px', borderRadius: '4px' }}>MAPPED</span>}
+                                        {isSelected && <span style={{ fontSize: '10px' }}>✓</span>}
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
                 </div>
