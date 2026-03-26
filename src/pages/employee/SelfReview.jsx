@@ -267,24 +267,24 @@ export default function SelfReview() {
             const sections = [];
             const seen = new Set();
             COMPETENCY_QUESTIONS.forEach(q => {
-                const sec = q.section || 'General';
+                const sec = q.section || 'Section 1';
                 if (!seen.has(sec)) { seen.add(sec); sections.push(sec); }
             });
             grouped = sections.map(sec => ({
                 title: sec,
-                questions: COMPETENCY_QUESTIONS.filter(q => (q.section || 'General') === sec)
+                questions: COMPETENCY_QUESTIONS.filter(q => (q.section || 'Section 1') === sec)
             }));
         }
 
         const SECTION_ICONS = {
             'Job-specific': '💼', 'Problem-solving': '🧩', 'Leadership & Initiative': '🚀', 'Adaptability & Resilience': '🌱',
             'Strategic Thinking': '🧠', 'Leadership & Ownership': '🏆', 'Decision Making': '📊', 'Innovation & Improvement': '🚀',
-            'Collaboration & Influence': '🤝', 'Performance & Results': '📈', 'General': '📋'
+            'Collaboration & Influence': '🤝', 'Performance & Results': '📈', 'Section 1': '📋'
         };
         const SECTION_COLORS = {
-            'Job-specific': 'var(--blue-light)', 'Problem-solving': 'var(--purple)', 'Leadership & Initiative': '#10b981', 'Adaptability & Resilience': '#f59e0b',
-            'Strategic Thinking': '#8b5cf6', 'Leadership & Ownership': '#f59e0b', 'Decision Making': '#06b6d4', 'Innovation & Improvement': '#10b981',
-            'Collaboration & Influence': '#ec4899', 'Performance & Results': '#3b82f6', 'General': 'var(--text-secondary)'
+            'Job-specific': '#3b82f6', 'Problem-solving': '#8b5cf6', 'Leadership & Initiative': '#10b981', 'Adaptability & Resilience': '#f59e0b',
+            'Strategic Thinking': '#c026d3', 'Leadership & Ownership': '#ea580c', 'Decision Making': '#0d9488', 'Innovation & Improvement': '#16a34a',
+            'Collaboration & Influence': '#db2777', 'Performance & Results': '#2563eb', 'Section 1': 'var(--blue-light)'
         };
 
         return (
@@ -296,14 +296,26 @@ export default function SelfReview() {
                     <div key={title} style={{ marginBottom: '40px' }}>
                         {/* Section Header */}
                         <div style={{
-                            display: 'flex', alignItems: 'center', gap: '10px',
-                            padding: '10px 16px', borderRadius: '10px', marginBottom: '20px',
-                            background: 'var(--bg-secondary)', border: '1px solid var(--border)'
+                            display: 'flex', alignItems: 'center', gap: '12px',
+                            padding: '14px 20px', borderRadius: '14px', marginBottom: '24px',
+                            background: 'linear-gradient(90deg, var(--bg-secondary) 0%, var(--bg-card) 100%)', 
+                            border: `1px solid var(--border)`,
+                            borderLeft: `5px solid ${SECTION_COLORS[title] || 'var(--blue-light)'}`,
+                            boxShadow: 'var(--nm-shadow-sm)'
                         }}>
-                            <span style={{ fontSize: '20px' }}>{SECTION_ICONS[title] || '📋'}</span>
+                            <span style={{ 
+                                fontSize: '24px', 
+                                background: 'var(--bg-card)', 
+                                width: '40px', height: '40px', 
+                                borderRadius: '10px', 
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                border: '1px solid var(--border)'
+                            }}>
+                                {SECTION_ICONS[title] || '📋'}
+                            </span>
                             <div>
-                                <div style={{ fontWeight: 800, fontSize: '15px', color: SECTION_COLORS[title] || 'var(--text-primary)' }}>{title}</div>
-                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{questions.length} questions</div>
+                                <div style={{ fontWeight: 900, fontSize: '18px', color: SECTION_COLORS[title] || 'var(--text-primary)', letterSpacing: '-0.02em' }}>{title}</div>
+                                <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>{questions.length} Questions in this section</div>
                             </div>
                         </div>
 

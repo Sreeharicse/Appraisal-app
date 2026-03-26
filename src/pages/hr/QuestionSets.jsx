@@ -84,7 +84,7 @@ export default function QuestionSets() {
     const addSection = () => {
         setFormSections(prev => [
             ...prev,
-            { id: 'sec-' + Math.random().toString(36).substr(2, 9), title: 'New Section', questions: [] }
+            { id: 'sec-' + Math.random().toString(36).substr(2, 9), title: `Section ${prev.length + 1}`, questions: [] }
         ]);
     };
 
@@ -325,23 +325,46 @@ export default function QuestionSets() {
                 {formSections.map((sec, sIdx) => (
                     <div key={sec.id} style={{ position: 'relative' }}>
                         {/* Section Header */}
-                        <div className="card" style={{ marginBottom: '12px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', padding: '16px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div className="card" style={{ 
+                            marginBottom: '12px', 
+                            background: 'linear-gradient(135deg, var(--bg-card) 0%, var(--bg-secondary) 100%)', 
+                            border: '1px solid var(--border)', 
+                            borderLeft: '4px solid var(--blue-light)',
+                            padding: '20px',
+                            boxShadow: 'var(--nm-shadow-sm)'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                                 <div style={{ 
-                                    width: '32px', height: '32px', borderRadius: '8px', 
-                                    background: 'var(--blue-light)', color: '#fff', 
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800
+                                    width: '38px', height: '38px', borderRadius: '10px', 
+                                    background: 'linear-gradient(135deg, var(--blue-light) 0%, #0ea5e9 100%)', 
+                                    color: '#fff', 
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                                    fontWeight: 900, fontSize: '18px', boxShadow: '0 4px 12px rgba(56, 189, 248, 0.3)'
                                 }}>
                                     {sIdx + 1}
                                 </div>
-                                <input 
-                                    className="form-input" 
-                                    value={sec.title}
-                                    onChange={e => updateSectionTitle(sec.id, e.target.value)}
-                                    placeholder="Section Title (e.g. Communication Skills)"
-                                    disabled={isReadOnly}
-                                    style={{ background: 'transparent', border: 'none', borderBottom: '2px solid var(--border)', borderRadius: 0, paddingLeft: 0, fontWeight: 700, fontSize: '16px' }}
-                                />
+                                <div style={{ flex: 1 }}>
+                                    <input 
+                                        className="form-input" 
+                                        value={sec.title}
+                                        onChange={e => updateSectionTitle(sec.id, e.target.value)}
+                                        placeholder="Section Title (e.g. Communication Skills)"
+                                        disabled={isReadOnly}
+                                        style={{ 
+                                            background: 'transparent', 
+                                            border: 'none', 
+                                            borderBottom: '2px solid rgba(56, 189, 248, 0.2)', 
+                                            borderRadius: 0, 
+                                            padding: '4px 0', 
+                                            fontWeight: 800, 
+                                            fontSize: '18px',
+                                            color: 'var(--text-primary)',
+                                            width: '100%',
+                                            transition: 'border-color 0.2s'
+                                        }}
+                                    />
+                                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', fontWeight: 600, textTransform: 'uppercase' }}>Section Title</div>
+                                </div>
                                 {!isReadOnly && (
                                     <button className="btn btn-secondary" onClick={() => deleteSection(sec.id)} style={{ color: 'var(--red)', border: 'none', background: 'transparent', padding: '8px' }}>
                                         🗑 Delete Section
