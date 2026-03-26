@@ -480,6 +480,21 @@ export default function Employees() {
                                 </div>
                             </div>
                             
+                            {/* ── Row 3: Manager Assignment ── */}
+                            <div className="form-grid" style={{ marginBottom: editing ? '16px' : 0 }}>
+                                <div className="form-group">
+                                    <label className="form-label">Project / Reporting Manager</label>
+                                    <select className="form-select" value={form.managerId}
+                                        onChange={e => setForm(p => ({ ...p, managerId: e.target.value }))}>
+                                        <option value="">None</option>
+                                        {managers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                                    </select>
+                                </div>
+                                <div className="form-group">
+                                    {/* Empty placeholder to maintain grid alignment, since right-side item was removed */}
+                                </div>
+                            </div>
+
                             {/* ── Cycle-Specific Overrides ── */}
                             {editing && (
                                 <div style={{ 
