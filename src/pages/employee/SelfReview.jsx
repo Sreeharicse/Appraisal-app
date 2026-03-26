@@ -110,10 +110,14 @@ export default function SelfReview() {
 
             const meta = existing.metadata || {};
 
-            // Initialize competencies with 10 questions if not present
+            // Flatten questions for initialization
+            const flatQs = (COMPETENCY_QUESTIONS.length > 0 && COMPETENCY_QUESTIONS[0].questions)
+                ? COMPETENCY_QUESTIONS.reduce((acc, s) => [...acc, ...s.questions], [])
+                : COMPETENCY_QUESTIONS;
+
             const loadedComps = meta.competencies || {};
             const initialComps = {};
-            COMPETENCY_QUESTIONS.forEach(q => {
+            flatQs.forEach(q => {
                 initialComps[q.id] = loadedComps[q.id] || { rating: 0, comment: '' };
             });
             setCompetencies(initialComps);
@@ -125,10 +129,13 @@ export default function SelfReview() {
             setSubmitted(true);
             setIsLocked(true);
         } else {
-
+            // Flatten questions for initialization
+            const flatQs = (COMPETENCY_QUESTIONS.length > 0 && COMPETENCY_QUESTIONS[0].questions)
+                ? COMPETENCY_QUESTIONS.reduce((acc, s) => [...acc, ...s.questions], [])
+                : COMPETENCY_QUESTIONS;
 
             const initialComps = {};
-            COMPETENCY_QUESTIONS.forEach(q => {
+            flatQs.forEach(q => {
                 initialComps[q.id] = { rating: 0, comment: '' };
             });
             setCompetencies(initialComps);
@@ -153,8 +160,13 @@ export default function SelfReview() {
             let firstErrorTab = null;
             let firstErrorId = null;
 
+            // Flatten questions for validation
+            const flatQs = (COMPETENCY_QUESTIONS.length > 0 && COMPETENCY_QUESTIONS[0].questions)
+                ? COMPETENCY_QUESTIONS.reduce((acc, s) => [...acc, ...s.questions], [])
+                : COMPETENCY_QUESTIONS;
+
             // Check competencies
-            const unratedCompetencies = COMPETENCY_QUESTIONS.filter(q => !competencies[q.id] || competencies[q.id].rating === 0);
+            const unratedCompetencies = flatQs.filter(q => !competencies[q.id] || competencies[q.id].rating === 0);
             if (unratedCompetencies.length > 0) {
                 unratedCompetencies.forEach(q => newErrors[`comp-${q.id}`] = 'Please select a rating.');
                 if (!firstErrorTab) {
@@ -162,7 +174,7 @@ export default function SelfReview() {
                     firstErrorId = `comp-${unratedCompetencies[0].id}`;
                 }
             }
-            const poorCompetencyComments = COMPETENCY_QUESTIONS.filter(q => !competencies[q.id]?.comment || competencies[q.id].comment.trim().length < 20);
+            const poorCompetencyComments = flatQs.filter(q => !competencies[q.id]?.comment || competencies[q.id].comment.trim().length < 20);
             if (poorCompetencyComments.length > 0) {
                 poorCompetencyComments.forEach(q => {
                     if (!newErrors[`comp-${q.id}`]) newErrors[`comp-${q.id}`] = 'Please provide a detailed explanation (min 20 chars).';
@@ -240,17 +252,29 @@ export default function SelfReview() {
     const mngScore = evaluation ? getScore(currentUser.id, selectedCycleId) : null;
 
     const renderCompetenciesTab = () => {
-        // Group questions by section if they have a section field
-        const sections = [];
-        const seen = new Set();
-        COMPETENCY_QUESTIONS.forEach(q => {
-            const sec = q.section || 'General';
-            if (!seen.has(sec)) { seen.add(sec); sections.push(sec); }
-        });
-        const grouped = sections.map(sec => ({
-            title: sec,
-            questions: COMPETENCY_QUESTIONS.filter(q => (q.section || 'General') === sec)
-        }));
+        // Group questions by section.
+        // If assignedSet.questions is already nested (new format), use it directly.
+        // If it's flat (legacy), group it.
+        let grouped = [];
+        if (COMPETENCY_QUESTIONS.length > 0 && COMPETENCY_QUESTIONS[0].questions) {
+            // New format: questions is an array of sections
+            grouped = COMPETENCY_QUESTIONS.map(s => ({
+                title: s.title,
+                questions: s.questions
+            }));
+        } else {
+            // Legacy flat format
+            const sections = [];
+            const seen = new Set();
+            COMPETENCY_QUESTIONS.forEach(q => {
+                const sec = q.section || 'General';
+                if (!seen.has(sec)) { seen.add(sec); sections.push(sec); }
+            });
+            grouped = sections.map(sec => ({
+                title: sec,
+                questions: COMPETENCY_QUESTIONS.filter(q => (q.section || 'General') === sec)
+            }));
+        }
 
         const SECTION_ICONS = {
             'Job-specific': '💼', 'Problem-solving': '🧩', 'Leadership & Initiative': '🚀', 'Adaptability & Resilience': '🌱',
@@ -283,7 +307,7 @@ export default function SelfReview() {
                             </div>
                         </div>
 
-                        {questions.map((q, index) => (
+                        {questions.map((q) => (
                             <div key={q.id} className="card" style={{ marginBottom: '32px', padding: '24px' }}>
                                 <div style={{ fontWeight: 700, fontSize: '18px', color: 'var(--blue-light)', marginBottom: '8px' }}>{q.label} <span style={{ color: '#ef4444', fontSize: '15px' }}>*</span></div>
                                 <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '24px', lineHeight: '1.5' }}>{q.desc}</div>

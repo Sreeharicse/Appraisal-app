@@ -1,23 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 
-const DEFAULT_QUESTIONS = [
-    // Job-specific
-    { id: 'q1', label: 'What do you think sets you apart in this role?', desc: 'Reflect on the unique skills, experiences, or qualities you bring to this position.', section: 'Job-specific' },
-    { id: 'q2', label: 'How do you stay updated with industry trends?', desc: 'Describe the methods or resources you use to keep your knowledge current.', section: 'Job-specific' },
-    { id: 'q3', label: 'Can you walk me through a recent project?', desc: 'Share a recent project — your role, the challenges faced, and the outcome.', section: 'Job-specific' },
-    // Problem-solving
-    { id: 'q4', label: 'Describe a tough problem you solved. How did you approach it?', desc: 'Walk through your structured thinking and resolution process.', section: 'Problem-solving' },
-    { id: 'q5', label: 'How do you prioritize tasks when faced with multiple deadlines?', desc: 'Explain your approach to managing competing priorities.', section: 'Problem-solving' },
-    { id: 'q6', label: 'What is your process for making tough decisions?', desc: 'Describe how you weigh options and commit to action under pressure.', section: 'Problem-solving' },
-    // Leadership & Initiative
-    { id: 'q7', label: 'Do you lead or participate in any initiatives outside work?', desc: 'Share examples of leadership or community initiatives beyond your core role.', section: 'Leadership & Initiative' },
-    { id: 'q8', label: 'How do you motivate your team or colleagues?', desc: 'Describe strategies or examples of how you inspire others.', section: 'Leadership & Initiative' },
-    { id: 'q9', label: 'Can you give an example of taking a calculated risk?', desc: 'Describe a situation where you stepped deliberately beyond your comfort zone.', section: 'Leadership & Initiative' },
-    // Adaptability & Resilience
-    { id: 'q10', label: 'How do you handle change or unexpected setbacks?', desc: 'Describe your mindset when plans change unexpectedly.', section: 'Adaptability & Resilience' },
-    { id: 'q11', label: 'Can you describe a situation where you adapted to a new process?', desc: 'Share an example where you transitioned to a new workflow or tool.', section: 'Adaptability & Resilience' },
-    { id: 'q12', label: 'How do you bounce back from failures?', desc: 'Reflect on a past failure and the steps you took to recover and move forward.', section: 'Adaptability & Resilience' },
+const DEFAULT_SECTIONS = [
+    {
+        id: 'sec-1',
+        title: 'Job-specific',
+        questions: [
+            { id: 'q1', label: 'What do you think sets you apart in this role?', desc: 'Reflect on the unique skills, experiences, or qualities you bring to this position.' },
+            { id: 'q2', label: 'How do you stay updated with industry trends?', desc: 'Describe the methods or resources you use to keep your knowledge current.' },
+            { id: 'q3', label: 'Can you walk me through a recent project?', desc: 'Share a recent project — your role, the challenges faced, and the outcome.' }
+        ]
+    },
+    {
+        id: 'sec-2',
+        title: 'Problem-solving',
+        questions: [
+            { id: 'q4', label: 'Describe a tough problem you solved. How did you approach it?', desc: 'Walk through your structured thinking and resolution process.' },
+            { id: 'q5', label: 'How do you prioritize tasks when faced with multiple deadlines?', desc: 'Explain your approach to managing competing priorities.' },
+            { id: 'q6', label: 'What is your process for making tough decisions?', desc: 'Describe how you weigh options and commit to action under pressure.' }
+        ]
+    }
 ];
 
 export default function QuestionSets() {
@@ -30,7 +32,7 @@ export default function QuestionSets() {
     const [formName, setFormName] = useState('');
     const [formDesc, setFormDesc] = useState('');
     const [formDesignations, setFormDesignations] = useState([]);
-    const [formQuestions, setFormQuestions] = useState([...DEFAULT_QUESTIONS]);
+    const [formSections, setFormSections] = useState([]);
     const [saving, setSaving] = useState(false);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
 
@@ -41,7 +43,13 @@ export default function QuestionSets() {
         setFormName('');
         setFormDesc('');
         setFormDesignations([]);
-        setFormQuestions(DEFAULT_QUESTIONS.map(q => ({ ...q, label: '', desc: '' })));
+        // Convert default sections to empty placeholders for a fresh set if desired, 
+        // but here we'll provide the standard structure as a starting point.
+        setFormSections(DEFAULT_SECTIONS.map(s => ({
+            ...s,
+            id: 'sec-' + Math.random().toString(36).substr(2, 9),
+            questions: s.questions.map(q => ({ ...q, id: 'q-' + Math.random().toString(36).substr(2, 9), label: '', desc: '' }))
+        })));
         setView('edit');
     };
 
@@ -50,23 +58,99 @@ export default function QuestionSets() {
         setFormName(qs.name);
         setFormDesc(qs.description || '');
         setFormDesignations(qs.targetDesignations || []);
-        // Load all questions from the set without any trimming
-        const qs_copy = [...(qs.questions || [])];
-        setFormQuestions(qs_copy);
+        
+        // Handle backward compatibility: If qs.questions is flat, group it by 'section'
+        const rawQs = qs.questions || [];
+        if (rawQs.length > 0 && !rawQs[0].questions) {
+            const grouped = [];
+            const seen = {};
+            rawQs.forEach(q => {
+                const secTitle = q.section || 'General';
+                if (!seen[secTitle]) {
+                    seen[secTitle] = { id: 'sec-' + Math.random().toString(36).substr(2, 9), title: secTitle, questions: [] };
+                    grouped.push(seen[secTitle]);
+                }
+                seen[secTitle].questions.push({ id: q.id, label: q.label, desc: q.desc });
+            });
+            setFormSections(grouped);
+        } else {
+            setFormSections(qs.questions || []);
+        }
+        
         setView('edit');
     };
 
-    const updateQuestion = (index, field, value) => {
-        setFormQuestions(prev => prev.map((q, i) => i === index ? { ...q, [field]: value } : q));
+    // ── Section Actions ──
+    const addSection = () => {
+        setFormSections(prev => [
+            ...prev,
+            { id: 'sec-' + Math.random().toString(36).substr(2, 9), title: 'New Section', questions: [] }
+        ]);
+    };
+
+    const updateSectionTitle = (secId, title) => {
+        setFormSections(prev => prev.map(s => s.id === secId ? { ...s, title } : s));
+    };
+
+    const deleteSection = (secId) => {
+        setFormSections(prev => prev.filter(s => s.id !== secId));
+    };
+
+    // ── Question Actions ──
+    const addQuestion = (secId) => {
+        setFormSections(prev => prev.map(s => {
+            if (s.id !== secId) return s;
+            return {
+                ...s,
+                questions: [
+                    ...s.questions,
+                    { id: 'q-' + Math.random().toString(36).substr(2, 9), label: '', desc: '' }
+                ]
+            };
+        }));
+    };
+
+    const updateQuestion = (secId, qId, field, value) => {
+        setFormSections(prev => prev.map(s => {
+            if (s.id !== secId) return s;
+            return {
+                ...s,
+                questions: s.questions.map(q => q.id === qId ? { ...q, [field]: value } : q)
+            };
+        }));
+    };
+
+    const deleteQuestion = (secId, qId) => {
+        setFormSections(prev => prev.map(s => {
+            if (s.id !== secId) return s;
+            return {
+                ...s,
+                questions: s.questions.filter(q => q.id !== qId)
+            };
+        }));
     };
 
     const handleSave = async () => {
         if (!formName.trim()) return alert('Please enter a set name.');
+        
+        // Validation: At least one section and one question
+        if (formSections.length === 0) return alert('Please add at least one section.');
+        const totalQs = formSections.reduce((sum, s) => sum + s.questions.length, 0);
+        if (totalQs === 0) return alert('Please add at least one question.');
+
+        // Validation: Empty titles/text
+        for (const sec of formSections) {
+            if (!sec.title.trim()) return alert('All sections must have a title.');
+            for (const q of sec.questions) {
+                if (!q.label.trim()) return alert('All questions must have a label.');
+            }
+        }
+
         setSaving(true);
         const payload = { 
             name: formName.trim(), 
             description: formDesc.trim(), 
-            questions: formQuestions,
+            questions: formSections, // Storing as nested array
             targetDesignations: formDesignations
         };
         let result;
@@ -109,64 +193,65 @@ export default function QuestionSets() {
                     <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
                         <div style={{ fontSize: '48px', marginBottom: '16px' }}>📋</div>
                         <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)' }}>No Question Sets Yet</h3>
-                        <p style={{ color: 'var(--text-muted)', marginTop: '8px' }}>Run the SQL migration script first, then create a custom question set.</p>
+                        <p style={{ color: 'var(--text-muted)', marginTop: '8px' }}>Create a custom question set to start appraisals.</p>
                         {!isReadOnly && <button className="btn btn-primary" onClick={openNew} style={{ marginTop: '20px' }}>Create First Set</button>}
                     </div>
                 ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                        {questionSets.map(qs => (
-                            <div key={qs.id} className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--text-primary)' }}>{qs.name}</div>
-                                    {qs.description && <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>{qs.description}</div>}
-                                    
-                                    <div style={{ marginTop: '10px', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                                        {/* Target Designations Summary */}
-                                        {qs.targetDesignations && qs.targetDesignations.length > 0 && (
-                                            <div style={{ display: 'flex', gap: '4px', marginRight: '8px' }}>
-                                                {qs.targetDesignations.slice(0, 3).map((tg, i) => (
-                                                    <span key={i} className="badge badge-primary" style={{ fontSize: '10px', background: 'rgba(59, 130, 246, 0.1)', color: 'var(--blue-light)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-                                                        💼 {tg}
-                                                    </span>
-                                                ))}
-                                                {qs.targetDesignations.length > 3 && (
-                                                    <span className="badge badge-gray" style={{ fontSize: '10px' }}>+{qs.targetDesignations.length - 3} more</span>
-                                                )}
-                                            </div>
-                                        )}
+                        {questionSets.map(qs => {
+                            // Calculate stats
+                            const sCount = qs.questions?.[0]?.questions ? qs.questions.length : new Set((qs.questions || []).map(q => q.section)).size;
+                            const qCount = qs.questions?.[0]?.questions ? qs.questions.reduce((sum, s) => sum + s.questions.length, 0) : (qs.questions || []).length;
 
-                                        <div style={{ display: 'flex', gap: '4px' }}>
-                                            {(qs.questions || []).slice(0, 3).map((q, i) => (
-                                                <span key={i} className="badge badge-gray" style={{ fontSize: '11px' }}>Q{i + 1}</span>
-                                            ))}
-                                            {(qs.questions || []).length > 3 && <span className="badge badge-gray" style={{ fontSize: '11px' }}>+{(qs.questions || []).length - 3} more</span>}
+                            return (
+                                <div key={qs.id} className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--text-primary)' }}>{qs.name}</div>
+                                        {qs.description && <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>{qs.description}</div>}
+                                        
+                                        <div style={{ marginTop: '10px', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                                            <span style={{ fontSize: '11px', color: 'var(--text-muted)', background: 'var(--bg-secondary)', padding: '2px 8px', borderRadius: '4px' }}>
+                                                {sCount} Sections · {qCount} Questions
+                                            </span>
+                                            {qs.targetDesignations && qs.targetDesignations.length > 0 && (
+                                                <div style={{ display: 'flex', gap: '4px' }}>
+                                                    {qs.targetDesignations.slice(0, 3).map((tg, i) => (
+                                                        <span key={i} className="badge badge-primary" style={{ fontSize: '10px', background: 'rgba(59, 130, 246, 0.1)', color: 'var(--blue-light)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                                                            💼 {tg}
+                                                        </span>
+                                                    ))}
+                                                    {qs.targetDesignations.length > 3 && (
+                                                        <span className="badge badge-gray" style={{ fontSize: '10px' }}>+{qs.targetDesignations.length - 3} more</span>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
+                                    <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                                        <button className="btn btn-secondary" onClick={() => openEdit(qs)} style={{ fontSize: '12px', padding: '6px 14px' }}>
+                                            {isReadOnly ? '👁 View' : '✏️ Edit'}
+                                        </button>
+                                        {!isReadOnly && (
+                                            deleteConfirm === qs.id ? (
+                                                <div style={{ display: 'flex', gap: '6px' }}>
+                                                    <button className="btn" onClick={() => handleDelete(qs.id)} style={{ fontSize: '12px', padding: '6px 12px', background: 'var(--red)', color: '#fff', border: 'none' }}>Confirm</button>
+                                                    <button className="btn btn-secondary" onClick={() => setDeleteConfirm(null)} style={{ fontSize: '12px', padding: '6px 12px' }}>Cancel</button>
+                                                </div>
+                                            ) : (
+                                                <button className="btn btn-secondary" onClick={() => setDeleteConfirm(qs.id)} style={{ fontSize: '12px', padding: '6px 14px', color: 'var(--red)' }}>🗑 Delete</button>
+                                            )
+                                        )}
+                                    </div>
                                 </div>
-                                <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-                                    <button className="btn btn-secondary" onClick={() => openEdit(qs)} style={{ fontSize: '12px', padding: '6px 14px' }}>
-                                        {isReadOnly ? '👁 View' : '✏️ Edit'}
-                                    </button>
-                                    {!isReadOnly && (
-                                        deleteConfirm === qs.id ? (
-                                            <div style={{ display: 'flex', gap: '6px' }}>
-                                                <button className="btn" onClick={() => handleDelete(qs.id)} style={{ fontSize: '12px', padding: '6px 12px', background: 'var(--red)', color: '#fff', border: 'none' }}>Confirm</button>
-                                                <button className="btn btn-secondary" onClick={() => setDeleteConfirm(null)} style={{ fontSize: '12px', padding: '6px 12px' }}>Cancel</button>
-                                            </div>
-                                        ) : (
-                                            <button className="btn btn-secondary" onClick={() => setDeleteConfirm(qs.id)} style={{ fontSize: '12px', padding: '6px 14px', color: 'var(--red)' }}>🗑 Delete</button>
-                                        )
-                                    )}
-                                </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
             </div>
         );
     }
 
-    const sectionsCount = new Set(formQuestions.map(q => q.section || 'General')).size;
+    const totalQuestionsCount = formSections.reduce((sum, s) => sum + s.questions.length, 0);
 
     /* ── EDIT VIEW ── */
     return (
@@ -177,7 +262,7 @@ export default function QuestionSets() {
                         ← Back to Sets
                     </button>
                     <h2 className="section-title">{editingSet ? 'Edit Question Set' : 'New Question Set'}</h2>
-                    <p className="section-subtitle">Configure the competency questions for this set ({sectionsCount} sections, {formQuestions.length} questions)</p>
+                    <p className="section-subtitle">Configure the competency questions for this set ({formSections.length} sections, {totalQuestionsCount} questions)</p>
                 </div>
                 {!isReadOnly && (
                     <button className="btn btn-primary" onClick={handleSave} disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -231,106 +316,93 @@ export default function QuestionSets() {
                                 </label>
                             ))}
                         </div>
-                        <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>
-                            Designations selected here will automatically receive these questions during active cycles.
-                        </p>
                     </div>
                 </div>
             </div>
 
             {/* Questions Editor — grouped by section */}
-            {(() => {
-                const sections = [];
-                const seen = new Set();
-                formQuestions.forEach(q => {
-                    const sec = q.section || 'General';
-                    if (!seen.has(sec)) { seen.add(sec); sections.push(sec); }
-                });
-
-                return sections.map(sec => {
-                    const sectionQs = formQuestions.filter(q => (q.section || 'General') === sec);
-                    const SECTION_ICONS = {
-                        'Job-specific': '💼', 'Problem-solving': '🧩', 'Leadership & Initiative': '🚀', 'Adaptability & Resilience': '🌱',
-                        'Strategic Thinking': '🧠', 'Leadership & Ownership': '🏆', 'Decision Making': '📊', 'Innovation & Improvement': '🚀',
-                        'Collaboration & Influence': '🤝', 'Performance & Results': '📈', 'General': '📋'
-                    };
-                    const SECTION_COLORS = {
-                        'Job-specific': 'var(--blue-light)', 'Problem-solving': 'var(--purple)', 'Leadership & Initiative': '#10b981', 'Adaptability & Resilience': '#f59e0b',
-                        'Strategic Thinking': '#8b5cf6', 'Leadership & Ownership': '#f59e0b', 'Decision Making': '#06b6d4', 'Innovation & Improvement': '#10b981',
-                        'Collaboration & Influence': '#ec4899', 'Performance & Results': '#3b82f6', 'General': 'var(--text-secondary)'
-                    };
-
-                    return (
-                        <div key={sec} style={{ marginBottom: '36px' }}>
-                            {/* Section Header */}
-                            <div style={{
-                                display: 'flex', alignItems: 'center', gap: '10px',
-                                padding: '10px 16px', borderRadius: '10px', marginBottom: '16px',
-                                background: 'var(--bg-secondary)', border: `1px solid ${SECTION_COLORS[sec] || 'var(--border)'}22`
-                            }}>
-                                <span style={{ fontSize: '20px' }}>{SECTION_ICONS[sec] || '📋'}</span>
-                                <div style={{ fontWeight: 800, fontSize: '14px', color: SECTION_COLORS[sec] || 'var(--text-primary)' }}>{sec}</div>
-                                <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginLeft: 'auto' }}>{sectionQs.length} questions</span>
-                            </div>
-
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                {sectionQs.map((q) => {
-                                    const index = formQuestions.indexOf(q);
-                                    return (
-                                        <div key={q.id} className="card" style={{ borderLeft: `4px solid ${SECTION_COLORS[sec] || 'var(--purple)'}`, paddingLeft: '20px' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-                                                <div style={{
-                                                    width: '28px', height: '28px', borderRadius: '8px',
-                                                    background: SECTION_COLORS[sec] || 'var(--purple)', color: '#fff',
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    fontSize: '12px', fontWeight: 800, flexShrink: 0
-                                                }}>
-                                                    {index + 1}
-                                                </div>
-                                                <div style={{ fontWeight: 700, fontSize: '13px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                                    Question {index + 1}
-                                                </div>
-                                            </div>
-
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                                <div>
-                                                    <label className="form-label" style={{ fontSize: '12px' }}>Label (short title)</label>
-                                                    <input
-                                                        className="form-input"
-                                                        value={q.label}
-                                                        onChange={e => updateQuestion(index, 'label', e.target.value)}
-                                                        placeholder="Question Title"
-                                                        disabled={isReadOnly}
-                                                        style={{ background: 'var(--bg-secondary)', fontWeight: 600 }}
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="form-label" style={{ fontSize: '12px' }}>Description (prompt for employee)</label>
-                                                    <textarea
-                                                        className="form-input"
-                                                        value={q.desc}
-                                                        onChange={e => updateQuestion(index, 'desc', e.target.value)}
-                                                        placeholder="Enter the full question prompt that the employee will see..."
-                                                        disabled={isReadOnly}
-                                                        rows={3}
-                                                        style={{ background: 'var(--bg-secondary)', resize: 'vertical', minHeight: '72px' }}
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+                {formSections.map((sec, sIdx) => (
+                    <div key={sec.id} style={{ position: 'relative' }}>
+                        {/* Section Header */}
+                        <div className="card" style={{ marginBottom: '12px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', padding: '16px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <div style={{ 
+                                    width: '32px', height: '32px', borderRadius: '8px', 
+                                    background: 'var(--blue-light)', color: '#fff', 
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800
+                                }}>
+                                    {sIdx + 1}
+                                </div>
+                                <input 
+                                    className="form-input" 
+                                    value={sec.title}
+                                    onChange={e => updateSectionTitle(sec.id, e.target.value)}
+                                    placeholder="Section Title (e.g. Communication Skills)"
+                                    disabled={isReadOnly}
+                                    style={{ background: 'transparent', border: 'none', borderBottom: '2px solid var(--border)', borderRadius: 0, paddingLeft: 0, fontWeight: 700, fontSize: '16px' }}
+                                />
+                                {!isReadOnly && (
+                                    <button className="btn btn-secondary" onClick={() => deleteSection(sec.id)} style={{ color: 'var(--red)', border: 'none', background: 'transparent', padding: '8px' }}>
+                                        🗑 Delete Section
+                                    </button>
+                                )}
                             </div>
                         </div>
-                    );
-                });
-            })()}
+
+                        {/* Questions in Section */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingLeft: '24px', borderLeft: '2px solid var(--border)', marginLeft: '16px' }}>
+                            {sec.questions.map((q, qIdx) => (
+                                <div key={q.id} className="card" style={{ padding: '16px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                                        <div style={{ fontWeight: 700, fontSize: '13px', color: 'var(--text-muted)' }}>Question {qIdx + 1}</div>
+                                        {!isReadOnly && (
+                                            <button className="btn btn-secondary" onClick={() => deleteQuestion(sec.id, q.id)} style={{ color: 'var(--red)', border: 'none', background: 'transparent', padding: '4px', fontSize: '12px' }}>
+                                                ✕ Remove
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                        <input
+                                            className="form-input"
+                                            value={q.label}
+                                            onChange={e => updateQuestion(sec.id, q.id, 'label', e.target.value)}
+                                            placeholder="Label (Short Question Title)"
+                                            disabled={isReadOnly}
+                                            style={{ background: 'var(--bg-secondary)', fontWeight: 600 }}
+                                        />
+                                        <textarea
+                                            className="form-input"
+                                            value={q.desc}
+                                            onChange={e => updateQuestion(sec.id, q.id, 'desc', e.target.value)}
+                                            placeholder="Full Description / Prompt for the employee..."
+                                            disabled={isReadOnly}
+                                            rows={2}
+                                            style={{ background: 'var(--bg-secondary)', resize: 'vertical' }}
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+                            {!isReadOnly && (
+                                <button className="btn btn-secondary" onClick={() => addQuestion(sec.id)} style={{ borderStyle: 'dashed', background: 'transparent' }}>
+                                    + Add Question to {sec.title || 'Section'}
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                ))}
+            </div>
 
             {!isReadOnly && (
-                <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end' }}>
-                    <button className="btn btn-primary" onClick={handleSave} disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        {saving ? '⏳ Saving...' : '💾 Save Question Set'}
+                <div style={{ marginTop: '32px', display: 'flex', flexDirection: 'column', gap: '16px', borderTop: '1px solid var(--border)', paddingTop: '32px', paddingBottom: '60px' }}>
+                    <button className="btn btn-secondary" onClick={addSection} style={{ width: '100%', height: '50px', fontSize: '15px', fontWeight: 700, borderStyle: 'dashed' }}>
+                        + Add New Section
                     </button>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                        <button className="btn btn-primary" onClick={handleSave} disabled={saving} style={{ padding: '12px 32px', fontSize: '15px' }}>
+                            {saving ? '⏳ Saving...' : '💾 Save Question Set'}
+                        </button>
+                    </div>
                 </div>
             )}
         </div>
