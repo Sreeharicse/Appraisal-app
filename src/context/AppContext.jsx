@@ -1415,17 +1415,20 @@ export function AppProvider({ children }) {
                 localStorage.setItem('fake_employee_overrides', JSON.stringify(updated));
                 return updated;
             });
+            alert("Note: App is in Demo Mode. Override saved locally, but NOT to the database.");
             return { success: true };
         }
 
+        // Simplify upsert: Supabase will use the Primary Key (employee_id, cycle_id) automatically
         const { error } = await supabase.from('employee_cycle_overrides').upsert({
             employee_id: employeeId,
             cycle_id: cycleId,
             question_set_id: questionSetId
-        }, { onConflict: 'employee_id,cycle_id' });
+        });
 
         if (error) {
             console.error('Supabase error saving override:', error.message);
+            alert(`DB Error: ${error.message}`);
             return { success: false, error: error.message };
         }
 

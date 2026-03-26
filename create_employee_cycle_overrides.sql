@@ -14,16 +14,23 @@ CREATE TABLE IF NOT EXISTS public.employee_cycle_overrides (
 -- Enable RLS
 ALTER TABLE public.employee_cycle_overrides ENABLE ROW LEVEL SECURITY;
 
--- Policies
-CREATE POLICY "Allow select for all authenticated users"
+-- 1. Anyone authenticated can SELECT/READ (to see their own questions)
+CREATE POLICY "authenticated_select_overrides"
     ON public.employee_cycle_overrides FOR SELECT
     TO authenticated
     USING (true);
 
-CREATE POLICY "Allow all for HR/Admin"
+-- 2. Only HR/Admin can INSERT/UPDATE/DELETE
+CREATE POLICY "hr_admin_all_overrides"
     ON public.employee_cycle_overrides FOR ALL
     TO authenticated
     USING (
+        EXISTS (
+            SELECT 1 FROM public.profiles
+            WHERE id = auth.uid() AND role IN ('hr', 'admin')
+        )
+    )
+    WITH CHECK (
         EXISTS (
             SELECT 1 FROM public.profiles
             WHERE id = auth.uid() AND role IN ('hr', 'admin')
