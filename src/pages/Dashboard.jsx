@@ -112,14 +112,24 @@ export default function Dashboard() {
                 <div className="kpi-card" style={{ '--accent-color': 'var(--purple)', cursor: 'pointer' }} onClick={() => navigate('/employee/self-review')}>
                     <div className="kpi-icon"><Icons.FileText /></div>
                     <div className="kpi-label">Self Review</div>
-                    <div className="kpi-value">{hasSelfReview ? 'Submitted' : 'Pending'}</div>
+                    {(() => {
+                        const sr = selfReviews.find(r => r.employeeId === currentUser.id && r.cycleId === activeCycle?.id);
+                        if (!sr) return <div className="kpi-value" style={{ color: 'var(--text-muted)' }}>Pending</div>;
+                        if (sr.status === 'draft') return <div className="kpi-value" style={{ color: 'var(--yellow)' }}>Draft</div>;
+                        return <div className="kpi-value" style={{ color: 'var(--green)' }}>Submitted</div>;
+                    })()}
                     <div className="kpi-change">Your submission</div>
                 </div>
                 {/* Manager Evaluation Card - Now Last */}
                 <div className="kpi-card" style={{ '--accent-color': 'var(--green)', cursor: 'pointer' }} onClick={() => navigate('/employee/results')}>
                     <div className="kpi-icon"><Icons.Check /></div>
                     <div className="kpi-label">Manager Evaluation</div>
-                    <div className="kpi-value">{myEvaluation ? 'Completed' : 'Pending'}</div>
+                    {(() => {
+                        if (!myEvaluation) return <div className="kpi-value" style={{ color: 'var(--text-muted)' }}>Pending</div>;
+                        if (myEvaluation.status === 'pending_approval') return <div className="kpi-value" style={{ color: 'var(--blue-light)' }}>HR Review</div>;
+                        if (myEvaluation.status === 'approved') return <div className="kpi-value" style={{ color: 'var(--green)' }}>Finalized</div>;
+                        return <div className="kpi-value">{myEvaluation.status}</div>;
+                    })()}
                     <div className="kpi-change">Final results</div>
                 </div>
             </div>
@@ -159,9 +169,17 @@ export default function Dashboard() {
                                         </div>
                                     </td>
                                     <td>
-                                        <span className={`badge ${getStatusBadge(cycle.status)}`} style={{ textTransform: 'capitalize' }}>
-                                            {cycle.status}
-                                        </span>
+                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                            <span className={`badge ${getStatusBadge(cycle.status)}`} style={{ textTransform: 'capitalize' }}>
+                                                {cycle.status}
+                                            </span>
+                                            {(() => {
+                                                const sr = selfReviews.find(r => r.cycleId === cycle.id && r.employeeId === currentUser.id);
+                                                if (!sr) return <span className="badge badge-gray" style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>Not Started</span>;
+                                                if (sr.status === 'draft') return <span className="badge" style={{ background: 'rgba(234, 179, 8, 0.1)', color: 'var(--yellow)', border: '1px solid rgba(234, 179, 8, 0.2)' }}>Draft</span>;
+                                                return <span className="badge" style={{ background: 'rgba(34, 197, 94, 0.1)', color: 'var(--green)', border: '1px solid rgba(34, 197, 94, 0.2)' }}>Submitted</span>;
+                                            })()}
+                                        </div>
                                     </td>
                                     <td style={{ textAlign: 'right' }}>
                                         <button
