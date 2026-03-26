@@ -33,7 +33,7 @@ export default function QuestionSets() {
     const [formName, setFormName] = useState('');
     const [formDesc, setFormDesc] = useState('');
     const [formDesignations, setFormDesignations] = useState([]);
-    const [formQuestions, setFormQuestions] = useState([]);
+    const [formSections, setFormSections] = useState([]);
     const [formIsCommon, setFormIsCommon] = useState(false);
     const [saving, setSaving] = useState(false);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -46,8 +46,9 @@ export default function QuestionSets() {
         setFormDesc('');
         setFormDesignations([]);
         setFormIsCommon(false);
-        setFormQuestions([
-            { id: 'q-' + Math.random().toString(36).substr(2, 9), label: '', desc: '' }
+        // Clean slate: one empty section, no dummy data
+        setFormSections([
+            { id: 'sec-' + Math.random().toString(36).substr(2, 9), title: '', questions: [] }
         ]);
         setView('edit');
     };
@@ -59,52 +60,90 @@ export default function QuestionSets() {
         setFormDesignations(qs.targetDesignations || []);
         setFormIsCommon(!!qs.isCommon);
         
-        // Flatten questions for editing
-        let flat = [];
         const raw = qs.questions || [];
-        if (raw.length > 0 && raw[0].questions) {
-            // It was section-based
-            raw.forEach(s => {
-                const qs_in_s = s.questions || [];
-                flat = [...flat, ...qs_in_s];
-            });
+        if (raw.length > 0 && !raw[0].questions) {
+            // Backward compatibility: If it's a flat list, put it in a "General" section
+            setFormSections([
+                { id: 'sec-' + Math.random().toString(36).substr(2, 9), title: 'General', questions: raw }
+            ]);
         } else {
-            flat = raw;
+            setFormSections(raw);
         }
-        setFormQuestions(flat);
+        
         setView('edit');
     };
 
-    // ── Question Actions ──
-    const addQuestion = () => {
-        setFormQuestions(prev => [
+    // ── Section Actions ──
+    const addSection = () => {
+        setFormSections(prev => [
             ...prev,
-            { id: 'q-' + Math.random().toString(36).substr(2, 9), label: '', desc: '' }
+            { id: 'sec-' + Math.random().toString(36).substr(2, 9), title: '', questions: [] }
         ]);
     };
 
-    const updateQuestion = (qId, field, value) => {
-        setFormQuestions(prev => prev.map(q => q.id === qId ? { ...q, [field]: value } : q));
+    const updateSectionTitle = (secId, title) => {
+        setFormSections(prev => prev.map(s => s.id === secId ? { ...s, title } : s));
     };
 
-    const deleteQuestion = (qId) => {
-        setFormQuestions(prev => prev.filter(q => q.id !== qId));
+    const deleteSection = (secId) => {
+        setFormSections(prev => prev.filter(s => s.id !== secId));
+    };
+
+    // ── Question Actions ──
+    const addQuestion = (secId) => {
+        setFormSections(prev => prev.map(s => {
+            if (s.id !== secId) return s;
+            return {
+                ...s,
+                questions: [
+                    ...s.questions,
+                    { id: 'q-' + Math.random().toString(36).substr(2, 9), label: '', desc: '' }
+                ]
+            };
+        }));
+    };
+
+    const updateQuestion = (secId, qId, field, value) => {
+        setFormSections(prev => prev.map(s => {
+            if (s.id !== secId) return s;
+            return {
+                ...s,
+                questions: s.questions.map(q => q.id === qId ? { ...q, [field]: value } : q)
+            };
+        }));
+    };
+
+    const deleteQuestion = (secId, qId) => {
+        setFormSections(prev => prev.map(s => {
+            if (s.id !== secId) return s;
+            return {
+                ...s,
+                questions: s.questions.filter(q => q.id !== qId)
+            };
+        }));
     };
 
     const handleSave = async () => {
         if (!formName.trim()) return alert('Please enter a set name.');
         
-        // Validation: At least one question and non-empty labels
-        if (formQuestions.length === 0) return alert('Please add at least one question.');
-        for (const q of formQuestions) {
-            if (!q.label.trim()) return alert('All questions must have a title.');
+        // Validation: At least one section and one question
+        if (formSections.length === 0) return alert('Please add at least one section.');
+        const totalQs = formSections.reduce((sum, s) => sum + s.questions.length, 0);
+        if (totalQs === 0) return alert('Please add at least one question.');
+
+        // Validation: All sections must have titles if there are multiple, or at least one if one
+        for (const sec of formSections) {
+            if (!sec.title.trim() && formSections.length > 1) return alert('Please provide titles for all sections.');
+            for (const q of sec.questions) {
+                if (!q.label.trim()) return alert('All questions must have a title.');
+            }
         }
 
         setSaving(true);
         const payload = { 
             name: formName.trim(), 
             description: formDesc.trim(), 
-            questions: formQuestions, // Storing as flat array
+            questions: formSections, // Storing as nested array
             targetDesignations: formDesignations,
             isCommon: formIsCommon
         };
@@ -160,7 +199,9 @@ export default function QuestionSets() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                         {questionSets.map(qs => {
                             // Calculate stats
-                            const qCount = qs.questions ? (qs.questions[0]?.questions ? qs.questions.reduce((sum, s) => sum + s.questions.length, 0) : qs.questions.length) : 0;
+                            const isSectioned = qs.questions?.[0]?.questions;
+                            const sCount = isSectioned ? qs.questions.length : 1;
+                            const qCount = isSectioned ? qs.questions.reduce((sum, s) => sum + s.questions.length, 0) : (qs.questions || []).length;
 
                             return (
                                 <div 
@@ -211,12 +252,12 @@ export default function QuestionSets() {
                                         
                                         <div style={{ marginTop: '10px', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
                                             <span style={{ fontSize: '11px', color: 'var(--text-muted)', background: 'var(--bg-secondary)', padding: '2px 8px', borderRadius: '4px' }}>
-                                                {qCount} Questions
+                                                {sCount} Sections · {qCount} Questions
                                             </span>
                                             {qs.targetDesignations && qs.targetDesignations.length > 0 && (
                                                 <div style={{ display: 'flex', gap: '4px' }}>
                                                     {qs.targetDesignations.slice(0, 3).map((tg, i) => (
-                                                        <span key={i} className="badge badge-primary" style={{ fontSize: '10px', background: 'rgba(59, 130, 246, 0.1)', color: 'var(--blue-light)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                                                        <span key={i} className="badge badge-primary" style={{ fontSize: '10px', background: 'rgba(59, 130, 246, 0.1)', color: 'var(--blue-light)', border: '1px solid rgba(59, 130, 246, 0.2) ' }}>
                                                             💼 {tg}
                                                         </span>
                                                     ))}
@@ -267,7 +308,7 @@ export default function QuestionSets() {
         );
     }
 
-    const totalQuestionsCount = formQuestions.length;
+    const totalQuestionsCount = formSections.reduce((sum, s) => sum + s.questions.length, 0);
 
     /* ── EDIT VIEW ── */
     return (
@@ -364,63 +405,113 @@ export default function QuestionSets() {
                 </div>
             </div>
 
-            {/* Questions Editor */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                {formQuestions.map((q, qIdx) => (
-                    <div key={q.id} className="question-card" style={{ 
-                        padding: '24px', 
-                        borderRadius: '20px', 
+            {/* Sections Editor */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
+                {formSections.map((sec, secIdx) => (
+                    <div key={sec.id} className="section-container card" style={{ 
+                        padding: '32px', 
+                        borderRadius: '24px', 
                         background: 'var(--bg-card)', 
                         border: '1px solid var(--border)',
-                        transition: 'all 0.2s ease',
+                        transition: 'all 0.3s ease',
                         position: 'relative',
-                        boxShadow: '0 4px 15px rgba(0,0,0,0.02)',
-                        animation: 'slideIn 0.3s ease-out'
+                        boxShadow: '0 4px 20px rgba(0,0,0,0.02)'
                     }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <div style={{ 
-                                    width: '32px', height: '32px', borderRadius: '50%', 
-                                    background: 'rgba(59, 130, 246, 0.1)', color: 'var(--blue-light)',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    fontWeight: 800, fontSize: '14px'
-                                }}>
-                                    {qIdx + 1}
-                                </div>
-                                <div style={{ fontWeight: 800, fontSize: '13px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                                    Question Details
-                                </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                            <div style={{ flex: 1, marginRight: '20px' }}>
+                                <input
+                                    className="form-input"
+                                    value={sec.title}
+                                    onChange={e => updateSectionTitle(sec.id, e.target.value)}
+                                    placeholder={formSections.length > 1 ? `Section ${secIdx + 1} Title (e.g. Technical Skills)` : 'Section Title (Optional if only one)'}
+                                    disabled={isReadOnly}
+                                    style={{ 
+                                        fontSize: '18px', 
+                                        fontWeight: 800, 
+                                        background: 'transparent', 
+                                        border: 'none', 
+                                        padding: '0',
+                                        color: 'var(--text-primary)',
+                                        borderBottom: '2px solid transparent',
+                                        transition: 'border-color 0.2s',
+                                        borderRadius: 0
+                                    }}
+                                    onFocus={e => e.target.style.borderColor = 'var(--blue-light)'}
+                                    onBlur={e => e.target.style.borderColor = 'transparent'}
+                                />
                             </div>
-                            {!isReadOnly && (
-                                <button className="btn" onClick={() => deleteQuestion(q.id)} style={{ color: 'var(--red)', border: 'none', background: 'transparent', padding: '4px', fontSize: '11px', fontWeight: 700 }}>
-                                    ✕ REMOVE
+                            {!isReadOnly && formSections.length > 1 && (
+                                <button className="btn" onClick={() => deleteSection(sec.id)} style={{ color: 'var(--red)', border: 'none', background: 'transparent', padding: '4px', fontSize: '11px', fontWeight: 700 }}>
+                                    ✕ REMOVE SECTION
                                 </button>
                             )}
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            <input
-                                className="form-input"
-                                value={q.label}
-                                onChange={e => updateQuestion(q.id, 'label', e.target.value)}
-                                placeholder="Question Title (e.g. Code Quality)"
-                                disabled={isReadOnly}
-                                style={{ background: 'var(--bg-secondary)', fontWeight: 700, borderRadius: '10px', padding: '12px 16px' }}
-                            />
-                            <textarea
-                                className="form-input"
-                                value={q.desc}
-                                onChange={e => updateQuestion(q.id, 'desc', e.target.value)}
-                                placeholder="Detailed prompt for the employee..."
-                                disabled={isReadOnly}
-                                rows={2}
-                                style={{ background: 'var(--bg-secondary)', resize: 'vertical', borderRadius: '10px', padding: '12px 16px', fontSize: '14px', lineHeight: 1.5 }}
-                            />
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                            {sec.questions.map((q, qIdx) => (
+                                <div key={q.id} className="question-card" style={{ 
+                                    padding: '20px', 
+                                    borderRadius: '16px', 
+                                    background: 'var(--bg-secondary)', 
+                                    border: '1px solid var(--border)',
+                                    position: 'relative',
+                                    animation: 'slideIn 0.3s ease-out'
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                                        <div style={{ fontWeight: 700, fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                            Question {qIdx + 1}
+                                        </div>
+                                        {!isReadOnly && (
+                                            <button className="btn" onClick={() => deleteQuestion(sec.id, q.id)} style={{ color: 'var(--red)', border: 'none', background: 'transparent', padding: '0', fontSize: '10px', fontWeight: 700 }}>
+                                                ✕ REMOVE
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                        <input
+                                            className="form-input"
+                                            value={q.label}
+                                            onChange={e => updateQuestion(sec.id, q.id, 'label', e.target.value)}
+                                            placeholder="Question Title (e.g. Code Quality)"
+                                            disabled={isReadOnly}
+                                            style={{ background: 'var(--bg-card)', fontWeight: 700, borderRadius: '8px' }}
+                                        />
+                                        <textarea
+                                            className="form-input"
+                                            value={q.desc}
+                                            onChange={e => updateQuestion(sec.id, q.id, 'desc', e.target.value)}
+                                            placeholder="Detailed prompt for the employee..."
+                                            disabled={isReadOnly}
+                                            rows={2}
+                                            style={{ background: 'var(--bg-card)', resize: 'vertical', borderRadius: '8px', fontSize: '13px' }}
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+
+                            {!isReadOnly && (
+                                <button className="btn btn-add" onClick={() => addQuestion(sec.id)} style={{ 
+                                    padding: '16px',
+                                    border: '1px dashed var(--blue-light)', 
+                                    background: 'rgba(59, 130, 246, 0.02)', 
+                                    color: 'var(--blue-light)',
+                                    borderRadius: '12px',
+                                    fontWeight: 700,
+                                    fontSize: '13px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '8px'
+                                }}>
+                                    + Add Question to {sec.title || 'this section'}
+                                </button>
+                            )}
                         </div>
                     </div>
                 ))}
                 
                 {!isReadOnly && (
-                    <button className="btn btn-add" onClick={addQuestion} style={{ 
+                    <button className="btn btn-add" onClick={addSection} style={{ 
                         marginTop: '12px',
                         padding: '24px',
                         border: '2px dashed rgba(59, 130, 246, 0.3)', 
@@ -432,12 +523,10 @@ export default function QuestionSets() {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        gap: '12px',
-                        transition: 'all 0.2s',
-                        cursor: 'pointer'
+                        gap: '12px'
                     }}>
                         <div style={{ padding: '6px', background: 'rgba(59,130,246,0.1)', borderRadius: '6px', fontSize: '20px' }}>+</div>
-                        Add New Question
+                        Add New Section
                     </button>
                 )}
             </div>
