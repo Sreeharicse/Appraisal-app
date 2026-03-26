@@ -1409,6 +1409,17 @@ export function AppProvider({ children }) {
 
     // ──── Employee Cycle Overrides ────
     const saveEmployeeOverride = async (employeeId, cycleId, questionSetId) => {
+        // Block if self-review already exists (draft or submitted)
+        const reviewStarted = selfReviews.some(r => 
+            String(r.employeeId) === String(employeeId) && 
+            String(r.cycleId) === String(cycleId) && 
+            (r.status === 'draft' || r.status === 'submitted')
+        );
+        if (reviewStarted) {
+            console.error('Blocking override save: Self-review already in progress.');
+            return { success: false, error: 'Question Set cannot be changed once review is started' };
+        }
+
         if (localStorage.getItem('fake_session_role')) {
             setEmployeeOverrides(p => {
                 const filtered = p.filter(o => !(o.employeeId === employeeId && o.cycleId === cycleId));
@@ -1441,6 +1452,17 @@ export function AppProvider({ children }) {
     };
 
     const deleteEmployeeOverride = async (employeeId, cycleId) => {
+        // Block if self-review already exists (draft or submitted)
+        const reviewStarted = selfReviews.some(r => 
+            String(r.employeeId) === String(employeeId) && 
+            String(r.cycleId) === String(cycleId) && 
+            (r.status === 'draft' || r.status === 'submitted')
+        );
+        if (reviewStarted) {
+            console.error('Blocking override delete: Self-review already in progress.');
+            return { success: false, error: 'Question Set cannot be changed once review is started' };
+        }
+
         if (localStorage.getItem('fake_session_role')) {
             setEmployeeOverrides(p => {
                 const updated = p.filter(o => !(o.employeeId === employeeId && o.cycleId === cycleId));

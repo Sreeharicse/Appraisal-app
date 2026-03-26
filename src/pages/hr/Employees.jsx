@@ -52,7 +52,7 @@ const ROLE_BADGE = {
 
 /* ═══════════════════════════════════════════════════════════ */
 export default function Employees() {
-    const { currentUser, users, addUser, updateUser, deleteUser, refreshData, departments, designations, questionSets, cycles, employeeOverrides, saveEmployeeOverride, deleteEmployeeOverride } = useApp();
+    const { currentUser, users, addUser, updateUser, deleteUser, refreshData, departments, designations, questionSets, cycles, selfReviews, employeeOverrides, saveEmployeeOverride, deleteEmployeeOverride } = useApp();
     const isManager = currentUser.role === 'manager';
 
     const [showModal, setShowModal] = useState(false);
@@ -513,29 +513,55 @@ export default function Employees() {
                                             {currentEmployeeOverrides.map(override => {
                                                 const c = cycles.find(cy => cy.id === override.cycleId);
                                                 const q = questionSets.find(qs => qs.id === override.questionSetId);
+                                                
+                                                // Check if a review has already started for this cycle
+                                                const reviewStarted = selfReviews.some(r => 
+                                                    String(r.employeeId) === String(editing.id) && 
+                                                    String(r.cycleId) === String(override.cycleId) && 
+                                                    (r.status === 'draft' || r.status === 'submitted')
+                                                );
+
                                                 return (
-                                                    <div key={override.cycleId} style={{
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'space-between',
-                                                        background: 'var(--bg-card)',
-                                                        padding: '8px 12px',
-                                                        borderRadius: '6px',
-                                                        border: '1px solid var(--border)'
-                                                    }}>
-                                                        <div style={{ fontSize: '13px' }}>
-                                                            <strong style={{ color: 'var(--blue)' }}>{c?.name || 'Unknown Cycle'}</strong>
-                                                            <span style={{ color: 'var(--text-muted)', margin: '0 8px' }}>→</span>
-                                                            <span style={{ color: 'var(--text-secondary)' }}>{q?.name || 'Unknown Set'}</span>
+                                                    <div key={override.cycleId} style={{ marginBottom: '8px' }}>
+                                                        <div style={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'space-between',
+                                                            background: 'var(--bg-card)',
+                                                            padding: '8px 12px',
+                                                            borderRadius: '6px',
+                                                            border: '1px solid var(--border)'
+                                                        }}>
+                                                            <div style={{ fontSize: '13px' }}>
+                                                                <strong style={{ color: 'var(--blue)' }}>{c?.name || 'Unknown Cycle'}</strong>
+                                                                <span style={{ color: 'var(--text-muted)', margin: '0 8px' }}>→</span>
+                                                                <span style={{ color: 'var(--text-secondary)' }}>{q?.name || 'Unknown Set'}</span>
+                                                            </div>
+                                                            {!reviewStarted && (
+                                                                <button
+                                                                    className="btn btn-sm"
+                                                                    style={{ padding: '4px', background: 'transparent', color: 'var(--red)', border: 'none', cursor: 'pointer' }}
+                                                                    onClick={() => handleRemoveOverride(override.cycleId)}
+                                                                    title="Remove this override"
+                                                                >
+                                                                    <Icons.Trash style={{ width: 14, height: 14 }} />
+                                                                </button>
+                                                            )}
                                                         </div>
-                                                        <button
-                                                            className="btn btn-sm"
-                                                            style={{ padding: '4px', background: 'transparent', color: 'var(--red)', border: 'none', cursor: 'pointer' }}
-                                                            onClick={() => handleRemoveOverride(override.cycleId)}
-                                                            title="Remove this override"
-                                                        >
-                                                            <Icons.Trash style={{ width: 14, height: 14 }} />
-                                                        </button>
+                                                        {reviewStarted && (
+                                                            <div style={{ 
+                                                                fontSize: '11px', 
+                                                                color: '#ef4444', 
+                                                                marginTop: '4px', 
+                                                                paddingLeft: '4px',
+                                                                fontWeight: 600,
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '4px'
+                                                            }}>
+                                                                <AlertCircle /> Question Set cannot be changed once review is started
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 );
                                             })}
@@ -555,6 +581,11 @@ export default function Employees() {
                                                 <option value="">-- Choose Cycle --</option>
                                                 {cycles
                                                     .filter(cyc => !currentEmployeeOverrides.find(o => o.cycleId === cyc.id))
+                                                    .filter(cyc => !selfReviews.some(r => 
+                                                        String(r.employeeId) === String(editing.id) && 
+                                                        String(r.cycleId) === String(cyc.id) && 
+                                                        (r.status === 'draft' || r.status === 'submitted')
+                                                    ))
                                                     .map(c => <option key={c.id} value={c.id}>{c.name} ({c.status})</option>)}
                                             </select>
                                         </div>
