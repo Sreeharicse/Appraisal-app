@@ -19,9 +19,23 @@ export default function Cycles() {
     const openEdit = (c) => { setEditing(c); setForm({ name: c.name, startDate: c.startDate, endDate: c.endDate, status: c.status, questionSetId: c.questionSetId || '' }); setShowModal(true); };
 
     const handleSave = async () => {
-        if (!form.name || !form.startDate || !form.endDate) return;
-        if (editing) await updateCycle(editing.id, form);
-        else await addCycle(form);
+        if (!form.name || !form.startDate || !form.endDate) {
+            alert("Please fill all required fields.");
+            return;
+        }
+        
+        let res;
+        if (editing) {
+            res = await updateCycle(editing.id, form);
+        } else {
+            res = await addCycle(form);
+        }
+
+        if (res && res.error) {
+            alert(`Failed to save cycle: ${res.error}`);
+            return;
+        }
+
         setShowModal(false);
     };
 

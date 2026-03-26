@@ -816,7 +816,7 @@ export function AppProvider({ children }) {
         }).select().single();
         if (error) {
             console.error('Supabase error adding cycle:', error.message);
-            return null;
+            return { error: error.message };
         }
         if (data) {
             const mapped = { id: data.id, name: data.name, startDate: data.start_date, endDate: data.end_date, status: data.status, createdBy: data.created_by, questionSetId: data.question_set_id || null };
@@ -835,7 +835,7 @@ export function AppProvider({ children }) {
             }
             return mapped;
         }
-        return null;
+        return { error: 'Unknown saving error' };
     };
 
     const updateCycle = async (id, updates) => {
