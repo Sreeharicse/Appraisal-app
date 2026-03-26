@@ -3,10 +3,10 @@ import { useApp } from '../../context/AppContext';
 import Icons from '../../components/Icons';
 
 export default function Cycles() {
-    const { currentUser, users, cycles, selfReviews, evaluations, approvals, addCycle, updateCycle, deleteCycle, requestCycleDelete, getScore, questionSets } = useApp();
+    const { currentUser, users, cycles, selfReviews, evaluations, approvals, addCycle, updateCycle, deleteCycle, requestCycleDelete, getScore } = useApp();
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
-    const [form, setForm] = useState({ name: '', startDate: '', endDate: '', status: 'draft', questionSetId: '' });
+    const [form, setForm] = useState({ name: '', startDate: '', endDate: '', status: 'draft' });
 
     // Deletion Flow State
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -15,27 +15,13 @@ export default function Cycles() {
     const [confirmName, setConfirmName] = useState('');
     const [deleteRequested, setDeleteRequested] = useState({});
 
-    const openAdd = () => { setEditing(null); setForm({ name: '', startDate: '', endDate: '', status: 'draft', questionSetId: '' }); setShowModal(true); };
-    const openEdit = (c) => { setEditing(c); setForm({ name: c.name, startDate: c.startDate, endDate: c.endDate, status: c.status, questionSetId: c.questionSetId || '' }); setShowModal(true); };
+    const openAdd = () => { setEditing(null); setForm({ name: '', startDate: '', endDate: '', status: 'draft' }); setShowModal(true); };
+    const openEdit = (c) => { setEditing(c); setForm({ name: c.name, startDate: c.startDate, endDate: c.endDate, status: c.status }); setShowModal(true); };
 
     const handleSave = async () => {
-        if (!form.name || !form.startDate || !form.endDate) {
-            alert("Please fill all required fields.");
-            return;
-        }
-        
-        let res;
-        if (editing) {
-            res = await updateCycle(editing.id, form);
-        } else {
-            res = await addCycle(form);
-        }
-
-        if (res && res.error) {
-            alert(`Failed to save cycle: ${res.error}`);
-            return;
-        }
-
+        if (!form.name || !form.startDate || !form.endDate) return;
+        if (editing) await updateCycle(editing.id, form);
+        else await addCycle(form);
         setShowModal(false);
     };
 
@@ -285,12 +271,12 @@ export default function Cycles() {
                             <div className="form-group">
                                 <label className="form-label">Status</label>
                                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                                    <div style={{ 
-                                        position: 'absolute', 
-                                        left: '14px', 
-                                        display: 'flex', 
-                                        alignItems: 'center', 
-                                        gap: '6px', 
+                                    <div style={{
+                                        position: 'absolute',
+                                        left: '14px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
                                         pointerEvents: 'none',
                                         color: 'var(--text-muted)',
                                         zIndex: 1
@@ -298,13 +284,13 @@ export default function Cycles() {
                                         <Icons.Cycles style={{ width: '14px', height: '14px' }} />
                                         <span style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '0.05em' }}>STATUS</span>
                                     </div>
-                                    <select 
-                                        className="form-select" 
-                                        value={form.status} 
+                                    <select
+                                        className="form-select"
+                                        value={form.status}
                                         onChange={e => setForm(p => ({ ...p, status: e.target.value }))}
-                                        style={{ 
-                                            paddingLeft: '85px', 
-                                            fontWeight: 700, 
+                                        style={{
+                                            paddingLeft: '85px',
+                                            fontWeight: 700,
                                             fontSize: '13px',
                                             width: '100%',
                                             background: 'var(--bg-secondary)',

@@ -36,7 +36,6 @@ export function AppProvider({ children }) {
     const [notifications, setNotifications] = useState([]);
     const [topBarAction, setTopBarAction] = useState(null); // { label, icon, onClick, type }
     const [questionSets, setQuestionSets] = useState([]);
-    const [employeeOverrides, setEmployeeOverrides] = useState([]);
     const [loading, setLoading] = useState(true);
     const [theme, setTheme] = useState(localStorage.getItem('app-theme') || 'dark');
     const [encryptionKey, _setEncryptionKey] = useState(localStorage.getItem('admin_encryption_key') || 'techxl-secure-2026');
@@ -63,9 +62,6 @@ export function AppProvider({ children }) {
 
                 const fakeNotifications = localStorage.getItem('fake_notifications');
                 if (fakeNotifications) setNotifications(JSON.parse(fakeNotifications));
-                
-                const fakeOverrides = localStorage.getItem('fake_employee_overrides');
-                if (fakeOverrides) setEmployeeOverrides(JSON.parse(fakeOverrides));
             } catch (e) {
                 console.error("Failed to parse local fake data in refresh", e);
             }
@@ -107,7 +103,6 @@ export function AppProvider({ children }) {
             fetchTable('departments'),
             fetchTable('designations'),
             fetchTable('question_sets'),
-            fetchTable('employee_cycle_overrides'),
         ]);
 
         // Map snake_case DB columns → camelCase used by the UI
@@ -139,13 +134,6 @@ export function AppProvider({ children }) {
             endDate: c.end_date,
             status: c.status,
             createdBy: c.created_by,
-            questionSetId: c.question_set_id || null,
-        })));
-
-        setEmployeeOverrides((resultsData[9] || []).map(o => ({
-            employeeId: o.employee_id,
-            cycleId: o.cycle_id,
-            questionSetId: o.question_set_id,
         })));
 
         setSelfReviews((reviewsData || []).map(r => {
@@ -784,7 +772,7 @@ export function AppProvider({ children }) {
     // ──── Cycles CRUD ────
     const addCycle = async (cycle) => {
         if (localStorage.getItem('fake_session_role')) {
-            const mapped = { id: crypto.randomUUID(), name: cycle.name, startDate: cycle.startDate, endDate: cycle.endDate, status: cycle.status || 'draft', createdBy: currentUser?.id, questionSetId: cycle.questionSetId || null };
+            const mapped = { id: crypto.randomUUID(), name: cycle.name, startDate: cycle.startDate, endDate: cycle.endDate, status: cycle.status || 'draft', createdBy: currentUser?.id };
             setCycles(p => {
                 const updated = [...p, mapped];
                 localStorage.setItem('fake_cycles', JSON.stringify(updated));
@@ -812,14 +800,13 @@ export function AppProvider({ children }) {
             end_date: cycle.endDate,
             status: cycle.status || 'draft',
             created_by: currentUser?.id,
-            question_set_id: cycle.questionSetId || null,
         }).select().single();
         if (error) {
             console.error('Supabase error adding cycle:', error.message);
-            return { error: error.message };
+            return null;
         }
         if (data) {
-            const mapped = { id: data.id, name: data.name, startDate: data.start_date, endDate: data.end_date, status: data.status, createdBy: data.created_by, questionSetId: data.question_set_id || null };
+            const mapped = { id: data.id, name: data.name, startDate: data.start_date, endDate: data.end_date, status: data.status, createdBy: data.created_by };
             setCycles(p => [...p, mapped]);
 
             if (mapped.status === 'active') {
@@ -835,7 +822,7 @@ export function AppProvider({ children }) {
             }
             return mapped;
         }
-        return { error: 'Unknown saving error' };
+        return null;
     };
 
     const updateCycle = async (id, updates) => {
@@ -865,7 +852,6 @@ export function AppProvider({ children }) {
         if (updates.startDate !== undefined) dbUpdates.start_date = updates.startDate;
         if (updates.endDate !== undefined) dbUpdates.end_date = updates.endDate;
         if (updates.status !== undefined) dbUpdates.status = updates.status;
-        if (updates.questionSetId !== undefined) dbUpdates.question_set_id = updates.questionSetId || null;
 
         const { error } = await supabase.from('cycles').update(dbUpdates).eq('id', id);
         if (!error) {
@@ -1428,59 +1414,6 @@ export function AppProvider({ children }) {
     };
 
 
-    // ──── Employee Cycle Overrides ────
-    const saveEmployeeOverride = async (employeeId, cycleId, questionSetId) => {
-        if (localStorage.getItem('fake_session_role')) {
-            setEmployeeOverrides(p => {
-                const filtered = p.filter(o => !(o.employeeId === employeeId && o.cycleId === cycleId));
-                const updated = [...filtered, { employeeId, cycleId, questionSetId }];
-                localStorage.setItem('fake_employee_overrides', JSON.stringify(updated));
-                return updated;
-            });
-            return { success: true };
-        }
-
-        const { error } = await supabase.from('employee_cycle_overrides').upsert({
-            employee_id: employeeId,
-            cycle_id: cycleId,
-            question_set_id: questionSetId
-        }, { onConflict: 'employee_id,cycle_id' });
-
-        if (error) {
-            console.error("Supabase error saving override:", error.message);
-            return { success: false, error: error.message };
-        }
-
-        setEmployeeOverrides(p => {
-            const filtered = p.filter(o => !(o.employeeId === employeeId && o.cycleId === cycleId));
-            return [...filtered, { employeeId, cycleId, questionSetId }];
-        });
-        return { success: true };
-    };
-
-    const deleteEmployeeOverride = async (employeeId, cycleId) => {
-        if (localStorage.getItem('fake_session_role')) {
-            setEmployeeOverrides(p => {
-                const updated = p.filter(o => !(o.employeeId === employeeId && o.cycleId === cycleId));
-                localStorage.setItem('fake_employee_overrides', JSON.stringify(updated));
-                return updated;
-            });
-            return { success: true };
-        }
-
-        const { error } = await supabase.from('employee_cycle_overrides')
-            .delete()
-            .match({ employee_id: employeeId, cycle_id: cycleId });
-
-        if (error) {
-            console.error("Supabase error deleting override:", error.message);
-            return { success: false, error: error.message };
-        }
-
-        setEmployeeOverrides(p => p.filter(o => !(o.employeeId === employeeId && o.cycleId === cycleId)));
-        return { success: true };
-    };
-
     return (
         <AppContext.Provider value={{
             currentUser, users, departments, designations, cycles, selfReviews, evaluations, approvals, notifications,
@@ -1500,7 +1433,6 @@ export function AppProvider({ children }) {
             createNotification, markNotificationAsRead,
             showDecrypted, setShowDecrypted, canDecrypt,
             questionSets, createQuestionSet, updateQuestionSet, deleteQuestionSet,
-            employeeOverrides, saveEmployeeOverride, deleteEmployeeOverride
         }}>
             {children}
         </AppContext.Provider>

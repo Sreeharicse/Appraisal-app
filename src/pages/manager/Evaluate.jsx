@@ -6,7 +6,7 @@ import Icons from '../../components/Icons';
 export default function Evaluate() {
     const { employeeId } = useParams();
     const navigate = useNavigate();
-    const { currentUser, users, cycles, getEvaluation, selfReviews, evaluations, submitEvaluation, calculateScore, getCategory, refreshData, setTopBarAction, questionSets, employeeOverrides } = useApp();
+    const { currentUser, users, cycles, getEvaluation, selfReviews, evaluations, submitEvaluation, calculateScore, getCategory, refreshData, setTopBarAction, questionSets } = useApp();
     const team = currentUser.role === 'admin'
         ? users.filter(u => u.role === 'hr' || u.role === 'manager')
         : users.filter(u => u.managerId === currentUser.id);
@@ -80,23 +80,15 @@ export default function Evaluate() {
     const empComps = selfReview?.metadata?.competencies || {};
     const isSelfReviewSubmitted = selfReview?.status === 'submitted' || selfReview?.status === 'approved';
 
-    // --- 2-Tier Question Set Resolution Hierarchy ---
-    let assignedSet = null;
+    // Resolve the template questions based on Job Title (Designation)
+    const empAssignedSet = emp?.designation
+        ? questionSets.find(qs => qs.targetDesignations?.includes(emp.designation))
+        : null;
 
-    // 1. Priority 1: Cycle-Specific Employee Override (Highest Priority)
-    const specificOverride = employeeOverrides?.find(o => String(o.employeeId) === String(selectedEmp) && String(o.cycleId) === String(selectedCycleId));
-    if (specificOverride) {
-        assignedSet = questionSets.find(qs => qs.id === specificOverride.questionSetId);
-    }
-    // 2. Priority 2: Designation Mapping
-    if (!assignedSet && emp?.designation) {
-        assignedSet = questionSets.find(qs => qs.targetDesignations?.includes(emp.designation));
-    }
-
-    const TEMPLATE_QUESTIONS = assignedSet ? assignedSet.questions : DEFAULT_COMPETENCY_QUESTIONS;
+    const TEMPLATE_QUESTIONS = empAssignedSet ? empAssignedSet.questions : DEFAULT_COMPETENCY_QUESTIONS;
 
     // Resolve question set: If cycle is closed OR review is already submitted, use the saved snapshot. 
-    // Otherwise, use the live dynamic template so HR edits still apply to drafts.
+    // Otherwise, use the live designation-based template so HR edits still apply to drafts.
     const isActuallySubmitted = selfReview?.status === 'submitted' || selfReview?.status === 'approved';
     const isClosed = cycle?.status === 'closed';
 

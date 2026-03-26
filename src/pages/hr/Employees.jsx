@@ -52,13 +52,12 @@ const ROLE_BADGE = {
 
 /* ═══════════════════════════════════════════════════════════ */
 export default function Employees() {
-    const { currentUser, users, addUser, updateUser, deleteUser, refreshData, departments, designations, questionSets, cycles, employeeOverrides, saveEmployeeOverride, deleteEmployeeOverride } = useApp();
+    const { currentUser, users, addUser, updateUser, deleteUser, refreshData, departments, designations } = useApp();
     const isManager = currentUser.role === 'manager';
 
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
-    const [form, setForm] = useState({ name: '', email: '', role: 'employee', designation: '', department: '', managerId: '', questionSetId: '' });
-    const [overrideForm, setOverrideForm] = useState({ cycleId: '', questionSetId: '' });
+    const [form, setForm] = useState({ name: '', email: '', role: 'employee', designation: '', department: '', managerId: '' });
     const [search, setSearch] = useState('');
     const [toast, setToast] = useState(null); // { type: 'success'|'error', msg: string }
 
@@ -88,16 +87,14 @@ export default function Employees() {
 
     const openAdd = () => {
         setEditing(null);
-        setForm({ name: '', email: '', role: 'employee', designation: '', department: '', managerId: '', questionSetId: '' });
-        setOverrideForm({ cycleId: '', questionSetId: '' });
+        setForm({ name: '', email: '', role: 'employee', designation: '', department: '', managerId: '' });
         resetModal();
         setShowModal(true);
     };
 
     const openEdit = (u) => {
         setEditing(u);
-        setForm({ name: u.name, email: u.email, role: u.role, designation: u.designation || '', department: u.department || '', managerId: u.managerId || '', questionSetId: u.questionSetId || '' });
-        setOverrideForm({ cycleId: '', questionSetId: '' });
+        setForm({ name: u.name, email: u.email, role: u.role, designation: u.designation || '', department: u.department || '', managerId: u.managerId || '' });
         resetModal();
         setShowModal(true);
     };
@@ -146,8 +143,8 @@ export default function Employees() {
                             const canvas = document.createElement('canvas');
                             const MAX_W = 150, MAX_H = 150;
                             let w = img.width, h = img.height;
-                            if (w > h) { if (w > MAX_W) { h *= MAX_W/w; w = MAX_W; } }
-                            else { if (h > MAX_H) { w *= MAX_H/h; h = MAX_H; } }
+                            if (w > h) { if (w > MAX_W) { h *= MAX_W / w; w = MAX_W; } }
+                            else { if (h > MAX_H) { w *= MAX_H / h; h = MAX_H; } }
                             canvas.width = w; canvas.height = h;
                             const ctx = canvas.getContext('2d');
                             ctx.drawImage(img, 0, 0, w, h);
@@ -192,25 +189,6 @@ export default function Employees() {
         setShowModal(false);
         resetModal();
     };
-
-
-    const handleAddOverride = async () => {
-        if (!editing || !overrideForm.cycleId || !overrideForm.questionSetId) return;
-        const res = await saveEmployeeOverride(editing.id, overrideForm.cycleId, overrideForm.questionSetId);
-        if (res.success) {
-            setOverrideForm({ cycleId: '', questionSetId: '' });
-        } else {
-            showToast('error', `Failed to save override: ${res.error}`);
-        }
-    };
-
-    const handleRemoveOverride = async (cycleId) => {
-        if (!editing) return;
-        const res = await deleteEmployeeOverride(editing.id, cycleId);
-        if (!res.success) showToast('error', `Failed to remove override: ${res.error}`);
-    };
-
-    const currentEmployeeOverrides = editing ? employeeOverrides.filter(o => o.employeeId === editing.id) : [];
 
 
     return (
@@ -314,10 +292,10 @@ export default function Employees() {
                         <div className="modal-header" style={{ padding: '20px 24px 16px', gap: '12px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                 {/* Avatar preview */}
-                                <Avatar 
-                                    avatarData={profilePhoto || (editing ? editing.avatar : null) || form.name} 
-                                    name={form.name} 
-                                    size={44} 
+                                <Avatar
+                                    avatarData={profilePhoto || (editing ? editing.avatar : null) || form.name}
+                                    name={form.name}
+                                    size={44}
                                     editable={true}
                                     onUpload={(base64) => setProfilePhoto(base64)}
                                     style={{ boxShadow: '0 4px 12px rgba(59,130,246,0.35)' }}
@@ -479,122 +457,16 @@ export default function Employees() {
                                     </select>
                                 </div>
                             </div>
-                            
-                            {/* ── Row 3: Manager Assignment ── */}
-                            <div className="form-grid" style={{ marginBottom: editing ? '16px' : 0 }}>
-                                <div className="form-group">
-                                    <label className="form-label">Project / Reporting Manager</label>
-                                    <select className="form-select" value={form.managerId}
-                                        onChange={e => setForm(p => ({ ...p, managerId: e.target.value }))}>
-                                        <option value="">None</option>
-                                        {managers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                                    </select>
-                                </div>
-                                <div className="form-group">
-                                    {/* Empty placeholder to maintain grid alignment, since right-side item was removed */}
-                                </div>
+
+                            {/* ── Row 3: Reporting Manager ── */}
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label">Reporting Manager</label>
+                                <select className="form-select" value={form.managerId}
+                                    onChange={e => setForm(p => ({ ...p, managerId: e.target.value }))}>
+                                    <option value="">None</option>
+                                    {managers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                                </select>
                             </div>
-
-                            {/* ── Cycle-Specific Overrides ── */}
-                            {editing && (
-                                <div style={{ 
-                                    background: 'var(--bg-secondary)', 
-                                    padding: '16px', 
-                                    borderRadius: '8px',
-                                    border: '1px solid var(--border)',
-                                }}>
-                                    <h4 style={{ 
-                                        margin: '0 0 12px 0', 
-                                        fontSize: '13px', 
-                                        color: 'var(--text-primary)', 
-                                        display: 'flex', 
-                                        alignItems: 'center', 
-                                        gap: '6px' 
-                                    }}>
-                                        <Icons.Cycles style={{ width: 14, height: 14 }} /> Cycle-Specific Overrides
-                                    </h4>
-                                    
-                                    {/* Existing Overrides List */}
-                                    {currentEmployeeOverrides.length > 0 && (
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
-                                            {currentEmployeeOverrides.map(override => {
-                                                const c = cycles.find(cy => cy.id === override.cycleId);
-                                                const q = questionSets.find(qs => qs.id === override.questionSetId);
-                                                return (
-                                                    <div key={override.cycleId} style={{ 
-                                                        display: 'flex', 
-                                                        alignItems: 'center', 
-                                                        justifyContent: 'space-between',
-                                                        background: 'var(--bg-card)',
-                                                        padding: '8px 12px',
-                                                        borderRadius: '6px',
-                                                        border: '1px solid var(--border)'
-                                                    }}>
-                                                        <div style={{ fontSize: '13px' }}>
-                                                            <strong style={{ color: 'var(--blue)' }}>{c?.name || 'Unknown Cycle'}</strong>
-                                                            <span style={{ color: 'var(--text-muted)', margin: '0 8px' }}>→</span>
-                                                            <span style={{ color: 'var(--text-secondary)' }}>{q?.name || 'Unknown Set'}</span>
-                                                        </div>
-                                                        <button 
-                                                            className="btn btn-sm" 
-                                                            style={{ padding: '4px', background: 'transparent', color: 'var(--red)', border: 'none' }}
-                                                            onClick={() => handleRemoveOverride(override.cycleId)}
-                                                            title="Remove Override"
-                                                        >
-                                                            <Icons.Trash style={{ width: 14, height: 14 }} />
-                                                        </button>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-
-                                    {/* Add New Override Form */}
-                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
-                                        <div style={{ flex: 1 }}>
-                                            <label style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Select Cycle</label>
-                                            <select 
-                                                className="form-select" 
-                                                style={{ height: '36px', fontSize: '13px' }}
-                                                value={overrideForm.cycleId}
-                                                onChange={e => setOverrideForm(p => ({ ...p, cycleId: e.target.value }))}
-                                            >
-                                                <option value="">-- Choose Cycle --</option>
-                                                {cycles.filter(cyc => !currentEmployeeOverrides.find(o => o.cycleId === cyc.id)).map(c => (
-                                                    <option key={c.id} value={c.id}>{c.name} ({c.status})</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                        <div style={{ flex: 1 }}>
-                                            <label style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Select Question Set</label>
-                                            <select 
-                                                className="form-select" 
-                                                style={{ height: '36px', fontSize: '13px' }}
-                                                value={overrideForm.questionSetId}
-                                                onChange={e => setOverrideForm(p => ({ ...p, questionSetId: e.target.value }))}
-                                            >
-                                                <option value="">-- Choose Set --</option>
-                                                {questionSets.map(qs => (
-                                                    <option key={qs.id} value={qs.id}>{qs.name}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                        <button 
-                                            className="btn btn-secondary" 
-                                            style={{ height: '36px', padding: '0 12px', fontSize: '12px' }}
-                                            onClick={handleAddOverride}
-                                            disabled={!overrideForm.cycleId || !overrideForm.questionSetId}
-                                            title="Add mapping"
-                                        >
-                                            + Add
-                                        </button>
-                                    </div>
-                                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px', lineHeight: '1.4' }}>
-                                        Cycle-specific overrides take highest priority. If neither are set, Cycle defaults or Job Title defaults apply. 
-                                    </div>
-                                </div>
-                            )}
-
                         </div>
 
                         {/* Footer */}

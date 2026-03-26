@@ -3,7 +3,7 @@ import { useApp } from '../../context/AppContext';
 import Icons from '../../components/Icons';
 
 export default function SelfReview() {
-    const { currentUser, users, cycles, evaluations = [], selfReviews = [], getSelfReview, submitSelfReview, getScore, refreshData, setTopBarAction, questionSets, employeeOverrides } = useApp();
+    const { currentUser, users, cycles, evaluations = [], selfReviews = [], getSelfReview, submitSelfReview, getScore, refreshData, setTopBarAction, questionSets } = useApp();
 
     useEffect(() => {
         refreshData();
@@ -40,7 +40,15 @@ export default function SelfReview() {
         { id: 'q14', label: '10. Professional Behavior', desc: 'Evaluate how you demonstrate professionalism in the workplace. This includes reliability, respect for colleagues, and maintaining a positive work attitude.' }
     ];
 
-    // Resolving questions is now done AFTER we know the current cycle.
+    // Resolve the template questions based on Job Title (Designation)
+    const latestUserData = users.find(u => u.id === currentUser.id) || currentUser;
+
+    // Look for a question set that includes this user's designation
+    const assignedSet = latestUserData.designation
+        ? questionSets.find(qs => qs.targetDesignations?.includes(latestUserData.designation))
+        : null;
+
+    const TEMPLATE_QUESTIONS = assignedSet ? assignedSet.questions : DEFAULT_COMPETENCY_QUESTIONS;
 
     const RATING_OPTIONS = [
         { value: 0, label: 'Select Rating...' },
@@ -63,27 +71,11 @@ export default function SelfReview() {
     const isSubmitted = status !== 'new' && status !== 'draft';
     const isReadOnly = isSubmitted || (status === 'draft' && isLocked) || isClosed;
 
-    // --- 2-Tier Question Set Resolution Hierarchy ---
-    const latestUserData = users.find(u => u.id === currentUser.id) || currentUser;
-    let assignedSet = null;
-
-    // 1. Priority 1: Cycle-Specific Employee Override (Highest Priority)
-    const specificOverride = employeeOverrides?.find(o => String(o.employeeId) === String(currentUser.id) && String(o.cycleId) === String(selectedCycleId));
-    if (specificOverride) {
-        assignedSet = questionSets.find(qs => qs.id === specificOverride.questionSetId);
-    }
-    // 2. Priority 2: Designation Mapping
-    if (!assignedSet && latestUserData?.designation) {
-        assignedSet = questionSets.find(qs => qs.targetDesignations?.includes(latestUserData.designation));
-    }
-
-    const TEMPLATE_QUESTIONS = assignedSet ? assignedSet.questions : DEFAULT_COMPETENCY_QUESTIONS;
-
     // Resolve question set: If cycle is closed OR review is already submitted, use the saved snapshot. 
-    // Otherwise, use the live dynamic template so HR edits still apply to drafts.
+    // Otherwise, use the live designation-based template so HR edits still apply to drafts.
     const existingReview = selfReviews.find(r => String(r.employeeId) === String(currentUser.id) && String(r.cycleId) === String(selectedCycleId));
     let COMPETENCY_QUESTIONS = TEMPLATE_QUESTIONS;
-    
+
     const isActuallySubmitted = existingReview?.status === 'submitted' || existingReview?.status === 'approved';
 
     if (isClosed || isActuallySubmitted) {
