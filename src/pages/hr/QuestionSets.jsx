@@ -23,7 +23,7 @@ const DEFAULT_SECTIONS = [
 ];
 
 export default function QuestionSets() {
-    const { questionSets, createQuestionSet, updateQuestionSet, deleteQuestionSet, currentUser, designations } = useApp();
+    const { questionSets, createQuestionSet, updateQuestionSet, deleteQuestionSet, setCommonQuestionSet, currentUser, designations } = useApp();
 
     const [view, setView] = useState('list'); // 'list' | 'edit'
     const [editingSet, setEditingSet] = useState(null);
@@ -177,6 +177,11 @@ export default function QuestionSets() {
         setDeleteConfirm(null);
     };
 
+    const handleSetCommon = async (id) => {
+        const result = await setCommonQuestionSet(id);
+        if (!result.success) alert('Failed to set default: ' + result.error);
+    };
+
     /* ── LIST VIEW ── */
     if (view === 'list') {
         return (
@@ -213,8 +218,19 @@ export default function QuestionSets() {
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                             <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--text-primary)' }}>{qs.name}</div>
                                             {qs.isCommon && (
-                                                <span className="badge" style={{ fontSize: '10px', background: 'rgba(16, 185, 129, 0.1)', color: 'var(--green-light)', border: '1px solid rgba(16, 185, 129, 0.2)', padding: '2px 6px' }}>
-                                                    ⭐ Default (Common)
+                                                <span className="badge" style={{ 
+                                                    fontSize: '10px', 
+                                                    background: 'rgba(234, 179, 8, 0.15)', 
+                                                    color: '#eab308', 
+                                                    border: '1px solid rgba(234, 179, 8, 0.3)', 
+                                                    padding: '2px 8px',
+                                                    fontWeight: 700,
+                                                    borderRadius: '12px',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '4px'
+                                                }}>
+                                                    ⭐ System Default
                                                 </span>
                                             )}
                                         </div>
@@ -238,7 +254,16 @@ export default function QuestionSets() {
                                             )}
                                         </div>
                                     </div>
-                                    <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                                    <div style={{ display: 'flex', gap: '8px', flexShrink: 0, alignItems: 'center' }}>
+                                        {!isReadOnly && !qs.isCommon && (
+                                            <button 
+                                                className="btn btn-secondary" 
+                                                onClick={() => handleSetCommon(qs.id)}
+                                                style={{ fontSize: '11px', padding: '6px 12px', borderColor: 'rgba(234, 179, 8, 0.3)', color: 'var(--text-secondary)' }}
+                                            >
+                                                👑 Make Default
+                                            </button>
+                                        )}
                                         <button className="btn btn-secondary" onClick={() => openEdit(qs)} style={{ fontSize: '12px', padding: '6px 14px' }}>
                                             {isReadOnly ? '👁 View' : '✏️ Edit'}
                                         </button>
@@ -249,7 +274,14 @@ export default function QuestionSets() {
                                                     <button className="btn btn-secondary" onClick={() => setDeleteConfirm(null)} style={{ fontSize: '12px', padding: '6px 12px' }}>Cancel</button>
                                                 </div>
                                             ) : (
-                                                <button className="btn btn-secondary" onClick={() => setDeleteConfirm(qs.id)} style={{ fontSize: '12px', padding: '6px 14px', color: 'var(--red)' }}>🗑 Delete</button>
+                                                <button 
+                                                    className="btn btn-secondary" 
+                                                    onClick={() => setDeleteConfirm(qs.id)} 
+                                                    disabled={qs.isCommon}
+                                                    style={{ fontSize: '12px', padding: '6px 14px', color: qs.isCommon ? 'var(--text-muted)' : 'var(--red)', opacity: qs.isCommon ? 0.5 : 1 }}
+                                                >
+                                                    🗑 Delete
+                                                </button>
                                             )
                                         )}
                                     </div>
