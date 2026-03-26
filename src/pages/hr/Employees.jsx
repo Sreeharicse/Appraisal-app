@@ -62,6 +62,11 @@ export default function Employees() {
     const [search, setSearch] = useState('');
     const [toast, setToast] = useState(null); // { type: 'success'|'error', msg: string }
 
+    const profileReviewStarted = editing && selfReviews.some(r => 
+        String(r.employeeId) === String(editing.id) && 
+        (r.status === 'draft' || r.status === 'submitted')
+    );
+
     const showToast = (type, msg) => {
         setToast({ type, msg });
         setTimeout(() => setToast(null), 4000);
@@ -451,12 +456,25 @@ export default function Employees() {
                                         onChange={e => setForm(p => ({ ...p, name: e.target.value }))} />
                                 </div>
                                 <div className="form-group">
-                                    <label className="form-label">Job Title / Designation</label>
-                                    <select className="form-select" value={form.designation}
-                                        onChange={e => setForm(p => ({ ...p, designation: e.target.value }))}>
+                                    <label className="form-label" style={{ color: profileReviewStarted ? 'var(--text-muted)' : 'inherit' }}>Job Title / Designation</label>
+                                    <select 
+                                        className="form-select" 
+                                        value={form.designation}
+                                        disabled={profileReviewStarted}
+                                        onChange={e => setForm(p => ({ ...p, designation: e.target.value }))}
+                                        style={{ 
+                                            background: profileReviewStarted ? 'rgba(0,0,0,0.02)' : 'var(--bg-secondary)',
+                                            cursor: profileReviewStarted ? 'not-allowed' : 'pointer'
+                                        }}
+                                    >
                                         <option value="">-- Select Title --</option>
                                         {designations.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
                                     </select>
+                                    {profileReviewStarted && (
+                                        <div style={{ fontSize: '11px', color: '#ef4444', marginTop: '6px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <AlertCircle /> Question Set cannot be changed once review is started
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 

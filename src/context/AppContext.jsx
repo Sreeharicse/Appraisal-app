@@ -679,7 +679,20 @@ export function AppProvider({ children }) {
         if (updates.email !== undefined) dbUpdates.email = updates.email;
         if (updates.role !== undefined) dbUpdates.role = updates.role;
         if (updates.department !== undefined) dbUpdates.department = updates.department;
-        if (updates.designation !== undefined) dbUpdates.designation = updates.designation;
+        
+        if (updates.designation !== undefined) {
+            // Block if self-review already exists for ANY cycle (draft or submitted)
+            const reviewStarted = selfReviews.some(r => 
+                String(r.employeeId) === String(id) && 
+                (r.status === 'draft' || r.status === 'submitted')
+            );
+            if (reviewStarted) {
+                console.warn(`Blocking designation update for user ${id}: Review already in progress.`);
+                return { success: false, error: 'Question Set cannot be changed once review is started' };
+            }
+            dbUpdates.designation = updates.designation;
+        }
+
         if (updates.avatar !== undefined) dbUpdates.avatar = updates.avatar;
         if (updates.managerId !== undefined) dbUpdates.manager_id = updates.managerId || null;
         if (updates.questionSetId !== undefined) dbUpdates.question_set_id = updates.questionSetId || null;
