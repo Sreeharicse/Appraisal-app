@@ -175,8 +175,8 @@ export default function QuestionSets() {
     /* ── LIST VIEW ── */
     if (view === 'list') {
         return (
-            <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-                <div className="section-header">
+            <div style={{ width: '100%', padding: '0 40px' }}>
+                <div className="section-header" style={{ position: 'sticky', top: '0', zIndex: 100, background: 'var(--bg-card)', padding: '24px 0', borderBottom: '1px solid var(--border)', marginBottom: '32px' }}>
                     <div>
                         <h2 className="section-title">Question Sets</h2>
                         <p className="section-subtitle">Create and manage competency question sets for employee appraisals</p>
@@ -321,7 +321,7 @@ export default function QuestionSets() {
 
     /* ── EDIT VIEW ── */
     return (
-        <div style={{ maxWidth: '1000px', margin: '0 auto', paddingBottom: '100px', animation: 'fadeIn 0.5s ease-out' }}>
+        <div style={{ width: '100%', padding: '0 40px', paddingBottom: '100px', animation: 'fadeIn 0.5s ease-out' }}>
             <style>{`
                 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
                 @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
@@ -331,7 +331,7 @@ export default function QuestionSets() {
                 .btn-add:hover { background: rgba(59, 130, 246, 0.08) !important; border-style: solid !important; }
             `}</style>
 
-            <div className="section-header" style={{ position: 'sticky', top: '-1px', zIndex: 100, background: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(10px)', padding: '20px 0', borderBottom: '1px solid var(--border)', marginBottom: '32px' }}>
+            <div className="section-header" style={{ position: 'sticky', top: '0', zIndex: 100, background: 'var(--bg-card)', padding: '24px 0', borderBottom: '1px solid var(--border)', marginBottom: '32px' }}>
                 <div>
                     <button className="btn btn-secondary" onClick={() => setView('list')} style={{ fontSize: '12px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '8px' }}>
                         ← Back to Sets
