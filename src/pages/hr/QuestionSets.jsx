@@ -326,52 +326,67 @@ export default function QuestionSets() {
 
     /* ── EDIT VIEW ── */
     return (
-        <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-            <div className="section-header">
+        <div style={{ maxWidth: '1000px', margin: '0 auto', paddingBottom: '100px', animation: 'fadeIn 0.5s ease-out' }}>
+            <style>{`
+                @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+                @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+                .section-container:hover { border-color: var(--blue-light) !important; box-shadow: 0 8px 30px rgba(0,0,0,0.08) !important; }
+                .question-card:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
+                .form-input:focus { border-color: var(--blue-light) !important; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important; }
+                .btn-add:hover { background: rgba(59, 130, 246, 0.08) !important; border-style: solid !important; }
+            `}</style>
+
+            <div className="section-header" style={{ position: 'sticky', top: '-1px', zIndex: 100, background: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(10px)', padding: '20px 0', borderBottom: '1px solid var(--border)', marginBottom: '32px' }}>
                 <div>
-                    <button className="btn btn-secondary" onClick={() => setView('list')} style={{ fontSize: '12px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <button className="btn btn-secondary" onClick={() => setView('list')} style={{ fontSize: '12px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '8px' }}>
                         ← Back to Sets
                     </button>
-                    <h2 className="section-title">{editingSet ? 'Edit Question Set' : 'New Question Set'}</h2>
+                    <h2 className="section-title" style={{ fontSize: '24px', fontWeight: 800 }}>{editingSet ? '✏️ Edit Question Set' : '✨ New Question Set'}</h2>
                     <p className="section-subtitle">Configure the competency questions for this set ({formSections.length} sections, {totalQuestionsCount} questions)</p>
                 </div>
                 {!isReadOnly && (
-                    <button className="btn btn-primary" onClick={handleSave} disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        {saving ? '⏳ Saving...' : '💾 Save Set'}
+                    <button className="btn btn-primary" onClick={handleSave} disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px', borderRadius: '12px', boxShadow: '0 4px 15px rgba(59, 130, 246, 0.3)' }}>
+                        {saving ? <Icons.Spinner /> : <Icons.Save />}
+                        {saving ? 'Saving...' : 'Save Question Set'}
                     </button>
                 )}
             </div>
 
             {/* Set Details */}
-            <div className="card" style={{ marginBottom: '24px' }}>
-                <div className="card-title" style={{ marginBottom: '16px' }}>Set Details</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                    <div>
-                        <label className="form-label">Set Name *</label>
-                        <input
-                            className="form-input"
-                            value={formName}
-                            onChange={e => setFormName(e.target.value)}
-                            placeholder="e.g. Engineering Team Set"
-                            disabled={isReadOnly}
-                            style={{ background: 'var(--bg-secondary)' }}
-                        />
-                    </div>
-                    <div>
-                        <label className="form-label">Description</label>
-                        <input
-                            className="form-input"
-                            value={formDesc}
-                            onChange={e => setFormDesc(e.target.value)}
-                            placeholder="Brief description of when to use this set"
-                            disabled={isReadOnly}
-                            style={{ background: 'var(--bg-secondary)' }}
-                        />
+            <div className="card" style={{ marginBottom: '40px', borderRadius: '16px', border: '1px solid var(--border)', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
+                <div className="card-title" style={{ fontSize: '16px', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '24px' }}>
+                    <div style={{ padding: '8px', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '8px', color: 'var(--blue-light)' }}><Icons.Settings style={{ width: 18, height: 18 }} /></div>
+                    Basic Configuration
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                        <div>
+                            <label className="form-label" style={{ fontWeight: 600 }}>Set Name *</label>
+                            <input
+                                className="form-input"
+                                value={formName}
+                                onChange={e => setFormName(e.target.value)}
+                                placeholder="e.g. Engineering Team Set"
+                                disabled={isReadOnly}
+                                style={{ borderRadius: '10px', padding: '12px 16px' }}
+                            />
+                        </div>
+                        <div>
+                            <label className="form-label" style={{ fontWeight: 600 }}>Description</label>
+                            <input
+                                className="form-input"
+                                value={formDesc}
+                                onChange={e => setFormDesc(e.target.value)}
+                                placeholder="When should this set be used?"
+                                disabled={isReadOnly}
+                                style={{ borderRadius: '10px', padding: '12px 16px' }}
+                            />
+                        </div>
                     </div>
 
                     <div>
-                        <label className="form-label" style={{ marginBottom: '8px', display: 'block' }}>Target Job Titles (Designations)</label>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                        <label className="form-label" style={{ fontWeight: 600, marginBottom: '12px', display: 'block' }}>Target Job Titles (Designations)</label>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', padding: '16px', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px solid var(--border)' }}>
                             {designations.map(d => (
                                 <button
                                     key={d.id}
@@ -384,7 +399,16 @@ export default function QuestionSets() {
                                         }
                                     }}
                                     className={`badge ${formDesignations.includes(d.name) ? 'badge-primary' : 'badge-gray'}`}
-                                    style={{ border: 'none', cursor: 'pointer', padding: '6px 12px', fontSize: '12px' }}
+                                    style={{ 
+                                        border: 'none', 
+                                        cursor: 'pointer', 
+                                        padding: '8px 16px', 
+                                        fontSize: '13px',
+                                        borderRadius: '8px',
+                                        transition: 'all 0.2s',
+                                        background: formDesignations.includes(d.name) ? 'var(--blue-light)' : 'rgba(0,0,0,0.05)',
+                                        color: formDesignations.includes(d.name) ? 'white' : 'var(--text-secondary)'
+                                    }}
                                     disabled={isReadOnly}
                                 >
                                     {d.name}
@@ -394,17 +418,19 @@ export default function QuestionSets() {
                     </div>
 
                     {!isReadOnly && (
-                        <div style={{ marginTop: '16px' }}>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '16px', background: 'rgba(16, 185, 129, 0.05)', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.1)' }}>
+                        <div style={{ marginTop: '8px' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer', padding: '20px', background: 'linear-gradient(to right, rgba(16, 185, 129, 0.08), transparent)', borderRadius: '14px', border: '1px solid rgba(16, 185, 129, 0.15)', transition: 'transform 0.2s' }}>
                                 <input 
                                     type="checkbox" 
                                     checked={formIsCommon} 
                                     onChange={e => setFormIsCommon(e.target.checked)}
-                                    style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                                    style={{ width: '22px', height: '22px', cursor: 'pointer', accentColor: 'var(--green-light)' }}
                                 />
                                 <div>
-                                    <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--green-light)' }}>Set as Common Question Set</div>
-                                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>This set will be the default for all employees who don't have a specific mapping. Only one set can be common.</div>
+                                    <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--green-light)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        👑 Set as System Default (Common)
+                                    </div>
+                                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px', lineHeight: 1.5 }}>Automatically assigned to all employees without a specific job-title mapping.</div>
                                 </div>
                             </label>
                         </div>
@@ -412,112 +438,154 @@ export default function QuestionSets() {
                 </div>
             </div>
 
-            {/* Questions Editor — grouped by section */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+            {/* Questions Editor */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '48px' }}>
                 {formSections.map((sec, sIdx) => (
-                    <div key={sec.id} style={{ position: 'relative' }}>
+                    <div key={sec.id} className="section-container" style={{ 
+                        position: 'relative', 
+                        padding: '32px', 
+                        borderRadius: '24px', 
+                        border: '1px solid var(--border)', 
+                        background: 'var(--bg-card)', 
+                        transition: 'all 0.3s ease',
+                        animation: 'slideIn 0.4s ease-out'
+                    }}>
                         {/* Section Header */}
-                        <div className="card" style={{ 
-                            marginBottom: '12px', 
-                            background: 'linear-gradient(135deg, var(--bg-card) 0%, var(--bg-secondary) 100%)', 
-                            border: '1px solid var(--border)', 
-                            borderLeft: '4px solid var(--blue-light)',
-                            padding: '20px',
-                            boxShadow: 'var(--nm-shadow-sm)'
-                        }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                                <div style={{ 
-                                    width: '38px', height: '38px', borderRadius: '10px', 
-                                    background: 'linear-gradient(135deg, var(--blue-light) 0%, #0ea5e9 100%)', 
-                                    color: '#fff', 
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                                    fontWeight: 900, fontSize: '18px', boxShadow: '0 4px 12px rgba(56, 189, 248, 0.3)'
-                                }}>
-                                    {sIdx + 1}
-                                </div>
-                                <div style={{ flex: 1 }}>
-                                    <input 
-                                        className="form-input" 
-                                        value={sec.title}
-                                        onChange={e => updateSectionTitle(sec.id, e.target.value)}
-                                        placeholder="Section Title (e.g. Communication Skills)"
-                                        disabled={isReadOnly}
-                                        style={{ 
-                                            background: 'transparent', 
-                                            border: 'none', 
-                                            borderBottom: '2px solid rgba(56, 189, 248, 0.2)', 
-                                            borderRadius: 0, 
-                                            padding: '4px 0', 
-                                            fontWeight: 800, 
-                                            fontSize: '18px',
-                                            color: 'var(--text-primary)',
-                                            width: '100%',
-                                            transition: 'border-color 0.2s'
-                                        }}
-                                    />
-                                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', fontWeight: 600, textTransform: 'uppercase' }}>Section Title</div>
-                                </div>
-                                {!isReadOnly && (
-                                    <button className="btn btn-secondary" onClick={() => deleteSection(sec.id)} style={{ color: 'var(--red)', border: 'none', background: 'transparent', padding: '8px' }}>
-                                        🗑 Delete Section
-                                    </button>
-                                )}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '32px' }}>
+                            <div style={{ 
+                                width: '44px', height: '44px', borderRadius: '14px', 
+                                background: 'linear-gradient(135deg, var(--blue-light) 0%, #0ea5e9 100%)', 
+                                color: '#fff', 
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                                fontWeight: 900, fontSize: '20px', boxShadow: '0 8px 16px rgba(56, 189, 248, 0.25)'
+                            }}>
+                                {sIdx + 1}
                             </div>
+                            <div style={{ flex: 1 }}>
+                                <input 
+                                    className="form-input" 
+                                    value={sec.title}
+                                    onChange={e => updateSectionTitle(sec.id, e.target.value)}
+                                    placeholder="e.g. Technical Mastery"
+                                    disabled={isReadOnly}
+                                    style={{ 
+                                        background: 'transparent', 
+                                        border: 'none', 
+                                        borderBottom: '2px solid rgba(56, 189, 248, 0.3)', 
+                                        borderRadius: 0, 
+                                        padding: '4px 0', 
+                                        fontWeight: 800, 
+                                        fontSize: '22px',
+                                        color: 'var(--text-primary)',
+                                        width: '100%',
+                                        transition: 'all 0.3s'
+                                    }}
+                                />
+                                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Section Header</div>
+                            </div>
+                            {!isReadOnly && (
+                                <button className="btn" onClick={() => deleteSection(sec.id)} style={{ color: 'var(--red)', background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.1)', padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: 600 }}>
+                                    🗑 Delete Section
+                                </button>
+                            )}
                         </div>
 
                         {/* Questions in Section */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingLeft: '24px', borderLeft: '2px solid var(--border)', marginLeft: '16px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                             {sec.questions.map((q, qIdx) => (
-                                <div key={q.id} className="card" style={{ padding: '16px' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                                        <div style={{ fontWeight: 700, fontSize: '13px', color: 'var(--text-muted)' }}>Question {qIdx + 1}</div>
+                                <div key={q.id} className="question-card" style={{ 
+                                    padding: '24px', 
+                                    borderRadius: '16px', 
+                                    background: 'var(--bg-secondary)', 
+                                    border: '1px solid var(--border)',
+                                    transition: 'all 0.2s ease',
+                                    position: 'relative'
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                                        <div style={{ fontWeight: 800, fontSize: '12px', color: 'var(--blue-light)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                                            Question {qIdx + 1}
+                                        </div>
                                         {!isReadOnly && (
-                                            <button className="btn btn-secondary" onClick={() => deleteQuestion(sec.id, q.id)} style={{ color: 'var(--red)', border: 'none', background: 'transparent', padding: '4px', fontSize: '12px' }}>
-                                                ✕ Remove
+                                            <button className="btn" onClick={() => deleteQuestion(sec.id, q.id)} style={{ color: 'var(--red)', border: 'none', background: 'transparent', padding: '4px', fontSize: '11px', fontWeight: 700 }}>
+                                                ✕ REMOVE
                                             </button>
                                         )}
                                     </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                         <input
                                             className="form-input"
                                             value={q.label}
                                             onChange={e => updateQuestion(sec.id, q.id, 'label', e.target.value)}
-                                            placeholder="Label (Short Question Title)"
+                                            placeholder="Question Title (e.g. Code Quality)"
                                             disabled={isReadOnly}
-                                            style={{ background: 'var(--bg-secondary)', fontWeight: 600 }}
+                                            style={{ background: 'var(--bg-card)', fontWeight: 700, borderRadius: '10px', padding: '12px 16px' }}
                                         />
                                         <textarea
                                             className="form-input"
                                             value={q.desc}
                                             onChange={e => updateQuestion(sec.id, q.id, 'desc', e.target.value)}
-                                            placeholder="Full Description / Prompt for the employee..."
+                                            placeholder="Detailed prompt for the employee..."
                                             disabled={isReadOnly}
                                             rows={2}
-                                            style={{ background: 'var(--bg-secondary)', resize: 'vertical' }}
+                                            style={{ background: 'var(--bg-card)', resize: 'vertical', borderRadius: '10px', padding: '12px 16px', fontSize: '14px', lineHeight: 1.5 }}
                                         />
                                     </div>
                                 </div>
                             ))}
+                            
                             {!isReadOnly && (
-                                <button className="btn btn-secondary" onClick={() => addQuestion(sec.id)} style={{ borderStyle: 'dashed', background: 'transparent' }}>
-                                    + Add Question to {sec.title || 'Section'}
+                                <button className="btn btn-add" onClick={() => addQuestion(sec.id)} style={{ 
+                                    marginTop: '12px',
+                                    padding: '16px',
+                                    border: '2px dashed rgba(59, 130, 246, 0.3)', 
+                                    background: 'rgba(59, 130, 246, 0.03)', 
+                                    color: 'var(--blue-light)',
+                                    borderRadius: '16px',
+                                    fontWeight: 700,
+                                    fontSize: '14px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '8px',
+                                    transition: 'all 0.2s',
+                                    cursor: 'pointer'
+                                }}>
+                                    <span style={{ fontSize: '20px' }}>+</span> Add Question to {sec.title || 'this section'}
                                 </button>
                             )}
                         </div>
                     </div>
                 ))}
+
+                {!isReadOnly && (
+                    <button className="btn" onClick={addSection} style={{ 
+                        width: '100%', 
+                        padding: '24px', 
+                        fontSize: '16px', 
+                        fontWeight: 800, 
+                        border: '2px dashed var(--border)', 
+                        background: 'rgba(0,0,0,0.02)', 
+                        borderRadius: '24px',
+                        color: 'var(--text-muted)',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '12px'
+                    }} onMouseOver={e => { e.currentTarget.style.borderColor = 'var(--blue-light)'; e.currentTarget.style.color = 'var(--blue-light)'; }}
+                       onMouseOut={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-muted)'; }}>
+                        <div style={{ padding: '8px', background: 'rgba(59,130,246,0.1)', borderRadius: '8px' }}>+</div>
+                        Add New Section
+                    </button>
+                )}
             </div>
 
             {!isReadOnly && (
-                <div style={{ marginTop: '32px', display: 'flex', flexDirection: 'column', gap: '16px', borderTop: '1px solid var(--border)', paddingTop: '32px', paddingBottom: '60px' }}>
-                    <button className="btn btn-secondary" onClick={addSection} style={{ width: '100%', height: '50px', fontSize: '15px', fontWeight: 700, borderStyle: 'dashed' }}>
-                        + Add New Section
+                <div style={{ marginTop: '48px', borderTop: '1px solid var(--border)', paddingTop: '48px', display: 'flex', justifyContent: 'center' }}>
+                    <button className="btn btn-primary" onClick={handleSave} disabled={saving} style={{ padding: '16px 60px', fontSize: '16px', fontWeight: 800, borderRadius: '16px', boxShadow: '0 10px 25px rgba(59, 130, 246, 0.4)' }}>
+                        {saving ? '⏳ Saving...' : '💾 Save Question Set'}
                     </button>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                        <button className="btn btn-primary" onClick={handleSave} disabled={saving} style={{ padding: '12px 32px', fontSize: '15px' }}>
-                            {saving ? '⏳ Saving...' : '💾 Save Question Set'}
-                        </button>
-                    </div>
                 </div>
             )}
         </div>
