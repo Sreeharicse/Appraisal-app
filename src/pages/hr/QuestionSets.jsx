@@ -33,7 +33,7 @@ export default function QuestionSets() {
     const [formName, setFormName] = useState('');
     const [formDesc, setFormDesc] = useState('');
     const [formDesignations, setFormDesignations] = useState([]);
-    const [formSections, setFormSections] = useState([]);
+    const [formQuestions, setFormQuestions] = useState([]);
     const [formIsCommon, setFormIsCommon] = useState(false);
     const [saving, setSaving] = useState(false);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -46,13 +46,9 @@ export default function QuestionSets() {
         setFormDesc('');
         setFormDesignations([]);
         setFormIsCommon(false);
-        // Convert default sections to empty placeholders for a fresh set if desired, 
-        // but here we'll provide the standard structure as a starting point.
-        setFormSections(DEFAULT_SECTIONS.map(s => ({
-            ...s,
-            id: 'sec-' + Math.random().toString(36).substr(2, 9),
-            questions: s.questions.map(q => ({ ...q, id: 'q-' + Math.random().toString(36).substr(2, 9), label: '', desc: '' }))
-        })));
+        setFormQuestions([
+            { id: 'q-' + Math.random().toString(36).substr(2, 9), label: '', desc: '' }
+        ]);
         setView('edit');
     };
 
@@ -63,98 +59,52 @@ export default function QuestionSets() {
         setFormDesignations(qs.targetDesignations || []);
         setFormIsCommon(!!qs.isCommon);
         
-        // Handle backward compatibility: If qs.questions is flat, group it by 'section'
-        const rawQs = qs.questions || [];
-        if (rawQs.length > 0 && !rawQs[0].questions) {
-            const grouped = [];
-            const seen = {};
-            rawQs.forEach(q => {
-                const secTitle = q.section || 'General';
-                if (!seen[secTitle]) {
-                    seen[secTitle] = { id: 'sec-' + Math.random().toString(36).substr(2, 9), title: secTitle, questions: [] };
-                    grouped.push(seen[secTitle]);
-                }
-                seen[secTitle].questions.push({ id: q.id, label: q.label, desc: q.desc });
+        // Flatten questions for editing
+        let flat = [];
+        const raw = qs.questions || [];
+        if (raw.length > 0 && raw[0].questions) {
+            // It was section-based
+            raw.forEach(s => {
+                const qs_in_s = s.questions || [];
+                flat = [...flat, ...qs_in_s];
             });
-            setFormSections(grouped);
         } else {
-            setFormSections(qs.questions || []);
+            flat = raw;
         }
-        
+        setFormQuestions(flat);
         setView('edit');
     };
 
-    // ── Section Actions ──
-    const addSection = () => {
-        setFormSections(prev => [
+    // ── Question Actions ──
+    const addQuestion = () => {
+        setFormQuestions(prev => [
             ...prev,
-            { id: 'sec-' + Math.random().toString(36).substr(2, 9), title: `Section ${prev.length + 1}`, questions: [] }
+            { id: 'q-' + Math.random().toString(36).substr(2, 9), label: '', desc: '' }
         ]);
     };
 
-    const updateSectionTitle = (secId, title) => {
-        setFormSections(prev => prev.map(s => s.id === secId ? { ...s, title } : s));
+    const updateQuestion = (qId, field, value) => {
+        setFormQuestions(prev => prev.map(q => q.id === qId ? { ...q, [field]: value } : q));
     };
 
-    const deleteSection = (secId) => {
-        setFormSections(prev => prev.filter(s => s.id !== secId));
-    };
-
-    // ── Question Actions ──
-    const addQuestion = (secId) => {
-        setFormSections(prev => prev.map(s => {
-            if (s.id !== secId) return s;
-            return {
-                ...s,
-                questions: [
-                    ...s.questions,
-                    { id: 'q-' + Math.random().toString(36).substr(2, 9), label: '', desc: '' }
-                ]
-            };
-        }));
-    };
-
-    const updateQuestion = (secId, qId, field, value) => {
-        setFormSections(prev => prev.map(s => {
-            if (s.id !== secId) return s;
-            return {
-                ...s,
-                questions: s.questions.map(q => q.id === qId ? { ...q, [field]: value } : q)
-            };
-        }));
-    };
-
-    const deleteQuestion = (secId, qId) => {
-        setFormSections(prev => prev.map(s => {
-            if (s.id !== secId) return s;
-            return {
-                ...s,
-                questions: s.questions.filter(q => q.id !== qId)
-            };
-        }));
+    const deleteQuestion = (qId) => {
+        setFormQuestions(prev => prev.filter(q => q.id !== qId));
     };
 
     const handleSave = async () => {
         if (!formName.trim()) return alert('Please enter a set name.');
         
-        // Validation: At least one section and one question
-        if (formSections.length === 0) return alert('Please add at least one section.');
-        const totalQs = formSections.reduce((sum, s) => sum + s.questions.length, 0);
-        if (totalQs === 0) return alert('Please add at least one question.');
-
-        // Validation: Empty titles/text
-        for (const sec of formSections) {
-            if (!sec.title.trim()) return alert('All sections must have a title.');
-            for (const q of sec.questions) {
-                if (!q.label.trim()) return alert('All questions must have a label.');
-            }
+        // Validation: At least one question and non-empty labels
+        if (formQuestions.length === 0) return alert('Please add at least one question.');
+        for (const q of formQuestions) {
+            if (!q.label.trim()) return alert('All questions must have a title.');
         }
 
         setSaving(true);
         const payload = { 
             name: formName.trim(), 
             description: formDesc.trim(), 
-            questions: formSections, // Storing as nested array
+            questions: formQuestions, // Storing as flat array
             targetDesignations: formDesignations,
             isCommon: formIsCommon
         };
@@ -210,8 +160,7 @@ export default function QuestionSets() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                         {questionSets.map(qs => {
                             // Calculate stats
-                            const sCount = qs.questions?.[0]?.questions ? qs.questions.length : new Set((qs.questions || []).map(q => q.section)).size;
-                            const qCount = qs.questions?.[0]?.questions ? qs.questions.reduce((sum, s) => sum + s.questions.length, 0) : (qs.questions || []).length;
+                            const qCount = qs.questions ? (qs.questions[0]?.questions ? qs.questions.reduce((sum, s) => sum + s.questions.length, 0) : qs.questions.length) : 0;
 
                             return (
                                 <div 
@@ -262,7 +211,7 @@ export default function QuestionSets() {
                                         
                                         <div style={{ marginTop: '10px', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
                                             <span style={{ fontSize: '11px', color: 'var(--text-muted)', background: 'var(--bg-secondary)', padding: '2px 8px', borderRadius: '4px' }}>
-                                                {sCount} Sections · {qCount} Questions
+                                                {qCount} Questions
                                             </span>
                                             {qs.targetDesignations && qs.targetDesignations.length > 0 && (
                                                 <div style={{ display: 'flex', gap: '4px' }}>
@@ -275,11 +224,6 @@ export default function QuestionSets() {
                                                         <span className="badge badge-gray" style={{ fontSize: '10px' }}>+{qs.targetDesignations.length - 3} more</span>
                                                     )}
                                                 </div>
-                                            )}
-                                            {!qs.isCommon && qs.name.toLowerCase().includes('common') && (
-                                                <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                                                    (Recommended for Default)
-                                                </span>
                                             )}
                                         </div>
                                     </div>
@@ -323,7 +267,7 @@ export default function QuestionSets() {
         );
     }
 
-    const totalQuestionsCount = formSections.reduce((sum, s) => sum + s.questions.length, 0);
+    const totalQuestionsCount = formQuestions.length;
 
     /* ── EDIT VIEW ── */
     return (
@@ -343,7 +287,7 @@ export default function QuestionSets() {
                         ← Back to Sets
                     </button>
                     <h2 className="section-title" style={{ fontSize: '24px', fontWeight: 800 }}>{editingSet ? '✏️ Edit Question Set' : '✨ New Question Set'}</h2>
-                    <p className="section-subtitle">Configure the competency questions for this set ({formSections.length} sections, {totalQuestionsCount} questions)</p>
+                    <p className="section-subtitle">Configure the competency questions for this set ({totalQuestionsCount} questions)</p>
                 </div>
                 {!isReadOnly && (
                     <button className="btn btn-primary" onClick={handleSave} disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px', borderRadius: '12px', boxShadow: '0 4px 15px rgba(59, 130, 246, 0.3)' }}>
@@ -417,174 +361,90 @@ export default function QuestionSets() {
                             ))}
                         </div>
                     </div>
-
-                    {!isReadOnly && (
-                        <div style={{ marginTop: '8px' }}>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer', padding: '20px', background: 'linear-gradient(to right, rgba(16, 185, 129, 0.08), transparent)', borderRadius: '14px', border: '1px solid rgba(16, 185, 129, 0.15)', transition: 'transform 0.2s' }}>
-                                <input 
-                                    type="checkbox" 
-                                    checked={formIsCommon} 
-                                    onChange={e => setFormIsCommon(e.target.checked)}
-                                    style={{ width: '22px', height: '22px', cursor: 'pointer', accentColor: 'var(--green-light)' }}
-                                />
-                                <div>
-                                    <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--green-light)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        👑 Set as System Default (Common)
-                                    </div>
-                                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px', lineHeight: 1.5 }}>Automatically assigned to all employees without a specific job-title mapping.</div>
-                                </div>
-                            </label>
-                        </div>
-                    )}
                 </div>
             </div>
 
             {/* Questions Editor */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '48px' }}>
-                {formSections.map((sec, sIdx) => (
-                    <div key={sec.id} className="section-container" style={{ 
-                        position: 'relative', 
-                        padding: '32px', 
-                        borderRadius: '24px', 
-                        border: '1px solid var(--border)', 
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                {formQuestions.map((q, qIdx) => (
+                    <div key={q.id} className="question-card" style={{ 
+                        padding: '24px', 
+                        borderRadius: '20px', 
                         background: 'var(--bg-card)', 
-                        transition: 'all 0.3s ease',
-                        animation: 'slideIn 0.4s ease-out'
+                        border: '1px solid var(--border)',
+                        transition: 'all 0.2s ease',
+                        position: 'relative',
+                        boxShadow: '0 4px 15px rgba(0,0,0,0.02)',
+                        animation: 'slideIn 0.3s ease-out'
                     }}>
-                        {/* Section Header */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '32px' }}>
-                            <div style={{ 
-                                width: '44px', height: '44px', borderRadius: '14px', 
-                                background: 'linear-gradient(135deg, var(--blue-light) 0%, #0ea5e9 100%)', 
-                                color: '#fff', 
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                                fontWeight: 900, fontSize: '20px', boxShadow: '0 8px 16px rgba(56, 189, 248, 0.25)'
-                            }}>
-                                {sIdx + 1}
-                            </div>
-                            <div style={{ flex: 1 }}>
-                                <input 
-                                    className="form-input" 
-                                    value={sec.title}
-                                    onChange={e => updateSectionTitle(sec.id, e.target.value)}
-                                    placeholder="e.g. Technical Mastery"
-                                    disabled={isReadOnly}
-                                    style={{ 
-                                        background: 'transparent', 
-                                        border: 'none', 
-                                        borderBottom: '2px solid rgba(56, 189, 248, 0.3)', 
-                                        borderRadius: 0, 
-                                        padding: '4px 0', 
-                                        fontWeight: 800, 
-                                        fontSize: '22px',
-                                        color: 'var(--text-primary)',
-                                        width: '100%',
-                                        transition: 'all 0.3s'
-                                    }}
-                                />
-                                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Section Header</div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <div style={{ 
+                                    width: '32px', height: '32px', borderRadius: '50%', 
+                                    background: 'rgba(59, 130, 246, 0.1)', color: 'var(--blue-light)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    fontWeight: 800, fontSize: '14px'
+                                }}>
+                                    {qIdx + 1}
+                                </div>
+                                <div style={{ fontWeight: 800, fontSize: '13px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                                    Question Details
+                                </div>
                             </div>
                             {!isReadOnly && (
-                                <button className="btn" onClick={() => deleteSection(sec.id)} style={{ color: 'var(--red)', background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.1)', padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: 600 }}>
-                                    🗑 Delete Section
+                                <button className="btn" onClick={() => deleteQuestion(q.id)} style={{ color: 'var(--red)', border: 'none', background: 'transparent', padding: '4px', fontSize: '11px', fontWeight: 700 }}>
+                                    ✕ REMOVE
                                 </button>
                             )}
                         </div>
-
-                        {/* Questions in Section */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                            {sec.questions.map((q, qIdx) => (
-                                <div key={q.id} className="question-card" style={{ 
-                                    padding: '24px', 
-                                    borderRadius: '16px', 
-                                    background: 'var(--bg-secondary)', 
-                                    border: '1px solid var(--border)',
-                                    transition: 'all 0.2s ease',
-                                    position: 'relative'
-                                }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                                        <div style={{ fontWeight: 800, fontSize: '12px', color: 'var(--blue-light)', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                                            Question {qIdx + 1}
-                                        </div>
-                                        {!isReadOnly && (
-                                            <button className="btn" onClick={() => deleteQuestion(sec.id, q.id)} style={{ color: 'var(--red)', border: 'none', background: 'transparent', padding: '4px', fontSize: '11px', fontWeight: 700 }}>
-                                                ✕ REMOVE
-                                            </button>
-                                        )}
-                                    </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                        <input
-                                            className="form-input"
-                                            value={q.label}
-                                            onChange={e => updateQuestion(sec.id, q.id, 'label', e.target.value)}
-                                            placeholder="Question Title (e.g. Code Quality)"
-                                            disabled={isReadOnly}
-                                            style={{ background: 'var(--bg-card)', fontWeight: 700, borderRadius: '10px', padding: '12px 16px' }}
-                                        />
-                                        <textarea
-                                            className="form-input"
-                                            value={q.desc}
-                                            onChange={e => updateQuestion(sec.id, q.id, 'desc', e.target.value)}
-                                            placeholder="Detailed prompt for the employee..."
-                                            disabled={isReadOnly}
-                                            rows={2}
-                                            style={{ background: 'var(--bg-card)', resize: 'vertical', borderRadius: '10px', padding: '12px 16px', fontSize: '14px', lineHeight: 1.5 }}
-                                        />
-                                    </div>
-                                </div>
-                            ))}
-                            
-                            {!isReadOnly && (
-                                <button className="btn btn-add" onClick={() => addQuestion(sec.id)} style={{ 
-                                    marginTop: '12px',
-                                    padding: '16px',
-                                    border: '2px dashed rgba(59, 130, 246, 0.3)', 
-                                    background: 'rgba(59, 130, 246, 0.03)', 
-                                    color: 'var(--blue-light)',
-                                    borderRadius: '16px',
-                                    fontWeight: 700,
-                                    fontSize: '14px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '8px',
-                                    transition: 'all 0.2s',
-                                    cursor: 'pointer'
-                                }}>
-                                    <span style={{ fontSize: '20px' }}>+</span> Add Question to {sec.title || 'this section'}
-                                </button>
-                            )}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <input
+                                className="form-input"
+                                value={q.label}
+                                onChange={e => updateQuestion(q.id, 'label', e.target.value)}
+                                placeholder="Question Title (e.g. Code Quality)"
+                                disabled={isReadOnly}
+                                style={{ background: 'var(--bg-secondary)', fontWeight: 700, borderRadius: '10px', padding: '12px 16px' }}
+                            />
+                            <textarea
+                                className="form-input"
+                                value={q.desc}
+                                onChange={e => updateQuestion(q.id, 'desc', e.target.value)}
+                                placeholder="Detailed prompt for the employee..."
+                                disabled={isReadOnly}
+                                rows={2}
+                                style={{ background: 'var(--bg-secondary)', resize: 'vertical', borderRadius: '10px', padding: '12px 16px', fontSize: '14px', lineHeight: 1.5 }}
+                            />
                         </div>
                     </div>
                 ))}
-
+                
                 {!isReadOnly && (
-                    <button className="btn" onClick={addSection} style={{ 
-                        width: '100%', 
-                        padding: '24px', 
-                        fontSize: '16px', 
-                        fontWeight: 800, 
-                        border: '2px dashed var(--border)', 
-                        background: 'rgba(0,0,0,0.02)', 
+                    <button className="btn btn-add" onClick={addQuestion} style={{ 
+                        marginTop: '12px',
+                        padding: '24px',
+                        border: '2px dashed rgba(59, 130, 246, 0.3)', 
+                        background: 'rgba(59, 130, 246, 0.03)', 
+                        color: 'var(--blue-light)',
                         borderRadius: '24px',
-                        color: 'var(--text-muted)',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
+                        fontWeight: 800,
+                        fontSize: '16px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        gap: '12px'
-                    }} onMouseOver={e => { e.currentTarget.style.borderColor = 'var(--blue-light)'; e.currentTarget.style.color = 'var(--blue-light)'; }}
-                       onMouseOut={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-muted)'; }}>
-                        <div style={{ padding: '8px', background: 'rgba(59,130,246,0.1)', borderRadius: '8px' }}>+</div>
-                        Add New Section
+                        gap: '12px',
+                        transition: 'all 0.2s',
+                        cursor: 'pointer'
+                    }}>
+                        <div style={{ padding: '6px', background: 'rgba(59,130,246,0.1)', borderRadius: '6px', fontSize: '20px' }}>+</div>
+                        Add New Question
                     </button>
                 )}
             </div>
 
             {!isReadOnly && (
                 <div style={{ marginTop: '48px', borderTop: '1px solid var(--border)', paddingTop: '48px', display: 'flex', justifyContent: 'center' }}>
-                    <button className="btn btn-primary" onClick={handleSave} disabled={saving} style={{ padding: '16px 60px', fontSize: '16px', fontWeight: 800, borderRadius: '16px', boxShadow: '0 10px 25px rgba(59, 130, 246, 0.4)' }}>
+                    <button className="btn btn-primary" onClick={handleSave} disabled={saving} style={{ padding: '16px 80px', fontSize: '16px', fontWeight: 800, borderRadius: '16px', boxShadow: '0 10px 25px rgba(59, 130, 246, 0.4)' }}>
                         {saving ? '⏳ Saving...' : '💾 Save Question Set'}
                     </button>
                 </div>
