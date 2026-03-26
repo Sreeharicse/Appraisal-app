@@ -72,15 +72,11 @@ export default function SelfReview() {
     if (specificOverride) {
         assignedSet = questionSets.find(qs => qs.id === specificOverride.questionSetId);
     }
-    // 2. Priority 2: Global Employee Override (Legacy Priority 1)
-    if (!assignedSet && latestUserData?.questionSetId) {
-        assignedSet = questionSets.find(qs => qs.id === latestUserData.questionSetId);
-    }
-    // 3. Priority 3: Cycle-Level Override
+    // 2. Priority 2: Cycle-Level Override
     if (!assignedSet && cycle?.questionSetId) {
         assignedSet = questionSets.find(qs => qs.id === cycle.questionSetId);
     }
-    // 4. Priority 4: Designation Mapping
+    // 3. Priority 3: Designation Mapping
     if (!assignedSet && latestUserData?.designation) {
         assignedSet = questionSets.find(qs => qs.targetDesignations?.includes(latestUserData.designation));
     }

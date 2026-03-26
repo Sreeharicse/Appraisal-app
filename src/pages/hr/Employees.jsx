@@ -480,16 +480,6 @@ export default function Employees() {
                                 </div>
                             </div>
                             
-                            {/* ── Employee-Level Override (All Cycles) ── */}
-                            <div className="form-group" style={{ marginBottom: editing ? '16px' : 0 }}>
-                                <label className="form-label">Global Fallback Question Set</label>
-                                <select className="form-select" value={form.questionSetId}
-                                    onChange={e => setForm(p => ({ ...p, questionSetId: e.target.value }))}>
-                                    <option value="">-- Let System Decide (Based on Job Title) --</option>
-                                    {questionSets.map(qs => <option key={qs.id} value={qs.id}>{qs.name}</option>)}
-                                </select>
-                            </div>
-
                             {/* ── Cycle-Specific Overrides ── */}
                             {editing && (
                                 <div style={{ 
@@ -585,7 +575,7 @@ export default function Employees() {
                                         </button>
                                     </div>
                                     <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px', lineHeight: '1.4' }}>
-                                        Cycle-specific overrides take highest priority. If no cycle override matches, the Global Fallback above is used (if set). If neither are set, Job Title defaults apply. 
+                                        Cycle-specific overrides take highest priority. If neither are set, Cycle defaults or Job Title defaults apply. 
                                     </div>
                                 </div>
                             )}
