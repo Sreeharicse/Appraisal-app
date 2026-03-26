@@ -3,7 +3,7 @@ import { useApp } from '../../context/AppContext';
 import Icons from '../../components/Icons';
 
 export default function SelfReview() {
-    const { currentUser, users, cycles, evaluations = [], selfReviews = [], getSelfReview, submitSelfReview, getScore, refreshData, setTopBarAction, questionSets } = useApp();
+    const { currentUser, users, cycles, evaluations = [], selfReviews = [], getSelfReview, submitSelfReview, getScore, refreshData, setTopBarAction, questionSets, employeeOverrides } = useApp();
 
     useEffect(() => {
         refreshData();
@@ -67,15 +67,20 @@ export default function SelfReview() {
     const latestUserData = users.find(u => u.id === currentUser.id) || currentUser;
     let assignedSet = null;
 
-    // 1. Priority 1: Employee-Level Override
-    if (latestUserData?.questionSetId) {
+    // 1. Priority 1: Cycle-Specific Employee Override (Highest Priority)
+    const specificOverride = employeeOverrides?.find(o => String(o.employeeId) === String(currentUser.id) && String(o.cycleId) === String(selectedCycleId));
+    if (specificOverride) {
+        assignedSet = questionSets.find(qs => qs.id === specificOverride.questionSetId);
+    }
+    // 2. Priority 2: Global Employee Override (Legacy Priority 1)
+    if (!assignedSet && latestUserData?.questionSetId) {
         assignedSet = questionSets.find(qs => qs.id === latestUserData.questionSetId);
     }
-    // 2. Priority 2: Cycle-Level Override
+    // 3. Priority 3: Cycle-Level Override
     if (!assignedSet && cycle?.questionSetId) {
         assignedSet = questionSets.find(qs => qs.id === cycle.questionSetId);
     }
-    // 3. Priority 3: Designation Mapping
+    // 4. Priority 4: Designation Mapping
     if (!assignedSet && latestUserData?.designation) {
         assignedSet = questionSets.find(qs => qs.targetDesignations?.includes(latestUserData.designation));
     }

@@ -6,7 +6,7 @@ import Icons from '../../components/Icons';
 export default function Evaluate() {
     const { employeeId } = useParams();
     const navigate = useNavigate();
-    const { currentUser, users, cycles, getEvaluation, selfReviews, evaluations, submitEvaluation, calculateScore, getCategory, refreshData, setTopBarAction, questionSets } = useApp();
+    const { currentUser, users, cycles, getEvaluation, selfReviews, evaluations, submitEvaluation, calculateScore, getCategory, refreshData, setTopBarAction, questionSets, employeeOverrides } = useApp();
     const team = currentUser.role === 'admin'
         ? users.filter(u => u.role === 'hr' || u.role === 'manager')
         : users.filter(u => u.managerId === currentUser.id);
@@ -83,15 +83,20 @@ export default function Evaluate() {
     // --- 4-Tier Question Set Resolution Hierarchy ---
     let assignedSet = null;
 
-    // 1. Priority 1: Employee-Level Override
-    if (emp?.questionSetId) {
+    // 1. Priority 1: Cycle-Specific Employee Override (Highest Priority)
+    const specificOverride = employeeOverrides?.find(o => String(o.employeeId) === String(selectedEmp) && String(o.cycleId) === String(selectedCycleId));
+    if (specificOverride) {
+        assignedSet = questionSets.find(qs => qs.id === specificOverride.questionSetId);
+    }
+    // 2. Priority 2: Global Employee Override (Legacy Priority 1)
+    if (!assignedSet && emp?.questionSetId) {
         assignedSet = questionSets.find(qs => qs.id === emp.questionSetId);
     }
-    // 2. Priority 2: Cycle-Level Override
+    // 3. Priority 3: Cycle-Level Override
     if (!assignedSet && cycle?.questionSetId) {
         assignedSet = questionSets.find(qs => qs.id === cycle.questionSetId);
     }
-    // 3. Priority 3: Designation Mapping
+    // 4. Priority 4: Designation Mapping
     if (!assignedSet && emp?.designation) {
         assignedSet = questionSets.find(qs => qs.targetDesignations?.includes(emp.designation));
     }
