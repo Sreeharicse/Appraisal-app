@@ -114,7 +114,7 @@ export function AppProvider({ children }) {
         // Map snake_case DB columns → camelCase used by the UI
         setUsers((profilesData || []).map(p => ({
             id: p.id,
-            name: p.name,
+            name: p.full_name || p.name,
             email: p.email,
             role: p.role,
             department: p.department,

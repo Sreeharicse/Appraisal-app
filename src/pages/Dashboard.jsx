@@ -70,6 +70,18 @@ export default function Dashboard() {
         }
     };
 
+    const formatDisplayName = (name) => {
+        if (!name) return 'User';
+        if (name.includes('@')) {
+            const prefix = name.split('@')[0];
+            return prefix
+                .split(/[\._]/)
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                .join(' ');
+        }
+        return name;
+    };
+
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
             <div className="section-header" style={{ marginBottom: '32px', textAlign: 'left' }}>
@@ -83,7 +95,7 @@ export default function Dashboard() {
                         style={{ boxShadow: '0 4px 14px rgba(0,0,0,0.1)' }}
                     />
                     <h2 className="section-title" style={{ fontSize: '28px', fontWeight: 700, margin: 0, letterSpacing: '-0.5px' }}>
-                        {getGreeting()}, <span style={{ color: 'var(--purple)' }}>{currentUser.name}</span>
+                        {getGreeting()}, <span style={{ color: 'var(--purple)' }}>{formatDisplayName(currentUser.name)}</span>
                     </h2>
                 </div>
                 {(currentUser.role === 'hr' || currentUser.role === 'admin') && (
