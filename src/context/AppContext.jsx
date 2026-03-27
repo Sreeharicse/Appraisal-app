@@ -108,7 +108,7 @@ export function AppProvider({ children }) {
             fetchTable('departments'),
             fetchTable('designations'),
             fetchTable('question_sets'),
-            fetchTable('employee_cycle_question_set'),
+            fetchTable('employee_cycle_overrides'),
         ]);
 
         // Map snake_case DB columns → camelCase used by the UI
@@ -1487,7 +1487,7 @@ export function AppProvider({ children }) {
         }
 
         // Simplify upsert: Supabase will use the Primary Key (employee_id, cycle_id) automatically
-        const { error } = await supabase.from('employee_cycle_question_set').upsert({
+        const { error } = await supabase.from('employee_cycle_overrides').upsert({
             employee_id: employeeId,
             cycle_id: cycleId,
             question_set_id: questionSetId
@@ -1527,7 +1527,7 @@ export function AppProvider({ children }) {
             return { success: true };
         }
 
-        const { error } = await supabase.from('employee_cycle_question_set')
+        const { error } = await supabase.from('employee_cycle_overrides')
             .delete()
             .match({ employee_id: employeeId, cycle_id: cycleId });
 

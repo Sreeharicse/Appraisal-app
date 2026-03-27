@@ -104,11 +104,13 @@ export default function SelfReview() {
 
     const hasSnapshot = existingReview?.metadata?.questions && existingReview.metadata.questions.length > 0;
     
-    // Priority: Snapshot (Submitted/Draft) > Resolved Set
-    if (isClosed || hasSnapshot) {
+    // Priority: Snapshot (Submitted) > Resolved Set (Draft/New)
+    // We only lock to the snapshot if it's actually submitted or the cycle is closed.
+    // If it's a draft, ALWAYS prefer the live HR Mapping (TEMPLATE_QUESTIONS) so HR overrides apply perfectly.
+    if (isClosed || isActuallySubmitted) {
         if (hasSnapshot) {
             COMPETENCY_QUESTIONS = existingReview.metadata.questions;
-        } else if (isActuallySubmitted) {
+        } else {
             COMPETENCY_QUESTIONS = DEFAULT_COMPETENCY_QUESTIONS;
         }
     }
