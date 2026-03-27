@@ -1269,14 +1269,21 @@ export function AppProvider({ children }) {
 
             // Only Notify Employee & HR if fully submitted and state just changed
             if (mapped.status === 'pending_approval' && (!existing || existing.status !== 'pending_approval')) {
-                const hrs = users.filter(u => u.role === 'admin' || u.role === 'hr');
                 const emp = users.find(u => u.id === evaluation.employeeId);
+                const empRole = emp?.role;
+
+                // If the evaluated employee is HR or Manager, only Admins can approve → notify only Admins
+                // If the evaluated employee is a regular employee, notify both HR and Admin
+                const notifyApprovers = (empRole === 'hr' || empRole === 'manager')
+                    ? users.filter(u => u.role === 'admin')
+                    : users.filter(u => u.role === 'admin' || u.role === 'hr');
+
                 if (emp) {
-                    createNotification([emp.id], 'Evaluation Submitted', `Your manager has submitted your evaluation. Pending HR approval.`, 'success', '/employee/results');
+                    createNotification([emp.id], 'Evaluation Submitted', `Your manager has submitted your evaluation. Pending approval.`, 'success', '/employee/results');
                     sendEmailNotification(emp.email, 'Evaluation Assessed', managerSubmitEmail(emp.name));
                 }
-                createNotification(hrs.map(h => h.id), 'Pending HR Approval', `Evaluation for ${emp?.name} is awaiting your approval.`, 'warning', '/hr/approvals');
-                hrs.forEach(hr => sendEmailNotification(hr.email, 'Evaluation Awaiting Approval', hrEvaluationSubmittedEmail(emp?.name || 'An employee', currentUser?.name || 'A Manager')));
+                createNotification(notifyApprovers.map(h => h.id), 'Pending Approval', `Evaluation for ${emp?.name} is awaiting your approval.`, 'warning', '/hr/approvals');
+                notifyApprovers.forEach(h => sendEmailNotification(h.email, 'Evaluation Awaiting Approval', hrEvaluationSubmittedEmail(emp?.name || 'An employee', currentUser?.name || 'A Manager')));
             }
 
             return mapped;
