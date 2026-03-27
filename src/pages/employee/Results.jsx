@@ -2,21 +2,25 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 
 export default function Results() {
-    const { currentUser, cycles, getEvaluation, getSelfReview, getScore, getUserById, approvals } = useApp();
+    const { currentUser, cycles, getEvaluation, evaluations, getSelfReview, getScore, getUserById, approvals } = useApp();
 
     const [selectedCycleId, setSelectedCycleId] = useState('');
 
+    // Only cycles where this employee has an approved evaluation
+    const approvedCycles = cycles.filter(c => {
+        const ev = getEvaluation(currentUser.id, c.id);
+        return ev && ev.status === 'approved';
+    });
+
     useEffect(() => {
-        if (!selectedCycleId && cycles.length > 0) {
-            // Default to an active cycle, or the newest cycle if none are active
-            const activeCycle = cycles.find(c => c.status === 'active');
-            setSelectedCycleId(activeCycle ? activeCycle.id : cycles[0].id);
+        if (!selectedCycleId && approvedCycles.length > 0) {
+            setSelectedCycleId(approvedCycles[0].id);
         }
-    }, [cycles, selectedCycleId]);
+    }, [approvedCycles.length, selectedCycleId]);
 
     if (!cycles || cycles.length === 0) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading results...</div>;
 
-    const cycle = cycles.find(c => String(c.id) === String(selectedCycleId)) || cycles[0];
+    const cycle = approvedCycles.find(c => String(c.id) === String(selectedCycleId)) || approvedCycles[0];
     const ev = cycle ? getEvaluation(currentUser.id, cycle.id) : null;
     const scoreData = ev ? getScore(currentUser.id, cycle.id) : null;
     const manager = ev ? getUserById(ev.managerId) : null;
@@ -33,13 +37,17 @@ export default function Results() {
                     <p className="section-subtitle">Final scores and feedback for the selected project</p>
                 </div>
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                    <select className="form-select" value={selectedCycleId} onChange={e => setSelectedCycleId(e.target.value)} style={{ width: '220px' }}>
-                        {cycles.filter(c => c.status !== 'draft').map(c => (
-                            <option key={c.id} value={c.id}>
-                                {c.name} {c.status === 'closed' ? '(Closed)' : ''}
-                            </option>
-                        ))}
-                    </select>
+                    {approvedCycles.length > 0 ? (
+                        <select className="form-select" value={selectedCycleId} onChange={e => setSelectedCycleId(e.target.value)} style={{ width: '220px' }}>
+                            {approvedCycles.map(c => (
+                                <option key={c.id} value={c.id}>
+                                    {c.name} {c.status === 'closed' ? '(Closed)' : ''}
+                                </option>
+                            ))}
+                        </select>
+                    ) : (
+                        <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontStyle: 'italic' }}>No finalized results yet</span>
+                    )}
                     {hasApprovedEval && (
                         <span className="badge badge-green" style={{ padding: '6px 14px' }}>Approved</span>
                     )}
