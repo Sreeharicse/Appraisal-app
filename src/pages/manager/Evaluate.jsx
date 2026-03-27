@@ -27,10 +27,6 @@ export default function Evaluate() {
     const [showRatingModal, setShowRatingModal] = useState(false);
     const [popupMessage, setPopupMessage] = useState({ title: '', body: '' });
 
-    // Once saved as 'pending_approval' or 'approved', the evaluation is permanently locked
-    const isSubmitted = status === 'pending_approval' || status === 'approved';
-    const isReadOnly = isSubmitted || (status === 'draft' && isLocked);
-
     const [competencies, setCompetencies] = useState({});
     const [feedback, setFeedback] = useState('');
     const [finalRating, setFinalRating] = useState('');
@@ -113,6 +109,10 @@ export default function Evaluate() {
     // Otherwise, use the live designation-based template so HR edits still apply to drafts.
     const isActuallySubmitted = selfReview?.status === 'submitted' || selfReview?.status === 'approved';
     const isClosed = cycle?.status === 'closed';
+
+    // Once saved as 'pending_approval' or 'approved', or if cycle is closed, the evaluation is permanently locked
+    const isSubmitted = status === 'pending_approval' || status === 'approved';
+    const isReadOnly = isSubmitted || (status === 'draft' && isLocked) || isClosed;
 
     let COMPETENCY_QUESTIONS = TEMPLATE_QUESTIONS;
 
@@ -488,6 +488,12 @@ export default function Evaluate() {
                     }}>
                         ✅ Evaluation Submitted &amp; Locked
                     </div>
+                ) : isClosed ? (
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px' }}>
+                        <button type="button" className="btn btn-primary" disabled style={{ padding: '16px 64px', fontWeight: 700, fontSize: '16px', opacity: 0.7 }}>
+                            🔒 Closed
+                        </button>
+                    </div>
                 ) : (
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px' }}>
                         {status === 'draft' && isLocked ? (
@@ -616,7 +622,7 @@ export default function Evaluate() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
 
                     {/* Draft Button */}
-                    {!isSubmitted && selectedEmp && isSelfReviewSubmitted && (
+                    {!isSubmitted && !isClosed && selectedEmp && isSelfReviewSubmitted && (
                         <button
                             className="btn btn-secondary"
                             onClick={() => handleSubmit('draft')}
@@ -725,7 +731,7 @@ export default function Evaluate() {
                             background: 'rgba(100,116,139,0.08)', border: '1px solid rgba(100,116,139,0.2)',
                             borderRadius: '12px', fontSize: '13px', color: 'var(--text-muted)'
                         }}>
-                            🔒 This evaluation is {isSubmitted ? 'submitted and' : 'saved as a draft and'} <strong>read-only</strong>.
+                            🔒 {isClosed ? 'This cycle is closed. No further changes are allowed.' : <>This evaluation is {isSubmitted ? 'submitted and' : 'saved as a draft and'} <strong>read-only</strong>.</>}
                         </div>}
 
                         <div style={{ minHeight: '400px' }}>

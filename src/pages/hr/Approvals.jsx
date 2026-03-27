@@ -218,6 +218,7 @@ export default function Approvals() {
                                             </div>
                                             <StarRating
                                                 value={(hrRatings[ev.id] || {})[q.id] || 0}
+                                                readonly={cycle?.status === 'closed'}
                                                 onChange={(val) => setHrRatingForQuestion(ev.id, q.id, val)}
                                             />
                                         </div>
@@ -228,8 +229,9 @@ export default function Approvals() {
                                     <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: 500 }}>HR Comment (Sent to Employee)</div>
                                     <textarea
                                         className="form-input"
-                                        placeholder="HR feedback..."
-                                        style={{ height: '70px', fontSize: '12px', overflowY: 'auto', resize: 'none' }}
+                                        placeholder={cycle?.status === 'closed' ? "Cycle closed." : "HR feedback..."}
+                                        readOnly={cycle?.status === 'closed'}
+                                        style={{ height: '70px', fontSize: '12px', overflowY: 'auto', resize: 'none', cursor: cycle?.status === 'closed' ? 'not-allowed' : 'text', opacity: cycle?.status === 'closed' ? 0.7 : 1 }}
                                         value={comment[ev.id] || ''}
                                         onChange={e => setComment(prev => ({ ...prev, [ev.id]: e.target.value }))}
                                     />
@@ -247,26 +249,38 @@ export default function Approvals() {
 
                         {/* Action Buttons */}
                         <div style={{ display: 'flex', gap: '10px' }}>
-                            <button
-                                className="btn btn-success"
-                                style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: allRated ? 1 : 0.5 }}
-                                disabled={!allRated}
-                                onClick={() => handleApprove(ev.id)}>
-                                <Icons.Check /> {allRated ? 'Approve Evaluation' : 'Complete HR Ratings to Approve'}
-                            </button>
-                            <button
-                                className="btn btn-secondary"
-                                style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-                                onClick={async () => {
-                                    const res = await saveHRDraft(ev.id, comment[ev.id] || '', hrRatings[ev.id] || {});
-                                    if (res) alert('Progress saved successfully.');
+                            {cycle?.status === 'closed' ? (
+                                <div style={{
+                                    padding: '12px 20px', width: '100%',
+                                    background: 'rgba(100,116,139,0.08)', border: '1px solid rgba(100,116,139,0.2)',
+                                    borderRadius: '12px', fontSize: '13px', color: 'var(--text-muted)'
                                 }}>
-                                💾 Save Progress
-                            </button>
-                            <button className="btn btn-danger" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-                                onClick={() => { if (window.confirm('Reject this evaluation?')) rejectEvaluation(ev.id, comment[ev.id]); }}>
-                                <Icons.X /> Reject
-                            </button>
+                                    🔒 This cycle is closed. No further changes are allowed.
+                                </div>
+                            ) : (
+                                <>
+                                    <button
+                                        className="btn btn-success"
+                                        style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: allRated ? 1 : 0.5 }}
+                                        disabled={!allRated}
+                                        onClick={() => handleApprove(ev.id)}>
+                                        <Icons.Check /> {allRated ? 'Approve Evaluation' : 'Complete HR Ratings to Approve'}
+                                    </button>
+                                    <button
+                                        className="btn btn-secondary"
+                                        style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                                        onClick={async () => {
+                                            const res = await saveHRDraft(ev.id, comment[ev.id] || '', hrRatings[ev.id] || {});
+                                            if (res) alert('Progress saved successfully.');
+                                        }}>
+                                        💾 Save Progress
+                                    </button>
+                                    <button className="btn btn-danger" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                                        onClick={() => { if (window.confirm('Reject this evaluation?')) rejectEvaluation(ev.id, comment[ev.id]); }}>
+                                        <Icons.X /> Reject
+                                    </button>
+                                </>
+                            )}
                         </div>
                     </div>
                 );

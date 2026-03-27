@@ -551,6 +551,8 @@ export default function Employees() {
                                                     String(r.cycleId) === String(override.cycleId) && 
                                                     (r.status === 'draft' || r.status === 'submitted')
                                                 );
+                                                
+                                                const isCycleClosed = c?.status === 'closed';
 
                                                 return (
                                                     <div key={override.cycleId} style={{ marginBottom: '8px' }}>
@@ -568,7 +570,7 @@ export default function Employees() {
                                                                 <span style={{ color: 'var(--text-muted)', margin: '0 8px' }}>→</span>
                                                                 <span style={{ color: 'var(--text-secondary)' }}>{q?.name || 'Unknown Set'}</span>
                                                             </div>
-                                                            {!reviewStarted && (
+                                                            {!reviewStarted && !isCycleClosed && (
                                                                 <button
                                                                     className="btn btn-sm"
                                                                     style={{ padding: '4px', background: 'transparent', color: 'var(--red)', border: 'none', cursor: 'pointer' }}
@@ -579,7 +581,7 @@ export default function Employees() {
                                                                 </button>
                                                             )}
                                                         </div>
-                                                        {reviewStarted && (
+                                                        {(reviewStarted || isCycleClosed) && (
                                                             <div style={{ 
                                                                 fontSize: '11px', 
                                                                 color: '#ef4444', 
@@ -590,7 +592,7 @@ export default function Employees() {
                                                                 alignItems: 'center',
                                                                 gap: '4px'
                                                             }}>
-                                                                <AlertCircle /> Question Set cannot be changed once review is started
+                                                                <AlertCircle /> {isCycleClosed ? 'Question Set cannot be changed for closed cycles' : 'Question Set cannot be changed once review is started'}
                                                             </div>
                                                         )}
                                                     </div>

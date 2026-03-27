@@ -511,7 +511,7 @@ export default function SelfReview() {
             )}
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '32px' }}>
-                {!isSubmitted && (
+                {!isSubmitted && !isClosed && (
                     <button type="button" className="btn btn-primary" onClick={() => handleSubmit('submitted')} style={{ padding: '12px 32px', fontWeight: 700 }}>
                         🚀 Submit Full Appraisal
                     </button>
@@ -519,6 +519,11 @@ export default function SelfReview() {
                 {isSubmitted && (
                     <button type="button" className="btn btn-primary" disabled style={{ padding: '12px 32px', fontWeight: 700, opacity: 0.7 }}>
                         ✅ Submitted
+                    </button>
+                )}
+                {!isSubmitted && isClosed && (
+                    <button type="button" className="btn btn-primary" disabled style={{ padding: '12px 32px', fontWeight: 700, opacity: 0.7 }}>
+                        🔒 Closed
                     </button>
                 )}
             </div>
@@ -572,7 +577,7 @@ export default function SelfReview() {
                 {/* Right: Cycle dropdown Context */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
 
-                    {!isSubmitted && (
+                    {!isSubmitted && !isClosed && (
                         <button
                             className="btn btn-secondary"
                             onClick={() => handleSubmit('draft')}
@@ -628,7 +633,7 @@ export default function SelfReview() {
                     borderRadius: '12px', fontSize: '13px', color: 'var(--text-muted)'
                 }}>
                     🔒 {cycle?.status === 'closed'
-                        ? 'This appraisal cycle is closed and strictly read-only.'
+                        ? 'This cycle is closed. No further changes are allowed.'
                         : <>This review is {isSubmitted ? 'submitted and' : 'saved as a draft and'} <strong>read-only</strong>.</>}
                 </div>}
 

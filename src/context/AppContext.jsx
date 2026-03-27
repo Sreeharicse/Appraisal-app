@@ -1014,6 +1014,7 @@ export function AppProvider({ children }) {
 
     // ──── Self Reviews ────
     const submitSelfReview = async (review) => {
+        if (isCycleClosed(review.cycleId)) return { success: false, error: 'This cycle is closed. No further changes are allowed.' };
         const existing = selfReviews.find(r => r.cycleId === review.cycleId && r.employeeId === review.employeeId);
 
         const encryptedCompetencies = {};
@@ -1151,6 +1152,7 @@ export function AppProvider({ children }) {
 
     // ──── Evaluations ────
     const submitEvaluation = async (evaluation) => {
+        if (isCycleClosed(evaluation.cycleId)) return { success: false, error: 'This cycle is closed. No further changes are allowed.' };
         const existing = evaluations.find(e => e.cycleId === evaluation.cycleId && e.employeeId === evaluation.employeeId);
 
         const encryptedCompetencies = {};
@@ -1282,6 +1284,12 @@ export function AppProvider({ children }) {
 
     // ──── Approvals ────
     const approveEvaluation = async (evalId, comment = '', hrRating = 0) => {
+        const targetEval = evaluations.find(e => e.id === evalId);
+        if (targetEval && isCycleClosed(targetEval.cycleId)) {
+            alert('This cycle is closed. No further changes are allowed.');
+            return;
+        }
+
         if (localStorage.getItem('fake_session_role')) {
             setEvaluations(p => {
                 const updated = p.map(e => e.id === evalId ? { ...e, status: 'approved', hrRating } : e);
@@ -1355,6 +1363,7 @@ export function AppProvider({ children }) {
     const saveHRDraft = async (evalId, hrComment, hrRatings) => {
         const existing = evaluations.find(e => e.id === evalId);
         if (!existing) return;
+        if (isCycleClosed(existing.cycleId)) return { success: false, error: 'This cycle is closed. No further changes are allowed.' };
 
         const avgHr = Object.values(hrRatings).reduce((a, b) => a + b, 0) / Object.keys(hrRatings).length || 0;
 
@@ -1397,6 +1406,12 @@ export function AppProvider({ children }) {
     };
 
     const rejectEvaluation = async (evalId, comment = '') => {
+        const targetEval = evaluations.find(e => e.id === evalId);
+        if (targetEval && isCycleClosed(targetEval.cycleId)) {
+            alert('This cycle is closed. No further changes are allowed.');
+            return;
+        }
+
         if (localStorage.getItem('fake_session_role')) {
             setEvaluations(p => {
                 const updated = p.map(e => e.id === evalId ? { ...e, status: 'rejected', rejectionComment: comment } : e);
@@ -1464,6 +1479,7 @@ export function AppProvider({ children }) {
 
     // ──── Employee Cycle Overrides ────
     const saveEmployeeOverride = async (employeeId, cycleId, questionSetId) => {
+        if (isCycleClosed(cycleId)) return { success: false, error: 'This cycle is closed. No further changes are allowed.' };
         // Block if self-review already exists (draft or submitted)
         const reviewStarted = selfReviews.some(r => 
             String(r.employeeId) === String(employeeId) && 
@@ -1507,6 +1523,7 @@ export function AppProvider({ children }) {
     };
 
     const deleteEmployeeOverride = async (employeeId, cycleId) => {
+        if (isCycleClosed(cycleId)) return { success: false, error: 'This cycle is closed. No further changes are allowed.' };
         // Block if self-review already exists (draft or submitted)
         const reviewStarted = selfReviews.some(r => 
             String(r.employeeId) === String(employeeId) && 
@@ -1542,6 +1559,7 @@ export function AppProvider({ children }) {
 
     // ──── Helpers (pure, not async — use local state) ────
     const getActiveCycle = () => cycles.find(c => c.status === 'active');
+    const isCycleClosed = (cycleId) => cycles.find(c => String(c.id) === String(cycleId))?.status === 'closed';
     const getUserById = (id) => users.find(u => u.id === id);
     const getTeamEmployees = (managerId) => users.filter(u => String(u.managerId) === String(managerId));
     const getSelfReview = (empId, cycleId) => selfReviews.find(r => String(r.employeeId) === String(empId) && String(r.cycleId) === String(cycleId));
@@ -1579,7 +1597,7 @@ export function AppProvider({ children }) {
             theme, toggleTheme, refreshData: fetchAllData,
             encryptionKey, setEncryptionKey, resetAndSeedFakeData,
             approveEvaluation, rejectEvaluation, saveHRDraft,
-            getActiveCycle, getUserById,
+            getActiveCycle, isCycleClosed, getUserById,
             getTeamEmployees, getSelfReview, getEvaluation, getScore,
             calculateScore, getCategory,
             createNotification, markNotificationAsRead,
