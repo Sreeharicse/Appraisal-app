@@ -1068,26 +1068,22 @@ export function AppProvider({ children }) {
                 return updated;
             });
 
-            // Notify Manager or HR fallback ONLY if state just changed to submitted
+            // RULE: Employee submits → notify Manager only
             if (mapped.status === 'submitted' && (!existing || existing.status !== 'submitted')) {
                 const employee = users.find(u => u.id === mapped.employeeId);
-                const managerId = employee?.managerId;
-                const empManager = users.find(u => u.id === managerId);
+                const empManager = users.find(u => u.id === employee?.managerId);
                 const empName = employee?.name || 'An employee';
 
-                console.log(`[SelfReview-Fake] Submitting for: ${empName}, managerId: ${managerId}`);
-
                 if (empManager) {
-                    console.log(`[SelfReview-Fake] Found manager: ${empManager.name} (${empManager.email})`);
-                    createNotification([empManager.id], 'Self-Review Submitted', `${empName} has submitted their self-review.`, 'success', '/manager/evaluate');
+                    createNotification([empManager.id], 'Self-Review Submitted', `${empName} has submitted their self-review. Please evaluate.`, 'success', '/manager/evaluate');
                     sendEmailNotification(empManager.email, `Self-Review Submitted by ${empName}`, employeeSubmitEmail(empName, empManager.name));
                 } else {
-                    console.log(`[SelfReview-Fake] No manager found for ${empName}, falling back to HR.`);
-                    const hrs = users.filter(u => u.role === 'admin' || u.role === 'hr');
-                    if (hrs.length > 0) {
-                        createNotification(hrs.map(h => h.id), 'Self-Review Submitted', `${empName} has submitted their self-review (no manager assigned).`, 'success', '/hr/evaluations');
-                        hrs.forEach(hr => sendEmailNotification(hr.email, `Self-Review Submitted by ${empName}`, employeeSubmitEmail(empName, hr.name)));
-                    }
+                    // No manager: fall back to Admin only (not HR)
+                    const admins = users.filter(u => u.role === 'admin');
+                    admins.forEach(a => {
+                        createNotification([a.id], 'Self-Review Submitted', `${empName} has submitted their self-review (no manager assigned).`, 'warning', '/hr/approvals');
+                        sendEmailNotification(a.email, `Self-Review Submitted by ${empName}`, employeeSubmitEmail(empName, a.name));
+                    });
                 }
             }
 
@@ -1122,26 +1118,22 @@ export function AppProvider({ children }) {
                 status: review.status || 'draft'
             };
             setSelfReviews(p => existing ? p.map(x => x.id === existing.id ? mapped : x) : [...p, mapped]);
-            // Notify Manager or HR fallback ONLY if state just changed to submitted
+            // RULE: Employee submits → notify Manager only
             if (mapped.status === 'submitted' && (!existing || existing.status !== 'submitted')) {
                 const employee = users.find(u => u.id === mapped.employeeId);
-                const managerId = employee?.managerId;
-                const empManager = users.find(u => u.id === managerId);
+                const empManager = users.find(u => u.id === employee?.managerId);
                 const empName = employee?.name || 'An employee';
 
-                console.log(`[SelfReview] Submitting for: ${empName}, managerId: ${managerId}`);
-
                 if (empManager) {
-                    console.log(`[SelfReview] Found manager: ${empManager.name} (${empManager.email})`);
-                    createNotification([empManager.id], 'Self-Review Submitted', `${empName} has submitted their self-review.`, 'success', '/manager');
+                    createNotification([empManager.id], 'Self-Review Submitted', `${empName} has submitted their self-review. Please evaluate.`, 'success', '/manager/evaluate');
                     sendEmailNotification(empManager.email, `Self-Review Submitted by ${empName}`, employeeSubmitEmail(empName, empManager.name));
                 } else {
-                    console.log(`[SelfReview] No manager found for ${empName}, falling back to HR.`);
-                    const hrs = users.filter(u => u.role === 'admin' || u.role === 'hr');
-                    if (hrs.length > 0) {
-                        createNotification(hrs.map(h => h.id), 'Self-Review Submitted', `${empName} has submitted their self-review (no manager assigned).`, 'success', '/hr/approvals');
-                        hrs.forEach(hr => sendEmailNotification(hr.email, `Self-Review Submitted by ${empName}`, employeeSubmitEmail(empName, hr.name)));
-                    }
+                    // No manager: fall back to Admin only (not HR)
+                    const admins = users.filter(u => u.role === 'admin');
+                    admins.forEach(a => {
+                        createNotification([a.id], 'Self-Review Submitted', `${empName} has submitted their self-review (no manager assigned).`, 'warning', '/hr/approvals');
+                        sendEmailNotification(a.email, `Self-Review Submitted by ${empName}`, employeeSubmitEmail(empName, a.name));
+                    });
                 }
             }
 
@@ -1272,18 +1264,17 @@ export function AppProvider({ children }) {
                 const emp = users.find(u => u.id === evaluation.employeeId);
                 const empRole = emp?.role;
 
-                // If the evaluated employee is HR or Manager, only Admins can approve → notify only Admins
-                // If the evaluated employee is a regular employee, notify both HR and Admin
-                const notifyApprovers = (empRole === 'hr' || empRole === 'manager')
-                    ? users.filter(u => u.role === 'admin')
-                    : users.filter(u => u.role === 'admin' || u.role === 'hr');
+                // RULE: Manager evaluates → notify Employee + Admin only (HR excluded)
+                const admins = users.filter(u => u.role === 'admin');
 
                 if (emp) {
-                    createNotification([emp.id], 'Evaluation Submitted', `Your manager has submitted your evaluation. Pending approval.`, 'success', '/employee/results');
+                    createNotification([emp.id], 'Evaluation Submitted', 'Your performance has been evaluated. Awaiting final Admin approval.', 'success', '/employee/results');
                     sendEmailNotification(emp.email, 'Evaluation Assessed', managerSubmitEmail(emp.name));
                 }
-                createNotification(notifyApprovers.map(h => h.id), 'Pending Approval', `Evaluation for ${emp?.name} is awaiting your approval.`, 'warning', '/hr/approvals');
-                notifyApprovers.forEach(h => sendEmailNotification(h.email, 'Evaluation Awaiting Approval', hrEvaluationSubmittedEmail(emp?.name || 'An employee', currentUser?.name || 'A Manager')));
+                admins.forEach(a => {
+                    createNotification([a.id], 'Evaluation Pending Approval', `Evaluation for ${emp?.name || 'an employee'} is awaiting your approval.`, 'warning', '/hr/approvals');
+                    sendEmailNotification(a.email, 'Evaluation Awaiting Approval', hrEvaluationSubmittedEmail(emp?.name || 'An employee', currentUser?.name || 'A Manager'));
+                });
             }
 
             return mapped;
@@ -1311,17 +1302,17 @@ export function AppProvider({ children }) {
                 return updated;
             });
 
-            // Notify Employee & Manager
+            // RULE: Admin approves → notify Employee + Manager only
             const theEval = evaluations.find(e => e.id === evalId);
-            console.log(`[Approve-Fake] Approving evalId: ${evalId}, found: ${!!theEval}`);
             if (theEval) {
                 const emp = users.find(u => u.id === theEval.employeeId);
-                console.log(`[Approve-Fake] Employee: ${emp?.name} (${emp?.email})`);
                 if (emp) {
-                    createNotification([emp.id], 'Evaluation Approved', 'Your appraisal results are now officially approved and available.', 'success', '/employee/results');
-                    sendEmailNotification(emp.email, 'Evaluation Finalized', hrApproveEmail(emp.name));
+                    createNotification([emp.id], 'Appraisal Completed ✅', 'Your appraisal has been officially approved. View your final results!', 'success', '/employee/results');
+                    sendEmailNotification(emp.email, 'Appraisal Finalized', hrApproveEmail(emp.name));
                 }
-                createNotification([theEval.managerId], 'Evaluation Approved', `HR approved your evaluation for ${emp?.name}.`, 'success', '/manager');
+                if (theEval.managerId) {
+                    createNotification([theEval.managerId], 'Evaluation Approved', `Your evaluation for ${emp?.name || 'an employee'} has been approved by Admin.`, 'success', '/manager');
+                }
             }
             return;
         }
@@ -1360,12 +1351,14 @@ export function AppProvider({ children }) {
 
         if (theEvalToApprove) {
             const emp = users.find(u => u.id === theEvalToApprove.employeeId);
-            console.log(`[Approve] Employee: ${emp?.name} (${emp?.email})`);
+            // RULE: Admin approves → notify Employee + Manager only
             if (emp) {
-                createNotification([emp.id], 'Evaluation Approved', 'Your appraisal results are now officially approved and available.', 'success', '/employee/results');
-                sendEmailNotification(emp.email, 'Evaluation Finalized', hrApproveEmail(emp.name));
+                createNotification([emp.id], 'Appraisal Completed ✅', 'Your appraisal has been officially approved. View your final results!', 'success', '/employee/results');
+                sendEmailNotification(emp.email, 'Appraisal Finalized', hrApproveEmail(emp.name));
             }
-            createNotification([theEvalToApprove.managerId], 'Evaluation Approved', `HR approved your evaluation for ${emp?.name}.`, 'success', '/manager');
+            if (theEvalToApprove.managerId) {
+                createNotification([theEvalToApprove.managerId], 'Evaluation Approved', `Your evaluation for ${emp?.name || 'an employee'} has been approved by Admin.`, 'success', '/manager');
+            }
         }
     };
 
@@ -1440,7 +1433,11 @@ export function AppProvider({ children }) {
             setEvaluations(p => p.map(e => e.id === evalId ? { ...e, status: 'rejected', rejectionComment: comment } : e));
             const theEval = evaluations.find(e => e.id === evalId);
             if (theEval) {
-                createNotification([theEval.managerId], 'Evaluation Rejected', `HR rejected your evaluation for ${users.find(u => u.id === theEval.employeeId)?.name}. Please review and resubmit.`, 'danger', '/manager');
+                const emp = users.find(u => u.id === theEval.employeeId);
+                // RULE: Admin rejects → notify Manager (so they can fix and resubmit)
+                if (theEval.managerId) {
+                    createNotification([theEval.managerId], 'Evaluation Rejected ❌', `Your evaluation for ${emp?.name || 'an employee'} was rejected. Please review and resubmit.`, 'danger', '/manager/evaluate');
+                }
             }
         }
     };
