@@ -616,7 +616,7 @@ export default function SelfReview() {
                                 height: '42px'
                             }}
                         >
-                            {cycles.map(c => (
+                            {cycles.filter(c => c.status !== 'draft').map(c => (
                                 <option key={c.id} value={c.id}>
                                     {c.name} {c.status === 'closed' ? '(Closed)' : ''}
                                 </option>

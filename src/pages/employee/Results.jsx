@@ -34,7 +34,7 @@ export default function Results() {
                 </div>
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                     <select className="form-select" value={selectedCycleId} onChange={e => setSelectedCycleId(e.target.value)} style={{ width: '220px' }}>
-                        {cycles.map(c => (
+                        {cycles.filter(c => c.status !== 'draft').map(c => (
                             <option key={c.id} value={c.id}>
                                 {c.name} {c.status === 'closed' ? '(Closed)' : ''}
                             </option>

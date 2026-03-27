@@ -662,8 +662,8 @@ export default function Evaluate() {
                             }}
                         >
                             <option value="">Select Cycle...</option>
-                            {cycles.map(c => (
-                                <option key={c.id} value={c.id}>{c.name}</option>
+                            {cycles.filter(c => c.status !== 'draft').map(c => (
+                                <option key={c.id} value={c.id}>{c.name} {c.status === 'closed' ? '(Closed)' : ''}</option>
                             ))}
                         </select>
                     </div>
