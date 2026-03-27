@@ -600,47 +600,73 @@ export default function Employees() {
                                     )}
 
                                     {/* Add new override */}
-                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
-                                        <div style={{ flex: 1 }}>
-                                            <label style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Cycle</label>
-                                            <select
-                                                className="form-select"
-                                                style={{ height: '36px', fontSize: '13px' }}
-                                                value={overrideForm.cycleId}
-                                                onChange={e => setOverrideForm(p => ({ ...p, cycleId: e.target.value }))}
-                                            >
-                                                <option value="">-- Choose Cycle --</option>
-                                                {cycles
-                                                    .filter(cyc => !currentEmployeeOverrides.find(o => o.cycleId === cyc.id))
-                                                    .filter(cyc => !selfReviews.some(r => 
-                                                        String(r.employeeId) === String(editing.id) && 
-                                                        String(r.cycleId) === String(cyc.id) && 
-                                                        (r.status === 'draft' || r.status === 'submitted')
-                                                    ))
-                                                    .map(c => <option key={c.id} value={c.id}>{c.name} ({c.status})</option>)}
-                                            </select>
-                                        </div>
-                                        <div style={{ flex: 1 }}>
-                                            <label style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Question Set</label>
-                                            <select
-                                                className="form-select"
-                                                style={{ height: '36px', fontSize: '13px' }}
-                                                value={overrideForm.questionSetId}
-                                                onChange={e => setOverrideForm(p => ({ ...p, questionSetId: e.target.value }))}
-                                            >
-                                                <option value="">-- Choose Set --</option>
-                                                {questionSets.map(qs => <option key={qs.id} value={qs.id}>{qs.name}</option>)}
-                                            </select>
-                                        </div>
-                                        <button
-                                            className="btn btn-secondary"
-                                            style={{ height: '36px', padding: '0 14px', fontSize: '13px', whiteSpace: 'nowrap' }}
-                                            onClick={handleAddOverride}
-                                            disabled={!overrideForm.cycleId || !overrideForm.questionSetId}
-                                        >
-                                            + Add
-                                        </button>
-                                    </div>
+                                    {(() => {
+                                        const activeCycle = cycles.find(c => c.status === 'active');
+                                        if (!activeCycle) return <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>No active cycle available.</div>;
+                                        
+                                        const hasOverride = currentEmployeeOverrides.some(o => o.cycleId === activeCycle.id);
+                                        const reviewStarted = selfReviews.some(r => 
+                                            String(r.employeeId) === String(editing.id) && 
+                                            String(r.cycleId) === String(activeCycle.id) && 
+                                            (r.status === 'draft' || r.status === 'submitted')
+                                        );
+
+                                        if (hasOverride) return null; // Already assigned
+
+                                        return (
+                                            <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end', marginTop: currentEmployeeOverrides.length > 0 ? '12px' : '0' }}>
+                                                <div style={{ flex: 1 }}>
+                                                    <label style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Active Cycle</label>
+                                                    <div style={{
+                                                        height: '36px',
+                                                        fontSize: '13px',
+                                                        background: 'var(--bg-secondary)',
+                                                        border: '1px solid var(--border)',
+                                                        borderRadius: '6px',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        padding: '0 12px',
+                                                        color: 'var(--text-primary)',
+                                                        fontWeight: 600,
+                                                        opacity: reviewStarted ? 0.6 : 1
+                                                    }}>
+                                                        {activeCycle.name}
+                                                    </div>
+                                                </div>
+                                                <div style={{ flex: 1 }}>
+                                                    <label style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Question Set</label>
+                                                    <select
+                                                        className="form-select"
+                                                        style={{ height: '36px', fontSize: '13px' }}
+                                                        value={overrideForm.questionSetId}
+                                                        onChange={e => setOverrideForm(p => ({ ...p, cycleId: activeCycle.id, questionSetId: e.target.value }))}
+                                                        disabled={reviewStarted}
+                                                    >
+                                                        <option value="">-- Choose Set --</option>
+                                                        {questionSets.map(qs => <option key={qs.id} value={qs.id}>{qs.name}</option>)}
+                                                    </select>
+                                                </div>
+                                                <button
+                                                    className="btn btn-secondary"
+                                                    style={{ height: '36px', padding: '0 14px', fontSize: '13px', whiteSpace: 'nowrap' }}
+                                                    onClick={() => {
+                                                        const activeCycle = cycles.find(c => c.status === 'active');
+                                                        if (!editing || !activeCycle || !overrideForm.questionSetId) return;
+                                                        setEmployeeOverride(editing.id, activeCycle.id, overrideForm.questionSetId).then(res => {
+                                                            if (res.success) {
+                                                                setOverrideForm({ cycleId: '', questionSetId: '' });
+                                                            } else {
+                                                                showToast('error', `Failed to save: ${res.error}`);
+                                                            }
+                                                        });
+                                                    }}
+                                                    disabled={reviewStarted || !overrideForm.questionSetId}
+                                                >
+                                                    + Add
+                                                </button>
+                                            </div>
+                                        );
+                                    })()}
                                     <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px' }}>
                                         Overrides take priority. All other cycles fall back to Job Title defaults.
                                     </div>
