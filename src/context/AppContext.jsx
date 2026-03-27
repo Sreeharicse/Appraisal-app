@@ -1014,7 +1014,9 @@ export function AppProvider({ children }) {
 
     // ──── Self Reviews ────
     const submitSelfReview = async (review) => {
-        if (isCycleClosed(review.cycleId)) return { success: false, error: 'This cycle is closed. No further changes are allowed.' };
+        const cycle = cycles.find(c => String(c.id) === String(review.cycleId));
+        if (cycle && cycle.status !== 'active') return { success: false, error: 'Self-reviews can only be submitted for active cycles.' };
+        
         const existing = selfReviews.find(r => r.cycleId === review.cycleId && r.employeeId === review.employeeId);
 
         const encryptedCompetencies = {};

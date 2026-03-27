@@ -91,9 +91,10 @@ export default function SelfReview() {
     }, [activeCycles, selectedCycleId]);
 
     const cycle = cycles.find(c => String(c.id) === String(selectedCycleId));
+    const isActive = cycle?.status === 'active';
     const isClosed = cycle?.status === 'closed';
     const isSubmitted = status !== 'new' && status !== 'draft';
-    const isReadOnly = isSubmitted || (status === 'draft' && isLocked) || isClosed;
+    const isReadOnly = isSubmitted || (status === 'draft' && isLocked) || !isActive;
 
     // Resolve question set: If cycle is closed OR review is already submitted, use the saved snapshot. 
     // Otherwise, use the live designation-based template so HR edits still apply to drafts.
@@ -511,7 +512,7 @@ export default function SelfReview() {
             )}
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '32px' }}>
-                {!isSubmitted && !isClosed && (
+                {!isSubmitted && isActive && (
                     <button type="button" className="btn btn-primary" onClick={() => handleSubmit('submitted')} style={{ padding: '12px 32px', fontWeight: 700 }}>
                         🚀 Submit Full Appraisal
                     </button>
@@ -521,9 +522,9 @@ export default function SelfReview() {
                         ✅ Submitted
                     </button>
                 )}
-                {!isSubmitted && isClosed && (
+                {!isSubmitted && !isActive && (
                     <button type="button" className="btn btn-primary" disabled style={{ padding: '12px 32px', fontWeight: 700, opacity: 0.7 }}>
-                        🔒 Closed
+                        🔒 {isClosed ? 'Closed' : 'Not Active'}
                     </button>
                 )}
             </div>
@@ -577,7 +578,7 @@ export default function SelfReview() {
                 {/* Right: Cycle dropdown Context */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
 
-                    {!isSubmitted && !isClosed && (
+                    {!isSubmitted && isActive && (
                         <button
                             className="btn btn-secondary"
                             onClick={() => handleSubmit('draft')}
@@ -632,8 +633,8 @@ export default function SelfReview() {
                     background: 'rgba(100,116,139,0.08)', border: '1px solid rgba(100,116,139,0.2)',
                     borderRadius: '12px', fontSize: '13px', color: 'var(--text-muted)'
                 }}>
-                    🔒 {cycle?.status === 'closed'
-                        ? 'This cycle is closed. No further changes are allowed.'
+                    🔒 {!isActive
+                        ? `This cycle is ${cycle?.status}. No changes are allowed.`
                         : <>This review is {isSubmitted ? 'submitted and' : 'saved as a draft and'} <strong>read-only</strong>.</>}
                 </div>}
 
