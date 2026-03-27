@@ -379,6 +379,33 @@ export default function QuestionSets() {
                         </div>
                     </div>
 
+                    <label style={{
+                        display: 'flex', alignItems: 'center', gap: '14px', padding: '16px 20px',
+                        background: formIsCommon ? 'linear-gradient(to right, rgba(234, 179, 8, 0.08), transparent)' : 'var(--bg-secondary)',
+                        border: formIsCommon ? '1px solid rgba(234, 179, 8, 0.4)' : '1px solid var(--border)',
+                        borderRadius: '12px', cursor: isReadOnly ? 'default' : 'pointer', transition: 'all 0.2s',
+                        userSelect: 'none'
+                    }}>
+                        <input
+                            type="checkbox"
+                            checked={formIsCommon}
+                            onChange={(e) => setFormIsCommon(e.target.checked)}
+                            disabled={isReadOnly}
+                            style={{
+                                width: '20px', height: '20px', cursor: isReadOnly ? 'default' : 'pointer',
+                                accentColor: '#eab308'
+                            }}
+                        />
+                        <div>
+                            <div style={{ fontWeight: 700, fontSize: '15px', color: formIsCommon ? '#d97706' : 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                ⭐ Set as System Default
+                            </div>
+                            <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                                This question set will be assigned automatically to anyone whose job title is not mapped below.
+                            </div>
+                        </div>
+                    </label>
+
                     <div>
                         <label className="form-label" style={{ fontWeight: 600, marginBottom: '16px', display: 'block', color: 'var(--text-secondary)', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                             Target Job Titles (Designations)
