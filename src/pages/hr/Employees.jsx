@@ -652,7 +652,7 @@ export default function Employees() {
                                                     onClick={() => {
                                                         const activeCycle = cycles.find(c => c.status === 'active');
                                                         if (!editing || !activeCycle || !overrideForm.questionSetId) return;
-                                                        setEmployeeOverride(editing.id, activeCycle.id, overrideForm.questionSetId).then(res => {
+                                                        saveEmployeeOverride(editing.id, activeCycle.id, overrideForm.questionSetId).then(res => {
                                                             if (res.success) {
                                                                 setOverrideForm({ cycleId: '', questionSetId: '' });
                                                             } else {
