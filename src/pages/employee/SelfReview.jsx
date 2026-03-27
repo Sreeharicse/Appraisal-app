@@ -578,7 +578,20 @@ export default function SelfReview() {
                 {/* Right: Cycle dropdown Context */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
 
-                    {!isSubmitted && isActive && (
+                    {/* Edit button when draft is locked */}
+                    {!isSubmitted && isActive && status === 'draft' && isLocked && (
+                        <button
+                            className="btn btn-secondary"
+                            onClick={() => setIsLocked(false)}
+                            style={{ height: '42px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)' }}
+                        >
+                            <span style={{ fontSize: '16px' }}>✏️</span>
+                            Edit Draft
+                        </button>
+                    )}
+
+                    {/* Save/Update Draft button when unlocked */}
+                    {!isSubmitted && isActive && !(status === 'draft' && isLocked) && (
                         <button
                             className="btn btn-secondary"
                             onClick={() => handleSubmit('draft')}
