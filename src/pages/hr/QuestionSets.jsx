@@ -538,23 +538,48 @@ export default function QuestionSets() {
                                             </button>
                                         )}
                                     </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                        <input
-                                            className="form-input"
-                                            value={q.label}
-                                            onChange={e => updateQuestion(sec.id, q.id, 'label', e.target.value)}
-                                            placeholder="Question Title (e.g. Code Quality)"
-                                            disabled={isReadOnly}
-                                            style={{ background: 'var(--bg-card)', fontWeight: 700, borderRadius: '8px' }}
-                                        />
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                        <div style={{ position: 'relative' }}>
+                                            <textarea
+                                                className="form-input"
+                                                value={q.label}
+                                                onChange={e => updateQuestion(sec.id, q.id, 'label', e.target.value)}
+                                                onBlur={e => updateQuestion(sec.id, q.id, 'label', e.target.value.trim())}
+                                                placeholder="Enter your question here..."
+                                                disabled={isReadOnly}
+                                                style={{ 
+                                                    background: 'var(--bg-card)', 
+                                                    fontWeight: 700, 
+                                                    borderRadius: '12px',
+                                                    minHeight: '100px',
+                                                    padding: '16px',
+                                                    lineHeight: '1.6',
+                                                    fontSize: '15px',
+                                                    resize: 'vertical',
+                                                    border: '1px solid var(--border)',
+                                                    transition: 'all 0.2s',
+                                                    width: '100%'
+                                                }}
+                                            />
+                                        </div>
                                         <textarea
                                             className="form-input"
                                             value={q.desc}
                                             onChange={e => updateQuestion(sec.id, q.id, 'desc', e.target.value)}
-                                            placeholder="Detailed prompt for the employee..."
+                                            onBlur={e => updateQuestion(sec.id, q.id, 'desc', e.target.value.trim())}
+                                            placeholder="Detailed prompt/description for the employee (Optional)..."
                                             disabled={isReadOnly}
                                             rows={2}
-                                            style={{ background: 'var(--bg-card)', resize: 'vertical', borderRadius: '8px', fontSize: '13px' }}
+                                            style={{ 
+                                                background: 'var(--bg-secondary)', 
+                                                resize: 'vertical', 
+                                                borderRadius: '10px', 
+                                                fontSize: '13px',
+                                                padding: '12px 16px',
+                                                color: 'var(--text-secondary)',
+                                                border: '1px solid var(--border)',
+                                                opacity: 0.8
+                                            }}
                                         />
                                     </div>
                                 </div>
