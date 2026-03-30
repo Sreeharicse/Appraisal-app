@@ -718,7 +718,7 @@ export function AppProvider({ children }) {
             created_by: currentUser.id,
         }).select().single();
         if (error) { console.error('createQuestionSet:', error.message); return { success: false, error: error.message }; }
-        
+
         // If this one is common, ensure others are NOT (legacy cleanup for safety)
         if (!!data.isCommon) {
             await supabase.from('question_sets').update({ is_common: false }).neq('id', result.id);
@@ -729,14 +729,14 @@ export function AppProvider({ children }) {
             if (data.isCommon) {
                 updated = updated.map(qs => ({ ...qs, isCommon: false }));
             }
-            return [...updated, { 
-                id: result.id, 
-                name: result.name, 
-                description: result.description, 
-                questions: result.questions, 
+            return [...updated, {
+                id: result.id,
+                name: result.name,
+                description: result.description,
+                questions: result.questions,
                 targetDesignations: result.target_designations,
                 isCommon: !!result.is_common,
-                createdAt: result.created_at 
+                createdAt: result.created_at
             }];
         });
         return { success: true, data: result };
@@ -753,7 +753,7 @@ export function AppProvider({ children }) {
 
         const { error } = await supabase.from('question_sets').update(payload).eq('id', id);
         if (error) { console.error('updateQuestionSet:', error.message); return { success: false, error: error.message }; }
-        
+
         if (!!data.isCommon) {
             await supabase.from('question_sets').update({ is_common: false }).neq('id', id);
         }
@@ -1016,7 +1016,7 @@ export function AppProvider({ children }) {
     const submitSelfReview = async (review) => {
         const cycle = cycles.find(c => String(c.id) === String(review.cycleId));
         if (cycle && cycle.status !== 'active') return { success: false, error: 'Self-reviews can only be submitted for active cycles.' };
-        
+
         const existing = selfReviews.find(r => r.cycleId === review.cycleId && r.employeeId === review.employeeId);
 
         const encryptedCompetencies = {};
@@ -1068,22 +1068,26 @@ export function AppProvider({ children }) {
                 return updated;
             });
 
-            // RULE: Employee submits → notify Manager only
+            // Notify Manager or HR fallback ONLY if state just changed to submitted
             if (mapped.status === 'submitted' && (!existing || existing.status !== 'submitted')) {
                 const employee = users.find(u => u.id === mapped.employeeId);
-                const empManager = users.find(u => u.id === employee?.managerId);
+                const managerId = employee?.managerId;
+                const empManager = users.find(u => u.id === managerId);
                 const empName = employee?.name || 'An employee';
 
+                console.log(`[SelfReview-Fake] Submitting for: ${empName}, managerId: ${managerId}`);
+
                 if (empManager) {
-                    createNotification([empManager.id], 'Self-Review Submitted', `${empName} has submitted their self-review. Please evaluate.`, 'success', '/manager/evaluate');
+                    console.log(`[SelfReview-Fake] Found manager: ${empManager.name} (${empManager.email})`);
+                    createNotification([empManager.id], 'Self-Review Submitted', `${empName} has submitted their self-review.`, 'success', '/manager/evaluate');
                     sendEmailNotification(empManager.email, `Self-Review Submitted by ${empName}`, employeeSubmitEmail(empName, empManager.name));
                 } else {
-                    // No manager: fall back to Admin only (not HR)
-                    const admins = users.filter(u => u.role === 'admin');
-                    admins.forEach(a => {
-                        createNotification([a.id], 'Self-Review Submitted', `${empName} has submitted their self-review (no manager assigned).`, 'warning', '/hr/approvals');
-                        sendEmailNotification(a.email, `Self-Review Submitted by ${empName}`, employeeSubmitEmail(empName, a.name));
-                    });
+                    console.log(`[SelfReview-Fake] No manager found for ${empName}, falling back to HR.`);
+                    const hrs = users.filter(u => u.role === 'admin' || u.role === 'hr');
+                    if (hrs.length > 0) {
+                        createNotification(hrs.map(h => h.id), 'Self-Review Submitted', `${empName} has submitted their self-review (no manager assigned).`, 'success', '/hr/evaluations');
+                        hrs.forEach(hr => sendEmailNotification(hr.email, `Self-Review Submitted by ${empName}`, employeeSubmitEmail(empName, hr.name)));
+                    }
                 }
             }
 
@@ -1118,22 +1122,26 @@ export function AppProvider({ children }) {
                 status: review.status || 'draft'
             };
             setSelfReviews(p => existing ? p.map(x => x.id === existing.id ? mapped : x) : [...p, mapped]);
-            // RULE: Employee submits → notify Manager only
+            // Notify Manager or HR fallback ONLY if state just changed to submitted
             if (mapped.status === 'submitted' && (!existing || existing.status !== 'submitted')) {
                 const employee = users.find(u => u.id === mapped.employeeId);
-                const empManager = users.find(u => u.id === employee?.managerId);
+                const managerId = employee?.managerId;
+                const empManager = users.find(u => u.id === managerId);
                 const empName = employee?.name || 'An employee';
 
+                console.log(`[SelfReview] Submitting for: ${empName}, managerId: ${managerId}`);
+
                 if (empManager) {
-                    createNotification([empManager.id], 'Self-Review Submitted', `${empName} has submitted their self-review. Please evaluate.`, 'success', '/manager/evaluate');
+                    console.log(`[SelfReview] Found manager: ${empManager.name} (${empManager.email})`);
+                    createNotification([empManager.id], 'Self-Review Submitted', `${empName} has submitted their self-review.`, 'success', '/manager');
                     sendEmailNotification(empManager.email, `Self-Review Submitted by ${empName}`, employeeSubmitEmail(empName, empManager.name));
                 } else {
-                    // No manager: fall back to Admin only (not HR)
-                    const admins = users.filter(u => u.role === 'admin');
-                    admins.forEach(a => {
-                        createNotification([a.id], 'Self-Review Submitted', `${empName} has submitted their self-review (no manager assigned).`, 'warning', '/hr/approvals');
-                        sendEmailNotification(a.email, `Self-Review Submitted by ${empName}`, employeeSubmitEmail(empName, a.name));
-                    });
+                    console.log(`[SelfReview] No manager found for ${empName}, falling back to HR.`);
+                    const hrs = users.filter(u => u.role === 'admin' || u.role === 'hr');
+                    if (hrs.length > 0) {
+                        createNotification(hrs.map(h => h.id), 'Self-Review Submitted', `${empName} has submitted their self-review (no manager assigned).`, 'success', '/hr/approvals');
+                        hrs.forEach(hr => sendEmailNotification(hr.email, `Self-Review Submitted by ${empName}`, employeeSubmitEmail(empName, hr.name)));
+                    }
                 }
             }
 
@@ -1194,14 +1202,25 @@ export function AppProvider({ children }) {
 
             // Only Notify Employee & HR if fully submitted and state just changed
             if (mapped.status === 'pending_approval' && (!existing || existing.status !== 'pending_approval')) {
-                const hrs = users.filter(u => u.role === 'admin' || u.role === 'hr');
                 const emp = users.find(u => u.id === evaluation.employeeId);
+                const empRole = emp?.role;
+
+                // RULE: Regular employee evaluated → notify HR + Admin
+                //       HR/Manager evaluated → notify Admin only
+                const approvers = users.filter(u => {
+                    if (u.role === 'admin') return true;
+                    if (u.role === 'hr') return empRole === 'employee';
+                    return false;
+                });
+
                 if (emp) {
-                    createNotification([emp.id], 'Evaluation Submitted', `Your manager has submitted your evaluation. Pending HR approval.`, 'success', '/employee/results');
+                    createNotification([emp.id], 'Evaluation Submitted', `Your manager has submitted your evaluation. Pending approval.`, 'success', '/employee/results');
                     sendEmailNotification(emp.email, 'Evaluation Assessed', managerSubmitEmail(emp.name));
                 }
-                createNotification(hrs.map(h => h.id), 'Pending HR Approval', `Evaluation for ${emp?.name} is awaiting your approval.`, 'warning', '/hr/approvals');
-                hrs.forEach(hr => sendEmailNotification(hr.email, 'Evaluation Awaiting Approval', hrEvaluationSubmittedEmail(emp?.name || 'An employee', currentUser?.name || 'A Manager')));
+                approvers.forEach(a => {
+                    createNotification([a.id], 'Pending Approval', `Evaluation for ${emp?.name || 'an employee'} is awaiting your approval.`, 'warning', '/hr/approvals');
+                    sendEmailNotification(a.email, 'Evaluation Awaiting Approval', hrEvaluationSubmittedEmail(emp?.name || 'An employee', currentUser?.name || 'A Manager'));
+                });
             }
 
             return mapped;
@@ -1264,17 +1283,18 @@ export function AppProvider({ children }) {
                 const emp = users.find(u => u.id === evaluation.employeeId);
                 const empRole = emp?.role;
 
-                // RULE: Manager evaluates → notify Employee + Admin only (HR excluded)
-                const admins = users.filter(u => u.role === 'admin');
+                // If the evaluated employee is HR or Manager, only Admins can approve → notify only Admins
+                // If the evaluated employee is a regular employee, notify both HR and Admin
+                const notifyApprovers = (empRole === 'hr' || empRole === 'manager')
+                    ? users.filter(u => u.role === 'admin')
+                    : users.filter(u => u.role === 'admin' || u.role === 'hr');
 
                 if (emp) {
-                    createNotification([emp.id], 'Evaluation Submitted', 'Your performance has been evaluated. Awaiting final Admin approval.', 'success', '/employee/results');
+                    createNotification([emp.id], 'Evaluation Submitted', `Your manager has submitted your evaluation. Pending approval.`, 'success', '/employee/results');
                     sendEmailNotification(emp.email, 'Evaluation Assessed', managerSubmitEmail(emp.name));
                 }
-                admins.forEach(a => {
-                    createNotification([a.id], 'Evaluation Pending Approval', `Evaluation for ${emp?.name || 'an employee'} is awaiting your approval.`, 'warning', '/hr/approvals');
-                    sendEmailNotification(a.email, 'Evaluation Awaiting Approval', hrEvaluationSubmittedEmail(emp?.name || 'An employee', currentUser?.name || 'A Manager'));
-                });
+                createNotification(notifyApprovers.map(h => h.id), 'Pending Approval', `Evaluation for ${emp?.name} is awaiting your approval.`, 'warning', '/hr/approvals');
+                notifyApprovers.forEach(h => sendEmailNotification(h.email, 'Evaluation Awaiting Approval', hrEvaluationSubmittedEmail(emp?.name || 'An employee', currentUser?.name || 'A Manager')));
             }
 
             return mapped;
@@ -1302,17 +1322,17 @@ export function AppProvider({ children }) {
                 return updated;
             });
 
-            // RULE: Admin approves → notify Employee + Manager only
+            // Notify Employee & Manager
             const theEval = evaluations.find(e => e.id === evalId);
+            console.log(`[Approve-Fake] Approving evalId: ${evalId}, found: ${!!theEval}`);
             if (theEval) {
                 const emp = users.find(u => u.id === theEval.employeeId);
+                console.log(`[Approve-Fake] Employee: ${emp?.name} (${emp?.email})`);
                 if (emp) {
-                    createNotification([emp.id], 'Appraisal Completed ✅', 'Your appraisal has been officially approved. View your final results!', 'success', '/employee/results');
-                    sendEmailNotification(emp.email, 'Appraisal Finalized', hrApproveEmail(emp.name));
+                    createNotification([emp.id], 'Evaluation Approved', 'Your appraisal results are now officially approved and available.', 'success', '/employee/results');
+                    sendEmailNotification(emp.email, 'Evaluation Finalized', hrApproveEmail(emp.name));
                 }
-                if (theEval.managerId) {
-                    createNotification([theEval.managerId], 'Evaluation Approved', `Your evaluation for ${emp?.name || 'an employee'} has been approved by Admin.`, 'success', '/manager');
-                }
+                createNotification([theEval.managerId], 'Evaluation Approved', `HR approved your evaluation for ${emp?.name}.`, 'success', '/manager');
             }
             return;
         }
@@ -1351,14 +1371,12 @@ export function AppProvider({ children }) {
 
         if (theEvalToApprove) {
             const emp = users.find(u => u.id === theEvalToApprove.employeeId);
-            // RULE: Admin approves → notify Employee + Manager only
+            console.log(`[Approve] Employee: ${emp?.name} (${emp?.email})`);
             if (emp) {
-                createNotification([emp.id], 'Appraisal Completed ✅', 'Your appraisal has been officially approved. View your final results!', 'success', '/employee/results');
-                sendEmailNotification(emp.email, 'Appraisal Finalized', hrApproveEmail(emp.name));
+                createNotification([emp.id], 'Evaluation Approved', 'Your appraisal results are now officially approved and available.', 'success', '/employee/results');
+                sendEmailNotification(emp.email, 'Evaluation Finalized', hrApproveEmail(emp.name));
             }
-            if (theEvalToApprove.managerId) {
-                createNotification([theEvalToApprove.managerId], 'Evaluation Approved', `Your evaluation for ${emp?.name || 'an employee'} has been approved by Admin.`, 'success', '/manager');
-            }
+            createNotification([theEvalToApprove.managerId], 'Evaluation Approved', `HR approved your evaluation for ${emp?.name}.`, 'success', '/manager');
         }
     };
 
@@ -1433,11 +1451,7 @@ export function AppProvider({ children }) {
             setEvaluations(p => p.map(e => e.id === evalId ? { ...e, status: 'rejected', rejectionComment: comment } : e));
             const theEval = evaluations.find(e => e.id === evalId);
             if (theEval) {
-                const emp = users.find(u => u.id === theEval.employeeId);
-                // RULE: Admin rejects → notify Manager (so they can fix and resubmit)
-                if (theEval.managerId) {
-                    createNotification([theEval.managerId], 'Evaluation Rejected ❌', `Your evaluation for ${emp?.name || 'an employee'} was rejected. Please review and resubmit.`, 'danger', '/manager/evaluate');
-                }
+                createNotification([theEval.managerId], 'Evaluation Rejected', `HR rejected your evaluation for ${users.find(u => u.id === theEval.employeeId)?.name}. Please review and resubmit.`, 'danger', '/manager');
             }
         }
     };
@@ -1487,9 +1501,9 @@ export function AppProvider({ children }) {
     const saveEmployeeOverride = async (employeeId, cycleId, questionSetId) => {
         if (isCycleClosed(cycleId)) return { success: false, error: 'This cycle is closed. No further changes are allowed.' };
         // Block if self-review already exists (draft or submitted)
-        const reviewStarted = selfReviews.some(r => 
-            String(r.employeeId) === String(employeeId) && 
-            String(r.cycleId) === String(cycleId) && 
+        const reviewStarted = selfReviews.some(r =>
+            String(r.employeeId) === String(employeeId) &&
+            String(r.cycleId) === String(cycleId) &&
             (r.status === 'draft' || r.status === 'submitted')
         );
         if (reviewStarted) {
@@ -1531,9 +1545,9 @@ export function AppProvider({ children }) {
     const deleteEmployeeOverride = async (employeeId, cycleId) => {
         if (isCycleClosed(cycleId)) return { success: false, error: 'This cycle is closed. No further changes are allowed.' };
         // Block if self-review already exists (draft or submitted)
-        const reviewStarted = selfReviews.some(r => 
-            String(r.employeeId) === String(employeeId) && 
-            String(r.cycleId) === String(cycleId) && 
+        const reviewStarted = selfReviews.some(r =>
+            String(r.employeeId) === String(employeeId) &&
+            String(r.cycleId) === String(cycleId) &&
             (r.status === 'draft' || r.status === 'submitted')
         );
         if (reviewStarted) {
@@ -1573,11 +1587,11 @@ export function AppProvider({ children }) {
     const getScore = (empId, cycleId, includePending = false) => {
         const ev = getEvaluation(empId, cycleId);
         if (!ev) return null;
-        
+
         // Only return scores for 'approved' evaluations unless specifically requested (e.g. for HR preview)
         const isApproved = ev.status === 'approved';
         const isAllowed = isApproved || (includePending && ev.status === 'pending_approval');
-        
+
         if (!isAllowed) return null;
 
         // Flat formula: average ALL rated questions (q1-q12) for 70%, sub = 20%, hr = 10%
