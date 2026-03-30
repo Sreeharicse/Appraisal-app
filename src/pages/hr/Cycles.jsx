@@ -237,40 +237,86 @@ export default function Cycles() {
                 </table>
             </div>
 
-            {/* Cycle Close Warning Modal */}
+            {/* Cycle Close Warning Modal - Premium Redesign */}
             {showCloseWarning && cycleToClose && (
-                <div className="modal-overlay" style={{ zIndex: 9999 }}>
-                    <div className="modal" style={{ maxWidth: '520px', border: '1px solid var(--yellow)' }}>
-                        <div className="modal-header" style={{ borderBottom: '1px solid rgba(234,179,8,0.2)' }}>
-                            <h3 style={{ color: 'var(--yellow)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                ⚠️ Pending Items Detected
-                            </h3>
-                            <button className="close-btn" onClick={() => setShowCloseWarning(false)}>×</button>
+                <div className="modal-overlay" style={{ zIndex: 9999, backdropFilter: 'blur(8px)', background: 'rgba(0,0,0,0.6)' }}>
+                    <div className="modal" style={{ maxWidth: '560px', borderRadius: '24px', border: 'none', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
+                        <div className="modal-header" style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', padding: '24px 32px', border: 'none' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <div style={{ background: 'rgba(255,255,255,0.2)', padding: '10px', borderRadius: '12px' }}>
+                                    <Icons.Alert style={{ color: '#fff', width: '24px', height: '24px' }} />
+                                </div>
+                                <div>
+                                    <h3 style={{ color: '#fff', fontSize: '20px', fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>Action Required</h3>
+                                    <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '12px', margin: '4px 0 0 0', fontWeight: 500 }}>Pending items detected in {cycleToClose.name}</p>
+                                </div>
+                            </div>
+                            <button className="close-btn" style={{ color: '#fff', opacity: 0.8 }} onClick={() => setShowCloseWarning(false)}>×</button>
                         </div>
-                        <div className="modal-body" style={{ padding: '20px 24px' }}>
-                            <p style={{ fontSize: '14px', marginBottom: '16px', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
-                                Closing <strong>{cycleToClose.name}</strong> will lock all data. The following items are still pending:
-                            </p>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        
+                        <div className="modal-body" style={{ padding: '32px', background: 'var(--bg-card)' }}>
+                            <div style={{ marginBottom: '24px' }}>
+                                <div style={{ fontSize: '14px', color: 'var(--text-primary)', lineHeight: '1.6', fontWeight: 500 }}>
+                                    The following tasks must be completed or acknowledged before closing this cycle. Closing will lock all participant data.
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '320px', overflowY: 'auto', paddingRight: '4px' }}>
                                 {closeWarnings.map((w, i) => (
-                                    <div key={i} style={{ background: 'rgba(234,179,8,0.06)', border: '1px solid rgba(234,179,8,0.2)', borderRadius: '10px', padding: '12px 16px' }}>
-                                        <div style={{ fontWeight: 700, fontSize: '12px', color: 'var(--yellow)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                                            {w.type} ({w.names.length})
+                                    <div key={i} style={{ 
+                                        background: 'var(--bg-secondary)', 
+                                        borderRadius: '16px', 
+                                        padding: '16px', 
+                                        border: '1px solid var(--border)',
+                                        borderLeft: '4px solid #f59e0b'
+                                    }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                            <span style={{ fontWeight: 700, fontSize: '11px', color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{w.type}</span>
+                                            <span style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', padding: '2px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 700 }}>{w.names.length}</span>
                                         </div>
-                                        <div style={{ fontSize: '13px', color: 'var(--text-primary)', lineHeight: '1.7' }}>
-                                            {w.names.join(', ')}
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                            {w.names.map((name, idx) => (
+                                                <span key={idx} style={{ 
+                                                    background: 'var(--bg-primary)', 
+                                                    border: '1px solid var(--border)', 
+                                                    padding: '4px 10px', 
+                                                    borderRadius: '8px', 
+                                                    fontSize: '12px', 
+                                                    color: 'var(--text-secondary)',
+                                                    fontWeight: 500
+                                                }}>
+                                                    {name}
+                                                </span>
+                                            ))}
                                         </div>
                                     </div>
                                 ))}
                             </div>
-                            <p style={{ marginTop: '16px', fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                                If you close now, these employees' records will be locked in their current state.
-                            </p>
+                            
+                            <div style={{ marginTop: '24px', padding: '12px 16px', background: 'rgba(245, 158, 11, 0.05)', borderRadius: '12px', border: '1px solid rgba(245, 158, 11, 0.1)', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                                <Icons.Info style={{ color: '#f59e0b', width: '16px', height: '16px', marginTop: '2px', flexShrink: 0 }} />
+                                <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.5' }}>
+                                    Closing this cycle is an irreversible action. Records for the people listed above will be finalized in their current incomplete state.
+                                </p>
+                            </div>
                         </div>
-                        <div className="modal-footer">
-                            <button className="btn btn-secondary" onClick={() => setShowCloseWarning(false)}>Cancel</button>
-                            <button className="btn btn-danger" onClick={confirmClose} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <Icons.Square /> Close Anyway
+
+                        <div className="modal-footer" style={{ padding: '24px 32px', background: 'var(--bg-secondary)', borderTop: '1px solid var(--border)', display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                            <button className="btn btn-secondary" style={{ padding: '10px 20px', borderRadius: '12px', fontWeight: 600 }} onClick={() => setShowCloseWarning(false)}>Go Back</button>
+                            <button className="btn" onClick={confirmClose} style={{ 
+                                background: '#f59e0b', 
+                                color: '#fff', 
+                                padding: '10px 24px', 
+                                borderRadius: '12px', 
+                                fontWeight: 700, 
+                                border: 'none',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                cursor: 'pointer',
+                                boxShadow: '0 4px 12px rgba(245, 158, 11, 0.3)'
+                            }}>
+                                <Icons.Square style={{ width: '16px', height: '16px' }} /> Confirm & Close
                             </button>
                         </div>
                     </div>
