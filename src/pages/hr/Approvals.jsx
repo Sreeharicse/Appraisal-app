@@ -239,11 +239,17 @@ export default function Approvals() {
                             </div>
                         </div>
 
-                        {/* Manager Feedback — compact */}
-                        <div style={{ background: 'var(--bg-secondary)', borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', border: '1px solid var(--border)' }}>
-                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px' }}>Manager Summary Feedback</div>
-                            <p className="read-only-text" style={{ fontSize: '13px', lineHeight: '1.5', wordBreak: 'break-word', overflowWrap: 'break-word', maxHeight: '72px', overflowY: 'auto', margin: 0 }}>
-                                {ev.feedback || 'No feedback provided.'}
+                        {/* Manager Overall Assessment — Rating Classification + Sub-Rating + Feedback */}
+                        <div style={{ background: 'rgba(99, 102, 241, 0.03)', borderRadius: '14px', padding: '16px 20px', marginBottom: '16px', border: '1px solid rgba(99, 102, 241, 0.12)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Manager Overall Assessment</div>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                    {ev.finalRating && <span className="badge badge-green" style={{ fontSize: '11px', padding: '4px 10px', fontWeight: 700 }}>{ev.finalRating}</span>}
+                                    {ev.subRating && <span className="badge badge-purple" style={{ fontSize: '11px', padding: '4px 10px', fontWeight: 700 }}>Score: {ev.subRating}/5</span>}
+                                </div>
+                            </div>
+                            <p className="read-only-text" style={{ fontSize: '13px', lineHeight: '1.6', color: 'var(--text-primary)', margin: 0, maxHeight: '120px', overflowY: 'auto', fontStyle: ev.feedback ? 'normal' : 'italic' }}>
+                                {ev.feedback || 'No manager feedback provided.'}
                             </p>
                         </div>
 
