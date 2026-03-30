@@ -40,34 +40,43 @@ export default function Cycles() {
     const [closeWarnings, setCloseWarnings] = useState([]);
 
     const handleClose = (c) => {
-        const cycleEmployees = users.filter(u => u.role === 'employee');
+        const allReviewers = users; // All roles: employee, hr, manager, admin
         const warnings = [];
 
-        // 1. Employees with no self-review at all
-        const noReview = cycleEmployees.filter(emp => !selfReviews.find(sr => sr.cycleId === c.id && sr.employeeId === emp.id));
+        // 1. Users with no self-review at all for this cycle
+        const noReview = allReviewers.filter(u => !selfReviews.find(sr => sr.cycleId === c.id && sr.employeeId === u.id));
         if (noReview.length > 0) {
-            warnings.push({ type: '❌ Missing Self-Review', names: noReview.map(u => u.name) });
+            warnings.push({ type: '❌ Missing Self-Review', names: noReview.map(u => `${u.name} (${u.role})`) });
         }
 
         // 2. Draft self-reviews (started but not submitted)
         const drafts = selfReviews.filter(sr => sr.cycleId === c.id && sr.status === 'draft');
         if (drafts.length > 0) {
-            const names = drafts.map(sr => users.find(u => u.id === sr.employeeId)?.name).filter(Boolean);
+            const names = drafts.map(sr => {
+                const u = users.find(u => u.id === sr.employeeId);
+                return u ? `${u.name} (${u.role})` : null;
+            }).filter(Boolean);
             warnings.push({ type: '📝 Draft Self-Reviews (Not Submitted)', names });
         }
 
-        // 3. Employees with submitted self-review but no evaluation
+        // 3. Users with submitted self-review but no manager evaluation
         const submittedReviews = selfReviews.filter(sr => sr.cycleId === c.id && sr.status === 'submitted');
         const noEval = submittedReviews.filter(sr => !evaluations.find(ev => ev.cycleId === c.id && ev.employeeId === sr.employeeId));
         if (noEval.length > 0) {
-            const names = noEval.map(sr => users.find(u => u.id === sr.employeeId)?.name).filter(Boolean);
+            const names = noEval.map(sr => {
+                const u = users.find(u => u.id === sr.employeeId);
+                return u ? `${u.name} (${u.role})` : null;
+            }).filter(Boolean);
             warnings.push({ type: '⏳ Awaiting Manager Evaluation', names });
         }
 
         // 4. Evaluations pending HR/Admin approval
         const pendingApprovals = evaluations.filter(ev => ev.cycleId === c.id && ev.status === 'pending_approval');
         if (pendingApprovals.length > 0) {
-            const names = pendingApprovals.map(ev => users.find(u => u.id === ev.employeeId)?.name).filter(Boolean);
+            const names = pendingApprovals.map(ev => {
+                const u = users.find(u => u.id === ev.employeeId);
+                return u ? `${u.name} (${u.role})` : null;
+            }).filter(Boolean);
             warnings.push({ type: '🔔 Pending Approval', names });
         }
 
