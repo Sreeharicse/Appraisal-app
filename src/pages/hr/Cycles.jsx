@@ -244,7 +244,7 @@ export default function Cycles() {
                         <div className="modal-header" style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', padding: '24px 32px', border: 'none' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                 <div style={{ background: 'rgba(255,255,255,0.2)', padding: '10px', borderRadius: '12px' }}>
-                                    <Icons.Alert style={{ color: '#fff', width: '24px', height: '24px' }} />
+                                    <Icons.AlertTriangle style={{ color: '#fff', width: '24px', height: '24px' }} />
                                 </div>
                                 <div>
                                     <h3 style={{ color: '#fff', fontSize: '20px', fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>Action Required</h3>
