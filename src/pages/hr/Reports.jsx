@@ -199,7 +199,12 @@ export default function Reports() {
 
             {/* ── Org Chart Tab ── */}
             {activeTab === 'orgchart' && isAdmin && (
-                <OrgChart users={users} />
+                <OrgChart 
+                    users={users} 
+                    evaluations={evaluations} 
+                    activeCycle={activeCycle} 
+                    getScore={getScore} 
+                />
             )}
 
             {/* ── Analytics Tab ── */}

@@ -70,10 +70,61 @@ const treeStyle = `
     height: 20px;
     transform: translateX(-50%);
 }
+
+/* ── Appraisal Status Badges ── */
+.org-badge {
+    margin-top: 10px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+    border: 1px solid transparent;
+}
+.status-none       { display: none; }
+.status-notstarted { background: var(--bg-secondary); color: var(--text-muted); border-color: var(--border); }
+.status-draft      { background: rgba(245, 158, 11, 0.15); color: #d97706; border-color: rgba(245, 158, 11, 0.3); }
+.status-submitted  { background: rgba(59, 130, 246, 0.15); color: #2563eb; border-color: rgba(59, 130, 246, 0.3); animation: pulse-blue 2s infinite; }
+.status-evaluated  { background: rgba(168, 85, 247, 0.15); color: #9333ea; border-color: rgba(168, 85, 247, 0.3); animation: pulse-purple 2s infinite; }
+.status-approved   { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #fff; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4); font-size: 11px; padding: 5px 14px; border: none; }
+
+@keyframes pulse-blue {
+    0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+    70% { box-shadow: 0 0 0 6px rgba(59, 130, 246, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+}
+@keyframes pulse-purple {
+    0% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.4); }
+    70% { box-shadow: 0 0 0 6px rgba(168, 85, 247, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0); }
+}
 `;
 
-function OrgNode({ user }) {
+function OrgNode({ user, evaluations, activeCycle, getScore }) {
     const cfg = ROLE_CONFIG[user.role] || ROLE_CONFIG.employee;
+    
+    // Determine Status Badge
+    let statusBadge = null;
+    if (activeCycle) {
+        const ev = evaluations?.find(e => e.employeeId === user.id && e.cycleId === activeCycle.id);
+        if (ev) {
+            if (ev.status === 'approved') {
+                const scoreData = getScore ? getScore(user.id, activeCycle.id) : null;
+                const scoreValue = scoreData?.score || '-';
+                statusBadge = <div className="org-badge status-approved">Score: {scoreValue}</div>;
+            } else if (ev.status === 'evaluated') {
+                statusBadge = <div className="org-badge status-evaluated">Pending HR</div>;
+            } else if (ev.status === 'submitted') {
+                statusBadge = <div className="org-badge status-submitted">Ready for Eval</div>;
+            } else if (ev.status === 'draft') {
+                statusBadge = <div className="org-badge status-draft">Drafting Review</div>;
+            }
+        } else {
+            statusBadge = <div className="org-badge status-notstarted">Not Started</div>;
+        }
+    }
     return (
         <div style={{
             display: 'inline-flex',
@@ -108,19 +159,22 @@ function OrgNode({ user }) {
             <div style={{ marginTop: '2px', fontSize: '11px', fontWeight: 600, color: cfg.border, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 {user.department || cfg.label}
             </div>
+
+            {/* Appraisal Status Badge */}
+            {statusBadge}
         </div>
     );
 }
 
 // Recursive component to render tree nodes
-function TreeNode({ node }) {
+function TreeNode({ node, evaluations, activeCycle, getScore }) {
     return (
         <li>
-            <OrgNode user={node.item} />
+            <OrgNode user={node.item} evaluations={evaluations} activeCycle={activeCycle} getScore={getScore} />
             {node.children && node.children.length > 0 && (
                 <ul>
                     {node.children.map((child, idx) => (
-                        <TreeNode key={child.item.id + '-' + idx} node={child} />
+                        <TreeNode key={child.item.id + '-' + idx} node={child} evaluations={evaluations} activeCycle={activeCycle} getScore={getScore} />
                     ))}
                 </ul>
             )}
@@ -128,7 +182,7 @@ function TreeNode({ node }) {
     );
 }
 
-export default function OrgChart({ users }) {
+export default function OrgChart({ users, evaluations, activeCycle, getScore }) {
     // 1. Group users by role
     const admins = users.filter(u => u.role === 'admin');
     const hrs = users.filter(u => u.role === 'hr');
@@ -179,7 +233,7 @@ export default function OrgChart({ users }) {
             <div className="org-tree" style={{ paddingBottom: '40px' }}>
                 <ul>
                     {rootNodes.map((root, idx) => (
-                        <TreeNode key={'root-'+idx} node={root} />
+                        <TreeNode key={'root-'+idx} node={root} evaluations={evaluations} activeCycle={activeCycle} getScore={getScore} />
                     ))}
                 </ul>
             </div>
