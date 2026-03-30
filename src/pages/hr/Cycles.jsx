@@ -34,7 +34,57 @@ export default function Cycles() {
         }
         await updateCycle(c.id, { status: 'active' });
     };
-    const close = (c) => updateCycle(c.id, { status: 'closed' });
+    // --- State for Close Warning Modal ---
+    const [showCloseWarning, setShowCloseWarning] = useState(false);
+    const [cycleToClose, setCycleToClose] = useState(null);
+    const [closeWarnings, setCloseWarnings] = useState([]);
+
+    const handleClose = (c) => {
+        const cycleEmployees = users.filter(u => u.role === 'employee');
+        const warnings = [];
+
+        // 1. Employees with no self-review at all
+        const noReview = cycleEmployees.filter(emp => !selfReviews.find(sr => sr.cycleId === c.id && sr.employeeId === emp.id));
+        if (noReview.length > 0) {
+            warnings.push({ type: '❌ Missing Self-Review', names: noReview.map(u => u.name) });
+        }
+
+        // 2. Draft self-reviews (started but not submitted)
+        const drafts = selfReviews.filter(sr => sr.cycleId === c.id && sr.status === 'draft');
+        if (drafts.length > 0) {
+            const names = drafts.map(sr => users.find(u => u.id === sr.employeeId)?.name).filter(Boolean);
+            warnings.push({ type: '📝 Draft Self-Reviews (Not Submitted)', names });
+        }
+
+        // 3. Employees with submitted self-review but no evaluation
+        const submittedReviews = selfReviews.filter(sr => sr.cycleId === c.id && sr.status === 'submitted');
+        const noEval = submittedReviews.filter(sr => !evaluations.find(ev => ev.cycleId === c.id && ev.employeeId === sr.employeeId));
+        if (noEval.length > 0) {
+            const names = noEval.map(sr => users.find(u => u.id === sr.employeeId)?.name).filter(Boolean);
+            warnings.push({ type: '⏳ Awaiting Manager Evaluation', names });
+        }
+
+        // 4. Evaluations pending HR/Admin approval
+        const pendingApprovals = evaluations.filter(ev => ev.cycleId === c.id && ev.status === 'pending_approval');
+        if (pendingApprovals.length > 0) {
+            const names = pendingApprovals.map(ev => users.find(u => u.id === ev.employeeId)?.name).filter(Boolean);
+            warnings.push({ type: '🔔 Pending Approval', names });
+        }
+
+        if (warnings.length > 0) {
+            setCycleToClose(c);
+            setCloseWarnings(warnings);
+            setShowCloseWarning(true);
+        } else {
+            updateCycle(c.id, { status: 'closed' });
+        }
+    };
+    const confirmClose = () => {
+        updateCycle(cycleToClose.id, { status: 'closed' });
+        setShowCloseWarning(false);
+        setCycleToClose(null);
+        setCloseWarnings([]);
+    };
 
     // --- Deletion Handlers ---
     const handleDeleteClick = (c) => {
@@ -147,7 +197,7 @@ export default function Cycles() {
                                             </button>
                                         )}
                                         {c.status === 'active' && (
-                                            <button className="btn btn-secondary btn-sm" style={{ display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => close(c)}>
+                                            <button className="btn btn-secondary btn-sm" style={{ display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => handleClose(c)}>
                                                 <Icons.Square /> Close
                                             </button>
                                         )}
@@ -177,6 +227,46 @@ export default function Cycles() {
                     </tbody>
                 </table>
             </div>
+
+            {/* Cycle Close Warning Modal */}
+            {showCloseWarning && cycleToClose && (
+                <div className="modal-overlay" style={{ zIndex: 9999 }}>
+                    <div className="modal" style={{ maxWidth: '520px', border: '1px solid var(--yellow)' }}>
+                        <div className="modal-header" style={{ borderBottom: '1px solid rgba(234,179,8,0.2)' }}>
+                            <h3 style={{ color: 'var(--yellow)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                ⚠️ Pending Items Detected
+                            </h3>
+                            <button className="close-btn" onClick={() => setShowCloseWarning(false)}>×</button>
+                        </div>
+                        <div className="modal-body" style={{ padding: '20px 24px' }}>
+                            <p style={{ fontSize: '14px', marginBottom: '16px', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
+                                Closing <strong>{cycleToClose.name}</strong> will lock all data. The following items are still pending:
+                            </p>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                {closeWarnings.map((w, i) => (
+                                    <div key={i} style={{ background: 'rgba(234,179,8,0.06)', border: '1px solid rgba(234,179,8,0.2)', borderRadius: '10px', padding: '12px 16px' }}>
+                                        <div style={{ fontWeight: 700, fontSize: '12px', color: 'var(--yellow)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                            {w.type} ({w.names.length})
+                                        </div>
+                                        <div style={{ fontSize: '13px', color: 'var(--text-primary)', lineHeight: '1.7' }}>
+                                            {w.names.join(', ')}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <p style={{ marginTop: '16px', fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                                If you close now, these employees' records will be locked in their current state.
+                            </p>
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn btn-secondary" onClick={() => setShowCloseWarning(false)}>Cancel</button>
+                            <button className="btn btn-danger" onClick={confirmClose} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Icons.Square /> Close Anyway
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Admin Delete Confirmation Modal */}
             {showDeleteConfirm && cycleToDelete && (
