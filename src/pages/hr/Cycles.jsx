@@ -237,11 +237,11 @@ export default function Cycles() {
                 </table>
             </div>
 
-            {/* Cycle Close Warning Modal - Premium Redesign */}
+            {/* Cycle Close Warning Modal - Blue Theme */}
             {showCloseWarning && cycleToClose && (
                 <div className="modal-overlay" style={{ zIndex: 9999, backdropFilter: 'blur(8px)', background: 'rgba(0,0,0,0.6)' }}>
                     <div className="modal" style={{ maxWidth: '560px', borderRadius: '24px', border: 'none', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
-                        <div className="modal-header" style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', padding: '24px 32px', border: 'none' }}>
+                        <div className="modal-header" style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', padding: '24px 32px', border: 'none' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                 <div style={{ background: 'rgba(255,255,255,0.2)', padding: '10px', borderRadius: '12px' }}>
                                     <Icons.AlertTriangle style={{ color: '#fff', width: '24px', height: '24px' }} />
@@ -253,7 +253,7 @@ export default function Cycles() {
                             </div>
                             <button className="close-btn" style={{ color: '#fff', opacity: 0.8 }} onClick={() => setShowCloseWarning(false)}>×</button>
                         </div>
-                        
+
                         <div className="modal-body" style={{ padding: '32px', background: 'var(--bg-card)' }}>
                             <div style={{ marginBottom: '24px' }}>
                                 <div style={{ fontSize: '14px', color: 'var(--text-primary)', lineHeight: '1.6', fontWeight: 500 }}>
@@ -263,25 +263,25 @@ export default function Cycles() {
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '320px', overflowY: 'auto', paddingRight: '4px' }}>
                                 {closeWarnings.map((w, i) => (
-                                    <div key={i} style={{ 
-                                        background: 'var(--bg-secondary)', 
-                                        borderRadius: '16px', 
-                                        padding: '16px', 
+                                    <div key={i} style={{
+                                        background: 'var(--bg-secondary)',
+                                        borderRadius: '16px',
+                                        padding: '16px',
                                         border: '1px solid var(--border)',
-                                        borderLeft: '4px solid #f59e0b'
+                                        borderLeft: '4px solid #3b82f6'
                                     }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                                            <span style={{ fontWeight: 700, fontSize: '11px', color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{w.type}</span>
-                                            <span style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', padding: '2px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 700 }}>{w.names.length}</span>
+                                            <span style={{ fontWeight: 700, fontSize: '11px', color: '#3b82f6', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{w.type}</span>
+                                            <span style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', padding: '2px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 700 }}>{w.names.length}</span>
                                         </div>
                                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                                             {w.names.map((name, idx) => (
-                                                <span key={idx} style={{ 
-                                                    background: 'var(--bg-primary)', 
-                                                    border: '1px solid var(--border)', 
-                                                    padding: '4px 10px', 
-                                                    borderRadius: '8px', 
-                                                    fontSize: '12px', 
+                                                <span key={idx} style={{
+                                                    background: 'var(--bg-primary)',
+                                                    border: '1px solid var(--border)',
+                                                    padding: '4px 10px',
+                                                    borderRadius: '8px',
+                                                    fontSize: '12px',
                                                     color: 'var(--text-secondary)',
                                                     fontWeight: 500
                                                 }}>
@@ -292,9 +292,9 @@ export default function Cycles() {
                                     </div>
                                 ))}
                             </div>
-                            
-                            <div style={{ marginTop: '24px', padding: '12px 16px', background: 'rgba(245, 158, 11, 0.05)', borderRadius: '12px', border: '1px solid rgba(245, 158, 11, 0.1)', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                                <Icons.Info style={{ color: '#f59e0b', width: '16px', height: '16px', marginTop: '2px', flexShrink: 0 }} />
+
+                            <div style={{ marginTop: '24px', padding: '12px 16px', background: 'rgba(59, 130, 246, 0.05)', borderRadius: '12px', border: '1px solid rgba(59, 130, 246, 0.15)', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                                <Icons.Info style={{ color: '#3b82f6', width: '16px', height: '16px', marginTop: '2px', flexShrink: 0 }} />
                                 <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.5' }}>
                                     Closing this cycle is an irreversible action. Records for the people listed above will be finalized in their current incomplete state.
                                 </p>
@@ -303,18 +303,18 @@ export default function Cycles() {
 
                         <div className="modal-footer" style={{ padding: '24px 32px', background: 'var(--bg-secondary)', borderTop: '1px solid var(--border)', display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
                             <button className="btn btn-secondary" style={{ padding: '10px 20px', borderRadius: '12px', fontWeight: 600 }} onClick={() => setShowCloseWarning(false)}>Go Back</button>
-                            <button className="btn" onClick={confirmClose} style={{ 
-                                background: '#f59e0b', 
-                                color: '#fff', 
-                                padding: '10px 24px', 
-                                borderRadius: '12px', 
-                                fontWeight: 700, 
+                            <button className="btn" onClick={confirmClose} style={{
+                                background: '#3b82f6',
+                                color: '#fff',
+                                padding: '10px 24px',
+                                borderRadius: '12px',
+                                fontWeight: 700,
                                 border: 'none',
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '8px',
                                 cursor: 'pointer',
-                                boxShadow: '0 4px 12px rgba(245, 158, 11, 0.3)'
+                                boxShadow: '0 4px 12px rgba(59, 130, 246, 0.35)'
                             }}>
                                 <Icons.Square style={{ width: '16px', height: '16px' }} /> Confirm & Close
                             </button>
