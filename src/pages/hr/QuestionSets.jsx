@@ -59,7 +59,7 @@ export default function QuestionSets() {
         setFormDesc(qs.description || '');
         setFormDesignations(qs.targetDesignations || []);
         setFormIsCommon(!!qs.isCommon);
-        
+
         const raw = qs.questions || [];
         if (raw.length > 0 && !raw[0].questions) {
             // Backward compatibility: If it's a flat list, put it in a "General" section
@@ -69,7 +69,7 @@ export default function QuestionSets() {
         } else {
             setFormSections(raw);
         }
-        
+
         setView('edit');
     };
 
@@ -125,7 +125,7 @@ export default function QuestionSets() {
 
     const handleSave = async () => {
         if (!formName.trim()) return alert('Please enter a set name.');
-        
+
         // Validation: At least one section and one question
         if (formSections.length === 0) return alert('Please add at least one section.');
         const totalQs = formSections.reduce((sum, s) => sum + s.questions.length, 0);
@@ -140,9 +140,9 @@ export default function QuestionSets() {
         }
 
         setSaving(true);
-        const payload = { 
-            name: formName.trim(), 
-            description: formDesc.trim(), 
+        const payload = {
+            name: formName.trim(),
+            description: formDesc.trim(),
             questions: formSections, // Storing as nested array
             targetDesignations: formDesignations,
             isCommon: formIsCommon
@@ -204,13 +204,13 @@ export default function QuestionSets() {
                             const qCount = isSectioned ? qs.questions.reduce((sum, s) => sum + s.questions.length, 0) : (qs.questions || []).length;
 
                             return (
-                                <div 
-                                    key={qs.id} 
-                                    className="card" 
-                                    style={{ 
-                                        display: 'flex', 
-                                        alignItems: 'center', 
-                                        justifyContent: 'space-between', 
+                                <div
+                                    key={qs.id}
+                                    className="card"
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
                                         gap: '16px',
                                         border: qs.isCommon ? '1px solid rgba(234, 179, 8, 0.4)' : '1px solid var(--border)',
                                         background: qs.isCommon ? 'linear-gradient(to right, rgba(234, 179, 8, 0.05), transparent)' : 'var(--bg-card)',
@@ -232,11 +232,11 @@ export default function QuestionSets() {
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                             <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--text-primary)' }}>{qs.name}</div>
                                             {qs.isCommon && (
-                                                <span className="badge" style={{ 
-                                                    fontSize: '10px', 
-                                                    background: 'rgba(234, 179, 8, 0.15)', 
-                                                    color: '#eab308', 
-                                                    border: '1px solid rgba(234, 179, 8, 0.3)', 
+                                                <span className="badge" style={{
+                                                    fontSize: '10px',
+                                                    background: 'rgba(234, 179, 8, 0.15)',
+                                                    color: '#eab308',
+                                                    border: '1px solid rgba(234, 179, 8, 0.3)',
                                                     padding: '2px 8px',
                                                     fontWeight: 700,
                                                     borderRadius: '12px',
@@ -249,7 +249,7 @@ export default function QuestionSets() {
                                             )}
                                         </div>
                                         {qs.description && <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>{qs.description}</div>}
-                                        
+
                                         <div style={{ marginTop: '10px', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
                                             <span style={{ fontSize: '11px', color: 'var(--text-muted)', background: 'var(--bg-secondary)', padding: '2px 8px', borderRadius: '4px' }}>
                                                 {sCount} Sections · {qCount} Questions
@@ -270,8 +270,8 @@ export default function QuestionSets() {
                                     </div>
                                     <div style={{ display: 'flex', gap: '8px', flexShrink: 0, alignItems: 'center' }}>
                                         {!isReadOnly && !qs.isCommon && (
-                                            <button 
-                                                className="btn btn-secondary" 
+                                            <button
+                                                className="btn btn-secondary"
                                                 onClick={() => handleSetCommon(qs.id)}
                                                 style={{ fontSize: '11px', padding: '6px 12px', borderColor: 'rgba(234, 179, 8, 0.3)', color: 'var(--text-secondary)' }}
                                             >
@@ -288,9 +288,9 @@ export default function QuestionSets() {
                                                     <button className="btn btn-secondary" onClick={() => setDeleteConfirm(null)} style={{ fontSize: '12px', padding: '6px 12px' }}>Cancel</button>
                                                 </div>
                                             ) : (
-                                                <button 
-                                                    className="btn btn-secondary" 
-                                                    onClick={() => setDeleteConfirm(qs.id)} 
+                                                <button
+                                                    className="btn btn-secondary"
+                                                    onClick={() => setDeleteConfirm(qs.id)}
                                                     disabled={qs.isCommon}
                                                     style={{ fontSize: '12px', padding: '6px 14px', color: qs.isCommon ? 'var(--text-muted)' : 'var(--red)', opacity: qs.isCommon ? 0.5 : 1 }}
                                                 >
@@ -354,7 +354,7 @@ export default function QuestionSets() {
                     Basic Configuration
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    <div className="form-grid" style={{ gap: '20px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                         <div>
                             <label className="form-label" style={{ fontWeight: 600 }}>Set Name *</label>
                             <input
@@ -379,38 +379,11 @@ export default function QuestionSets() {
                         </div>
                     </div>
 
-                    <label style={{
-                        display: 'flex', alignItems: 'center', gap: '14px', padding: '16px 20px',
-                        background: formIsCommon ? 'linear-gradient(to right, rgba(234, 179, 8, 0.08), transparent)' : 'var(--bg-secondary)',
-                        border: formIsCommon ? '1px solid rgba(234, 179, 8, 0.4)' : '1px solid var(--border)',
-                        borderRadius: '12px', cursor: isReadOnly ? 'default' : 'pointer', transition: 'all 0.2s',
-                        userSelect: 'none'
-                    }}>
-                        <input
-                            type="checkbox"
-                            checked={formIsCommon}
-                            onChange={(e) => setFormIsCommon(e.target.checked)}
-                            disabled={isReadOnly}
-                            style={{
-                                width: '20px', height: '20px', cursor: isReadOnly ? 'default' : 'pointer',
-                                accentColor: '#eab308'
-                            }}
-                        />
-                        <div>
-                            <div style={{ fontWeight: 700, fontSize: '15px', color: formIsCommon ? '#d97706' : 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                ⭐ Set as System Default
-                            </div>
-                            <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                                This question set will be assigned automatically to anyone whose job title is not mapped below.
-                            </div>
-                        </div>
-                    </label>
-
                     <div>
                         <label className="form-label" style={{ fontWeight: 600, marginBottom: '16px', display: 'block', color: 'var(--text-secondary)', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                             Target Job Titles (Designations)
                         </label>
-                        
+
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                             {/* Available Section */}
                             <div>
@@ -433,11 +406,11 @@ export default function QuestionSets() {
                                                     }
                                                 }}
                                                 className={`badge ${isSelected ? 'badge-primary' : 'badge-gray'}`}
-                                                style={{ 
+                                                style={{
                                                     border: '1px solid',
                                                     borderColor: isSelected ? 'var(--blue-light)' : 'var(--border)',
-                                                    cursor: isReadOnly ? 'not-allowed' : 'pointer', 
-                                                    padding: '8px 16px', 
+                                                    cursor: isReadOnly ? 'not-allowed' : 'pointer',
+                                                    padding: '8px 16px',
                                                     fontSize: '13px',
                                                     borderRadius: '10px',
                                                     transition: 'all 0.2s',
@@ -474,8 +447,8 @@ export default function QuestionSets() {
                                             <div
                                                 key={d.id}
                                                 title={`Currently used in "${busyDesignationsMap[d.name]}"`}
-                                                style={{ 
-                                                    padding: '6px 14px', 
+                                                style={{
+                                                    padding: '6px 14px',
                                                     fontSize: '12px',
                                                     borderRadius: '8px',
                                                     background: 'var(--bg-secondary)',
@@ -506,10 +479,10 @@ export default function QuestionSets() {
             {/* Sections Editor */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
                 {formSections.map((sec, secIdx) => (
-                    <div key={sec.id} className="section-container card" style={{ 
-                        padding: '32px', 
-                        borderRadius: '24px', 
-                        background: 'var(--bg-card)', 
+                    <div key={sec.id} className="section-container card" style={{
+                        padding: '32px',
+                        borderRadius: '24px',
+                        background: 'var(--bg-card)',
                         border: '1px solid var(--border)',
                         transition: 'all 0.3s ease',
                         position: 'relative',
@@ -523,11 +496,11 @@ export default function QuestionSets() {
                                     onChange={e => updateSectionTitle(sec.id, e.target.value)}
                                     placeholder={formSections.length > 1 ? `Section ${secIdx + 1} Title (e.g. Technical Skills)` : 'Section Title (Optional if only one)'}
                                     disabled={isReadOnly}
-                                    style={{ 
-                                        fontSize: '18px', 
-                                        fontWeight: 800, 
-                                        background: 'transparent', 
-                                        border: 'none', 
+                                    style={{
+                                        fontSize: '18px',
+                                        fontWeight: 800,
+                                        background: 'transparent',
+                                        border: 'none',
                                         padding: '0',
                                         color: 'var(--text-primary)',
                                         borderBottom: '2px solid transparent',
@@ -547,10 +520,10 @@ export default function QuestionSets() {
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                             {sec.questions.map((q, qIdx) => (
-                                <div key={q.id} className="question-card" style={{ 
-                                    padding: '20px', 
-                                    borderRadius: '16px', 
-                                    background: 'var(--bg-secondary)', 
+                                <div key={q.id} className="question-card" style={{
+                                    padding: '20px',
+                                    borderRadius: '16px',
+                                    background: 'var(--bg-secondary)',
                                     border: '1px solid var(--border)',
                                     position: 'relative',
                                     animation: 'slideIn 0.3s ease-out'
@@ -574,9 +547,9 @@ export default function QuestionSets() {
                                                 onBlur={e => updateQuestion(sec.id, q.id, 'label', e.target.value.trim())}
                                                 placeholder="Enter your question here..."
                                                 disabled={isReadOnly}
-                                                style={{ 
-                                                    background: 'var(--bg-card)', 
-                                                    fontWeight: 700, 
+                                                style={{
+                                                    background: 'var(--bg-card)',
+                                                    fontWeight: 700,
                                                     borderRadius: '12px',
                                                     minHeight: '100px',
                                                     padding: '16px',
@@ -597,10 +570,10 @@ export default function QuestionSets() {
                                             placeholder="Detailed prompt/description for the employee (Optional)..."
                                             disabled={isReadOnly}
                                             rows={2}
-                                            style={{ 
-                                                background: 'var(--bg-secondary)', 
-                                                resize: 'vertical', 
-                                                borderRadius: '10px', 
+                                            style={{
+                                                background: 'var(--bg-secondary)',
+                                                resize: 'vertical',
+                                                borderRadius: '10px',
                                                 fontSize: '13px',
                                                 padding: '12px 16px',
                                                 color: 'var(--text-secondary)',
@@ -613,10 +586,10 @@ export default function QuestionSets() {
                             ))}
 
                             {!isReadOnly && (
-                                <button className="btn btn-add" onClick={() => addQuestion(sec.id)} style={{ 
+                                <button className="btn btn-add" onClick={() => addQuestion(sec.id)} style={{
                                     padding: '16px',
-                                    border: '1px dashed var(--blue-light)', 
-                                    background: 'rgba(59, 130, 246, 0.02)', 
+                                    border: '1px dashed var(--blue-light)',
+                                    background: 'rgba(59, 130, 246, 0.02)',
                                     color: 'var(--blue-light)',
                                     borderRadius: '12px',
                                     fontWeight: 700,
@@ -632,13 +605,13 @@ export default function QuestionSets() {
                         </div>
                     </div>
                 ))}
-                
+
                 {!isReadOnly && (
-                    <button className="btn btn-add" onClick={addSection} style={{ 
+                    <button className="btn btn-add" onClick={addSection} style={{
                         marginTop: '12px',
                         padding: '24px',
-                        border: '2px dashed rgba(59, 130, 246, 0.3)', 
-                        background: 'rgba(59, 130, 246, 0.03)', 
+                        border: '2px dashed rgba(59, 130, 246, 0.3)',
+                        background: 'rgba(59, 130, 246, 0.03)',
                         color: 'var(--blue-light)',
                         borderRadius: '24px',
                         fontWeight: 800,

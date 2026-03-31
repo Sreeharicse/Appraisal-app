@@ -44,86 +44,86 @@ export default function Settings() {
 
 
             {/* Organization Data */}
-            <div className="form-grid" style={{ gap: '24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
 
-                    {/* Departments Section */}
-                    <div className="card">
-                        <div className="card-title" style={{ marginBottom: '16px' }}>Manage Departments</div>
+                {/* Departments Section */}
+                <div className="card">
+                    <div className="card-title" style={{ marginBottom: '16px' }}>Manage Departments</div>
 
-                        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-                            <input
-                                className="form-input"
-                                placeholder="New Department"
-                                value={newDept}
-                                onChange={e => setNewDept(e.target.value)}
-                                onKeyDown={e => e.key === 'Enter' && handleAddDepartment()}
-                            />
-                            <button className="btn btn-primary" onClick={handleAddDepartment} disabled={loadingAction || !newDept.trim()}>Add</button>
-                        </div>
-
-                        <div style={{ border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
-                            {departments.length === 0 ? (
-                                <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>No departments found.</div>
-                            ) : (
-                                departments.map(d => (
-                                    <div key={d.id} style={{
-                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                        padding: '12px 16px', borderBottom: '1px solid var(--border)',
-                                        background: 'var(--bg-secondary)'
-                                    }}>
-                                        <span style={{ fontWeight: 500, fontSize: '14px' }}>{d.name}</span>
-                                        <button
-                                            className="btn btn-danger btn-sm"
-                                            onClick={() => window.confirm(`Delete ${d.name}?`) && deleteDepartment(d.id)}
-                                            style={{ padding: '4px 8px' }}
-                                        >
-                                            Delete
-                                        </button>
-                                    </div>
-                                ))
-                            )}
-                        </div>
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                        <input
+                            className="form-input"
+                            placeholder="New Department"
+                            value={newDept}
+                            onChange={e => setNewDept(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && handleAddDepartment()}
+                        />
+                        <button className="btn btn-primary" onClick={handleAddDepartment} disabled={loadingAction || !newDept.trim()}>Add</button>
                     </div>
 
-                    {/* Job Titles Section */}
-                    <div className="card">
-                        <div className="card-title" style={{ marginBottom: '16px' }}>Manage Job Titles</div>
-
-                        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-                            <input
-                                className="form-input"
-                                placeholder="New Job Title"
-                                value={newDesig}
-                                onChange={e => setNewDesig(e.target.value)}
-                                onKeyDown={e => e.key === 'Enter' && handleAddDesignation()}
-                            />
-                            <button className="btn btn-primary" onClick={handleAddDesignation} disabled={loadingAction || !newDesig.trim()}>Add</button>
-                        </div>
-
-                        <div style={{ border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
-                            {designations.length === 0 ? (
-                                <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>No job titles found.</div>
-                            ) : (
-                                designations.map(d => (
-                                    <div key={d.id} style={{
-                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                        padding: '12px 16px', borderBottom: '1px solid var(--border)',
-                                        background: 'var(--bg-secondary)'
-                                    }}>
-                                        <span style={{ fontWeight: 500, fontSize: '14px' }}>{d.name}</span>
-                                        <button
-                                            className="btn btn-danger btn-sm"
-                                            onClick={() => window.confirm(`Delete ${d.name}?`) && deleteDesignation(d.id)}
-                                            style={{ padding: '4px 8px' }}
-                                        >
-                                            Delete
-                                        </button>
-                                    </div>
-                                ))
-                            )}
-                        </div>
+                    <div style={{ border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
+                        {departments.length === 0 ? (
+                            <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>No departments found.</div>
+                        ) : (
+                            departments.map(d => (
+                                <div key={d.id} style={{
+                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                    padding: '12px 16px', borderBottom: '1px solid var(--border)',
+                                    background: 'var(--bg-secondary)'
+                                }}>
+                                    <span style={{ fontWeight: 500, fontSize: '14px' }}>{d.name}</span>
+                                    <button
+                                        className="btn btn-danger btn-sm"
+                                        onClick={() => window.confirm(`Delete ${d.name}?`) && deleteDepartment(d.id)}
+                                        style={{ padding: '4px 8px' }}
+                                    >
+                                        Delete
+                                    </button>
+                                </div>
+                            ))
+                        )}
                     </div>
                 </div>
+
+                {/* Job Titles Section */}
+                <div className="card">
+                    <div className="card-title" style={{ marginBottom: '16px' }}>Manage Job Titles</div>
+
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                        <input
+                            className="form-input"
+                            placeholder="New Job Title"
+                            value={newDesig}
+                            onChange={e => setNewDesig(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && handleAddDesignation()}
+                        />
+                        <button className="btn btn-primary" onClick={handleAddDesignation} disabled={loadingAction || !newDesig.trim()}>Add</button>
+                    </div>
+
+                    <div style={{ border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
+                        {designations.length === 0 ? (
+                            <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>No job titles found.</div>
+                        ) : (
+                            designations.map(d => (
+                                <div key={d.id} style={{
+                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                    padding: '12px 16px', borderBottom: '1px solid var(--border)',
+                                    background: 'var(--bg-secondary)'
+                                }}>
+                                    <span style={{ fontWeight: 500, fontSize: '14px' }}>{d.name}</span>
+                                    <button
+                                        className="btn btn-danger btn-sm"
+                                        onClick={() => window.confirm(`Delete ${d.name}?`) && deleteDesignation(d.id)}
+                                        style={{ padding: '4px 8px' }}
+                                    >
+                                        Delete
+                                    </button>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }

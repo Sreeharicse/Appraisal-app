@@ -117,7 +117,7 @@ export default function Evaluate() {
     let COMPETENCY_QUESTIONS = TEMPLATE_QUESTIONS;
 
     const hasSnapshot = selfReview?.metadata?.questions && selfReview.metadata.questions.length > 0;
-    
+
     // Priority: Snapshot (Submitted/Draft) > Resolved Set
     if (isClosed || hasSnapshot) {
         if (hasSnapshot) {
@@ -312,23 +312,23 @@ export default function Evaluate() {
             <div>
                 <div className="card-title" style={{ marginBottom: '8px' }}>Competency Evaluation</div>
                 <p className="section-subtitle" style={{ marginBottom: '16px' }}>Compare employee self-ratings with your own assessment.</p>
-                
+
                 {grouped.map(({ title, questions }) => (
                     <div key={title} style={{ marginBottom: '40px' }}>
                         {/* Section Header */}
                         <div style={{
                             display: 'flex', alignItems: 'center', gap: '12px',
                             padding: '14px 20px', borderRadius: '14px', marginBottom: '24px',
-                            background: 'linear-gradient(90deg, var(--bg-secondary) 0%, var(--bg-card) 100%)', 
+                            background: 'linear-gradient(90deg, var(--bg-secondary) 0%, var(--bg-card) 100%)',
                             border: `1px solid var(--border)`,
                             borderLeft: `5px solid ${SECTION_COLORS[title] || 'var(--blue-light)'}`,
                             boxShadow: 'var(--nm-shadow-sm)'
                         }}>
-                            <span style={{ 
-                                fontSize: '24px', 
-                                background: 'var(--bg-card)', 
-                                width: '40px', height: '40px', 
-                                borderRadius: '10px', 
+                            <span style={{
+                                fontSize: '24px',
+                                background: 'var(--bg-card)',
+                                width: '40px', height: '40px',
+                                borderRadius: '10px',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 border: '1px solid var(--border)'
                             }}>
@@ -345,7 +345,7 @@ export default function Evaluate() {
                                 <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--blue-light)', marginBottom: '4px' }}>{q.label} <span style={{ color: '#ef4444', fontSize: '13px' }}>*</span></div>
                                 <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px', lineHeight: '1.4' }}>{q.desc}</div>
 
-                                <div className="form-grid" style={{ gap: '24px' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
                                     {/* Employee Part (Read-only) */}
                                     <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(56, 189, 248, 0.05)', border: '1px solid rgba(56, 189, 248, 0.1)' }}>
                                         <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '12px', color: 'var(--blue-light)', display: 'flex', alignItems: 'center', gap: '8px' }}>👤 Employee Perspective</div>

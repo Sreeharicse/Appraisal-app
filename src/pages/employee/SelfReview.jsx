@@ -104,7 +104,7 @@ export default function SelfReview() {
     const isActuallySubmitted = existingReview?.status === 'submitted' || existingReview?.status === 'approved';
 
     const hasSnapshot = existingReview?.metadata?.questions && existingReview.metadata.questions.length > 0;
-    
+
     // Priority: Snapshot (Submitted) > Resolved Set (Draft/New)
     // We only lock to the snapshot if it's actually submitted or the cycle is closed.
     // If it's a draft, ALWAYS prefer the live HR Mapping (TEMPLATE_QUESTIONS) so HR overrides apply perfectly.
@@ -315,16 +315,16 @@ export default function SelfReview() {
                         <div style={{
                             display: 'flex', alignItems: 'center', gap: '12px',
                             padding: '14px 20px', borderRadius: '14px', marginBottom: '24px',
-                            background: 'linear-gradient(90deg, var(--bg-secondary) 0%, var(--bg-card) 100%)', 
+                            background: 'linear-gradient(90deg, var(--bg-secondary) 0%, var(--bg-card) 100%)',
                             border: `1px solid var(--border)`,
                             borderLeft: `5px solid ${SECTION_COLORS[title] || 'var(--blue-light)'}`,
                             boxShadow: 'var(--nm-shadow-sm)'
                         }}>
-                            <span style={{ 
-                                fontSize: '24px', 
-                                background: 'var(--bg-card)', 
-                                width: '40px', height: '40px', 
-                                borderRadius: '10px', 
+                            <span style={{
+                                fontSize: '24px',
+                                background: 'var(--bg-card)',
+                                width: '40px', height: '40px',
+                                borderRadius: '10px',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 border: '1px solid var(--border)'
                             }}>
@@ -341,7 +341,7 @@ export default function SelfReview() {
                                 <div style={{ fontWeight: 700, fontSize: '18px', color: 'var(--blue-light)', marginBottom: '8px' }}>{q.label} <span style={{ color: '#ef4444', fontSize: '15px' }}>*</span></div>
                                 <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '24px', lineHeight: '1.5' }}>{q.desc}</div>
 
-                                <div className="form-grid" style={{ gap: '24px' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
                                     {/* Employee Section */}
                                     <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(56, 189, 248, 0.05)', border: '1px solid rgba(56, 189, 248, 0.1)' }}>
                                         <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '12px', color: 'var(--blue-light)', display: 'flex', alignItems: 'center', gap: '8px' }}>
