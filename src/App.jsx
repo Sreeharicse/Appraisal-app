@@ -26,7 +26,6 @@ import TeamReport from './pages/manager/TeamReport';
 import SelfReview from './pages/employee/SelfReview';
 import Results from './pages/employee/Results';
 import CycleDetail from './pages/employee/CycleDetail';
-import WireframeMockup from './pages/WireframeMockup';
 
 function ProtectedRoute({ children, allowedRoles }) {
   const { currentUser } = useApp();
@@ -64,8 +63,6 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={currentUser ? <Navigate to="/dashboard" replace /> : <Login />} />
-      <Route path="/wireframes" element={<WireframeMockup />} />
-
       {/* Unified Dashboard */}
       <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['all']}><Layout><UnifiedDashboard /></Layout></ProtectedRoute>} />
 

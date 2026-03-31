@@ -45,7 +45,7 @@ Render is fantastic if you want to host both the Frontend and the Backend Node.j
 1. Go to [Render.com](https://render.com) and log in.
 2. Go to **Blueprints** -> **New Blueprint Instance**.
 3. Connect your repository.
-4. Render will automatically read the `render.yaml` file and prompt you to fill in the missing Environment Variables (both for the static site and the SendGrid configuration).
+4. Render will automatically read the `render.yaml` file and prompt you to fill in the missing Environment Variables (both for the static site and the SMTP node server).
 5. Click **Apply** to launch both services instantly.
 
 ---
