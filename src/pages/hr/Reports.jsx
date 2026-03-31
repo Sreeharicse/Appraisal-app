@@ -2,7 +2,6 @@ import React, { useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import Icons from '../../components/Icons';
 import Avatar from '../../components/Avatar';
-import OrgChart from '../../components/OrgChart';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell, Legend
@@ -13,8 +12,6 @@ const COLORS = ['#10b981', '#06b6d4', '#7c3aed', '#f59e0b', '#ef4444'];
 export default function Reports() {
     const { users, cycles, evaluations, getScore, currentUser } = useApp();
     const [selectedCycleId, setSelectedCycleId] = React.useState('');
-    const [activeTab, setActiveTab] = React.useState('analytics'); // 'analytics' | 'orgchart'
-    const isAdmin = currentUser?.role === 'admin';
     const employees = useMemo(() => {
         if (currentUser?.role === 'admin') {
             return users.filter(u => u.role !== 'admin');
@@ -136,12 +133,12 @@ export default function Reports() {
                         Export CSV
                     </button>
                     <div style={{ position: 'relative', display: 'flex', alignItems: 'center', minWidth: '220px' }}>
-                        <div style={{ 
-                            position: 'absolute', 
-                            left: '14px', 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: '6px', 
+                        <div style={{
+                            position: 'absolute',
+                            left: '14px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
                             pointerEvents: 'none',
                             color: 'var(--text-muted)',
                             zIndex: 1
@@ -154,9 +151,9 @@ export default function Reports() {
                             value={selectedCycleId}
                             onChange={(e) => setSelectedCycleId(e.target.value)}
                             disabled={cycles.length === 0}
-                            style={{ 
-                                paddingLeft: '75px', 
-                                fontWeight: 700, 
+                            style={{
+                                paddingLeft: '75px',
+                                fontWeight: 700,
                                 fontSize: '13px',
                                 width: '100%',
                                 background: 'var(--bg-secondary)',
@@ -173,42 +170,7 @@ export default function Reports() {
                 </div>
             </div>
 
-            {/* Admin-only Tab Toggle */}
-            {isAdmin && (
-                <div style={{ display: 'flex', gap: '4px', background: 'var(--bg-secondary)', borderRadius: '12px', padding: '4px', marginBottom: '24px', alignSelf: 'flex-start' }}>
-                    {[{id:'analytics',label:'📊 Analytics'},{id:'orgchart',label:'🏢 Org Chart'}].map(tab => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            style={{
-                                padding: '8px 20px',
-                                borderRadius: '10px',
-                                border: 'none',
-                                cursor: 'pointer',
-                                fontSize: '13px',
-                                fontWeight: 700,
-                                transition: 'all 0.2s',
-                                background: activeTab === tab.id ? 'var(--bg-card)' : 'transparent',
-                                color: activeTab === tab.id ? 'var(--text-primary)' : 'var(--text-muted)',
-                                boxShadow: activeTab === tab.id ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
-                            }}
-                        >{tab.label}</button>
-                    ))}
-                </div>
-            )}
-
-            {/* ── Org Chart Tab ── */}
-            {activeTab === 'orgchart' && isAdmin && (
-                <OrgChart 
-                    users={users} 
-                    evaluations={evaluations} 
-                    activeCycle={activeCycle} 
-                    getScore={getScore} 
-                />
-            )}
-
-            {/* ── Analytics Tab ── */}
-            {(!isAdmin || activeTab === 'analytics') && employeeScores.length === 0 && (
+            {employeeScores.length === 0 && (
                 <div className="alert alert-warning" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px 20px', borderRadius: '12px' }}>
                     <Icons.Chart style={{ width: '20px', height: '20px', color: 'var(--yellow)' }} />
                     <div>
@@ -218,7 +180,7 @@ export default function Reports() {
                 </div>
             )}
 
-            {(!isAdmin || activeTab === 'analytics') && employeeScores.length > 0 && (
+            {employeeScores.length > 0 && (
                 <>
                     <div className="charts-grid" style={{ marginBottom: '24px' }}>
                         <div className="chart-card">
@@ -303,25 +265,23 @@ export default function Reports() {
                 </>
             )}
 
-            {/* All cycles summary — always visible on analytics tab */}
-            {(!isAdmin || activeTab === 'analytics') && (
-                <div className="table-container" style={{ marginTop: '24px' }}>
-                    <div className="table-header"><h3>📁 Appraisal History</h3></div>
-                    <table>
-                        <thead><tr><th>Cycle</th><th>Period</th><th>Status</th><th>Evaluations</th></tr></thead>
-                        <tbody>
-                            {cycles.map(c => (
-                                <tr key={c.id}>
-                                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{c.name}</td>
-                                    <td>{c.startDate} → {c.endDate}</td>
-                                    <td><span className={`badge ${c.status === 'active' ? 'badge-green' : c.status === 'closed' ? 'badge-red' : 'badge-gray'}`}>{c.status}</span></td>
-                                    <td>{evaluations.filter(e => e.cycleId === c.id).length} evaluations</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
+            {/* All cycles summary */}
+            <div className="table-container" style={{ marginTop: '24px' }}>
+                <div className="table-header"><h3>📁 Appraisal History</h3></div>
+                <table>
+                    <thead><tr><th>Cycle</th><th>Period</th><th>Status</th><th>Evaluations</th></tr></thead>
+                    <tbody>
+                        {cycles.map(c => (
+                            <tr key={c.id}>
+                                <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{c.name}</td>
+                                <td>{c.startDate} → {c.endDate}</td>
+                                <td><span className={`badge ${c.status === 'active' ? 'badge-green' : c.status === 'closed' ? 'badge-red' : 'badge-gray'}`}>{c.status}</span></td>
+                                <td>{evaluations.filter(e => e.cycleId === c.id).length} evaluations</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
         </div>
     );
 }
