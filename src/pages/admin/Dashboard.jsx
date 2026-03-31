@@ -62,7 +62,7 @@ export default function AdminDashboard() {
                     <p style={{ color: 'var(--text-secondary)', fontSize: '14px', lineHeight: '1.6', marginBottom: '24px' }}>
                         Use these tools to simulate different system states, generate mock reports, or test role-based access control.
                     </p>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div className="form-grid" style={{ gap: '12px' }}>
                         <button className="btn btn-secondary btn-sm" onClick={() => alert('Generating mock report...')}>Gen Mock Report</button>
                         <button className="btn btn-secondary btn-sm" onClick={() => alert('Validation triggered...')}>Sys Validation</button>
                     </div>

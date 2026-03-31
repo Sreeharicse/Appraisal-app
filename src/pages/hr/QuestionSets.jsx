@@ -354,7 +354,7 @@ export default function QuestionSets() {
                     Basic Configuration
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                    <div className="form-grid" style={{ gap: '20px' }}>
                         <div>
                             <label className="form-label" style={{ fontWeight: 600 }}>Set Name *</label>
                             <input

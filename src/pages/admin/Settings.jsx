@@ -44,7 +44,7 @@ export default function Settings() {
 
 
             {/* Organization Data */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+            <div className="form-grid" style={{ gap: '24px' }}>
 
                     {/* Departments Section */}
                     <div className="card">

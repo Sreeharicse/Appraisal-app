@@ -61,7 +61,13 @@ export default function Layout({ children }) {
     const links = ROLE_LINKS[currentUser?.role] || [];
     const [showNotifications, setShowNotifications] = useState(false);
     const [collapsed, setCollapsed] = useState(false);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const notifRef = useRef(null);
+
+    // Close mobile menu on route change
+    useEffect(() => {
+        setMobileMenuOpen(false);
+    }, [location.pathname]);
 
     // Filter notifications to ONLY the current user (important for fake mode locally!)
     const myNotifications = React.useMemo(() => {
@@ -116,7 +122,13 @@ export default function Layout({ children }) {
 
     return (
         <div className="app-shell" style={{ position: 'relative' }}>
-            <aside className="sidebar" style={{
+            {/* Mobile Sidebar Backdrop */}
+            <div 
+                className={`sidebar-backdrop ${mobileMenuOpen ? 'visible' : ''}`}
+                onClick={() => setMobileMenuOpen(false)}
+            />
+
+            <aside className={`sidebar ${mobileMenuOpen ? 'mobile-open' : ''}`} style={{
                 width: collapsed ? '64px' : 'var(--sidebar-width)',
                 transition: 'width 0.25s ease',
                 overflow: 'hidden',
@@ -202,6 +214,16 @@ export default function Layout({ children }) {
             <div className="main-content" style={{ marginLeft: collapsed ? '64px' : 'var(--sidebar-width)', transition: 'margin-left 0.25s ease' }}>
                 <div className="topbar">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        {/* Mobile Hamburger Menu */}
+                        <button
+                            className="mobile-menu-btn"
+                            onClick={() => setMobileMenuOpen(true)}
+                            title="Open Menu"
+                            style={{ display: 'none' }}
+                        >
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                        </button>
+
                         <button
                             onClick={() => setCollapsed(c => !c)}
                             title={collapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}

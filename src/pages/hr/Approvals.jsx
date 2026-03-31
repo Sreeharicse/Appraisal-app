@@ -144,7 +144,7 @@ export default function Approvals() {
                         </div>
 
                         {/* Two-Column Layout: Score Breakdown | HR Assessment */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                        <div className="form-grid" style={{ gap: '20px', marginBottom: '20px' }}>
 
                             {/* LEFT: Score Preview + Breakdown */}
                             <div style={{ background: 'var(--bg-secondary)', borderRadius: '14px', padding: '20px', border: '1px solid var(--border)' }}>
