@@ -158,7 +158,7 @@ export default function Layout({ children }) {
                         <NavLink
                             key={index}
                             to={link.to}
-                            end={link.to === '/dashboard'}
+                            end={link.to === '/dashboard' || link.to === '/manager'}
                             className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
                             title={collapsed ? link.label : ''}
                             style={{ justifyContent: collapsed ? 'center' : 'flex-start', gap: collapsed ? '0' : '12px' }}
