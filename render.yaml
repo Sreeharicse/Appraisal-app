@@ -36,15 +36,7 @@ services:
     buildCommand: npm install
     startCommand: npm start
     envVars:
-      - key: SMTP_HOST
+      - key: SENDGRID_API_KEY
         sync: false
-      - key: SMTP_PORT
+      - key: SENDGRID_FROM_EMAIL
         sync: false
-      - key: SMTP_SECURE
-        sync: false
-      - key: SMTP_USER
-        sync: false
-      - key: SMTP_PASS
-        sync: false
-      - key: PORT
-        value: 3001 # Render defaults to 10000, setting it here as well
