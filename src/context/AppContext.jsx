@@ -91,7 +91,7 @@ export function AppProvider({ children }) {
         ]);
 
         // Map snake_case DB columns → camelCase used by the UI
-        setUsers((profilesData || []).map(p => ({
+        const mappedUsers = (profilesData || []).map(p => ({
             id: p.id,
             name: p.name,
             email: p.email,
@@ -100,7 +100,8 @@ export function AppProvider({ children }) {
             designation: p.designation,
             avatar: p.avatar,
             managerId: p.manager_id,
-        })));
+        }));
+        setUsers(mappedUsers);
         setDepartments((departmentsData || []).map(d => ({ id: d.id, name: d.name })));
         setDesignations((designationsData || []).map(d => ({ id: d.id, name: d.name })));
         setCycles((cyclesData || []).map(c => ({
@@ -108,11 +109,51 @@ export function AppProvider({ children }) {
             name: c.name,
             startDate: c.start_date,
             endDate: c.end_date,
+            employeeEndDate: c.employee_end_date || c.end_date,
+            managerEndDate: c.manager_end_date || c.end_date,
             status: c.status,
             createdBy: c.created_by,
         })));
 
-        setSelfReviews((reviewsData || []).map(r => {
+        // Determine precise RBAC context
+        const fakeRole = localStorage.getItem('fake_session_role');
+        let activeUserId = null;
+        let activeUserRole = null;
+        
+        if (fakeRole) {
+             const fakeUsers = {
+                 'admin': 'admin-001',
+                 'hr': 'b065d8b6-fddf-4f21-a1d4-b26e23d40999',
+                 'manager': 'b7e82aea-1d9e-4765-82e1-802f40adcb26',
+                 'employee': '46342d06-791b-45e3-8ce2-a67eb322675c'
+             };
+             activeUserId = fakeUsers[fakeRole];
+             activeUserRole = fakeRole;
+        } else {
+             const { data: { session } } = await supabase.auth.getSession();
+             if (session) {
+                 activeUserId = session.user.id;
+                 const profile = mappedUsers.find(u => u.id === activeUserId);
+                 activeUserRole = profile?.role;
+             }
+        }
+        
+        const isAdminHr = activeUserRole === 'admin' || activeUserRole === 'hr';
+        const getReportees = (mgrId) => {
+            let res = [];
+            const dir = mappedUsers.filter(u => u.managerId === mgrId);
+            res.push(...dir);
+            dir.forEach(d => res.push(...getReportees(d.id)));
+            return res;
+        };
+        const allowedUserIds = new Set(activeUserId ? getReportees(activeUserId).map(u => u.id) : []);
+        if (activeUserId) allowedUserIds.add(activeUserId);
+        
+        const canView = (empId) => isAdminHr || allowedUserIds.has(empId);
+
+        setSelfReviews((reviewsData || [])
+            .filter(r => canView(r.employee_id))
+            .map(r => {
             let metadata = { status: 'draft' };
             try {
                 if (r.comments && r.comments.startsWith('{')) {
@@ -147,7 +188,9 @@ export function AppProvider({ children }) {
                 status: metadata.status || 'submitted'
             };
         }));
-        setEvaluations((evalsData || []).map(e => {
+        setEvaluations((evalsData || [])
+            .filter(e => canView(e.employee_id))
+            .map(e => {
             let metadata = {};
             try {
                 if (e.feedback && e.feedback.startsWith('{')) {
@@ -674,7 +717,7 @@ export function AppProvider({ children }) {
     // ──── Cycles CRUD ────
     const addCycle = async (cycle) => {
         if (localStorage.getItem('fake_session_role')) {
-            const mapped = { id: crypto.randomUUID(), name: cycle.name, startDate: cycle.startDate, endDate: cycle.endDate, status: cycle.status || 'draft', createdBy: currentUser?.id };
+            const mapped = { id: crypto.randomUUID(), name: cycle.name, startDate: cycle.startDate, endDate: cycle.endDate, employeeEndDate: cycle.employeeEndDate || cycle.endDate, managerEndDate: cycle.managerEndDate || cycle.endDate, status: cycle.status || 'draft', createdBy: currentUser?.id };
             setCycles(p => {
                 const updated = [...p, mapped];
                 localStorage.setItem('fake_cycles', JSON.stringify(updated));
@@ -700,6 +743,8 @@ export function AppProvider({ children }) {
             name: cycle.name,
             start_date: cycle.startDate,
             end_date: cycle.endDate,
+            employee_end_date: cycle.employeeEndDate || cycle.endDate,
+            manager_end_date: cycle.managerEndDate || cycle.endDate,
             status: cycle.status || 'draft',
             created_by: currentUser?.id,
         }).select().single();
@@ -708,7 +753,7 @@ export function AppProvider({ children }) {
             return null;
         }
         if (data) {
-            const mapped = { id: data.id, name: data.name, startDate: data.start_date, endDate: data.end_date, status: data.status, createdBy: data.created_by };
+            const mapped = { id: data.id, name: data.name, startDate: data.start_date, endDate: data.end_date, employeeEndDate: data.employee_end_date, managerEndDate: data.manager_end_date, status: data.status, createdBy: data.created_by };
             setCycles(p => [...p, mapped]);
 
             if (mapped.status === 'active') {
@@ -753,6 +798,8 @@ export function AppProvider({ children }) {
         if (updates.name !== undefined) dbUpdates.name = updates.name;
         if (updates.startDate !== undefined) dbUpdates.start_date = updates.startDate;
         if (updates.endDate !== undefined) dbUpdates.end_date = updates.endDate;
+        if (updates.employeeEndDate !== undefined) dbUpdates.employee_end_date = updates.employeeEndDate;
+        if (updates.managerEndDate !== undefined) dbUpdates.manager_end_date = updates.managerEndDate;
         if (updates.status !== undefined) dbUpdates.status = updates.status;
 
         const { error } = await supabase.from('cycles').update(dbUpdates).eq('id', id);

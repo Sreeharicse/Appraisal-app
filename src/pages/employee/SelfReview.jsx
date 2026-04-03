@@ -58,7 +58,11 @@ export default function SelfReview() {
 
     const cycle = cycles.find(c => c.id === selectedCycleId);
     const isSubmitted = status !== 'new' && status !== 'draft';
-    const isReadOnly = isSubmitted || (status === 'draft' && isLocked);
+    
+    const today = new Date().toISOString().split('T')[0];
+    const isOutsideDateWindow = cycle ? (today < cycle.startDate || today > (cycle.employeeEndDate || cycle.endDate)) : false;
+    
+    const isReadOnly = isSubmitted || (status === 'draft' && isLocked) || isOutsideDateWindow || cycle?.status !== 'active';
 
     // Load existing data when cycle or employee changes
     useEffect(() => {
@@ -502,7 +506,9 @@ export default function SelfReview() {
                     background: 'rgba(100,116,139,0.08)', border: '1px solid rgba(100,116,139,0.2)',
                     borderRadius: '12px', fontSize: '13px', color: 'var(--text-muted)'
                 }}>
-                    🔒 This review is {isSubmitted ? 'submitted and' : 'saved as a draft and'} <strong>read-only</strong>.
+                    🔒 This review is {isSubmitted ? 'submitted and' : (isOutsideDateWindow ? 'outside the submission window and' : 'saved as a draft and')} <strong>read-only</strong>. 
+                    {isOutsideDateWindow && ` (Window: ${cycle?.startDate} to ${cycle?.employeeEndDate || cycle?.endDate})`}
+                    {cycle?.status !== 'active' && ' The cycle is not currently active.'}
                 </div>}
 
                 <div style={{ minHeight: '400px' }}>

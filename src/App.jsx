@@ -72,7 +72,7 @@ function AppRoutes() {
       <Route path="/hr/cycle/:cycleId" element={<ProtectedRoute allowedRoles={['hr']}><Layout><HRCycleDetail /></Layout></ProtectedRoute>} />
       <Route path="/hr/employees" element={<ProtectedRoute allowedRoles={['hr', 'manager']}><Layout><Employees /></Layout></ProtectedRoute>} />
       <Route path="/hr/cycles" element={<ProtectedRoute allowedRoles={['hr']}><Layout><Cycles /></Layout></ProtectedRoute>} />
-      <Route path="/hr/approvals" element={<ProtectedRoute allowedRoles={['hr', 'admin']}><Layout><Approvals /></Layout></ProtectedRoute>} />
+      <Route path="/hr/approvals" element={<ProtectedRoute allowedRoles={['hr', 'admin', 'manager']}><Layout><Approvals /></Layout></ProtectedRoute>} />
       <Route path="/hr/reports" element={<ProtectedRoute allowedRoles={['hr']}><Layout><Reports /></Layout></ProtectedRoute>} />
 
       {/* Admin Routes */}

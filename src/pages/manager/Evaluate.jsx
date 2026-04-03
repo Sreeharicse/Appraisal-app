@@ -8,7 +8,7 @@ export default function Evaluate() {
     const navigate = useNavigate();
     const { currentUser, users, cycles, getEvaluation, selfReviews, evaluations, submitEvaluation, calculateScore, getCategory, refreshData } = useApp();
     const team = currentUser.role === 'admin'
-        ? users.filter(u => u.role === 'hr' || u.role === 'manager')
+        ? users.filter(u => u.id !== currentUser.id && (u.managerId === currentUser.id || !u.managerId))
         : users.filter(u => u.managerId === currentUser.id);
     const activeCycles = cycles.filter(c => c.status === 'active');
 
@@ -27,9 +27,13 @@ export default function Evaluate() {
     const [showRatingModal, setShowRatingModal] = useState(false);
     const [popupMessage, setPopupMessage] = useState({ title: '', body: '' });
 
+    const cycle = cycles.find(c => String(c.id) === String(selectedCycleId));
+    const today = new Date().toISOString().split('T')[0];
+    const isOutsideDateWindow = cycle ? (today <= (cycle.employeeEndDate || cycle.endDate) || today > (cycle.managerEndDate || cycle.endDate)) : false;
+
     // Once saved as 'pending_approval' or 'approved', the evaluation is permanently locked
     const isSubmitted = status === 'pending_approval' || status === 'approved';
-    const isReadOnly = isSubmitted || (status === 'draft' && isLocked);
+    const isReadOnly = isSubmitted || (status === 'draft' && isLocked) || isOutsideDateWindow || cycle?.status !== 'active';
 
     const [competencies, setCompetencies] = useState({});
     const [feedback, setFeedback] = useState('');
@@ -74,7 +78,6 @@ export default function Evaluate() {
         }
     }, [activeCycles, selectedCycleId]);
 
-    const cycle = cycles.find(c => String(c.id) === String(selectedCycleId));
     const emp = users.find(u => String(u.id) === String(selectedEmp));
     const selfReview = cycle && emp ? selfReviews.find(r => String(r.employeeId) === String(selectedEmp) && String(r.cycleId) === String(cycle.id)) : null;
     const empComps = selfReview?.metadata?.competencies || {};
@@ -599,7 +602,9 @@ export default function Evaluate() {
                             background: 'rgba(100,116,139,0.08)', border: '1px solid rgba(100,116,139,0.2)',
                             borderRadius: '12px', fontSize: '13px', color: 'var(--text-muted)'
                         }}>
-                            🔒 This evaluation is {isSubmitted ? 'submitted and' : 'saved as a draft and'} <strong>read-only</strong>.
+                            🔒 This evaluation is {isSubmitted ? 'submitted and' : (isOutsideDateWindow ? 'outside your review window and' : 'saved as a draft and')} <strong>read-only</strong>.
+                            {isOutsideDateWindow && ` (Your Window: After ${cycle?.employeeEndDate || cycle?.endDate} until ${cycle?.managerEndDate || cycle?.endDate})`}
+                            {cycle?.status !== 'active' && ' The cycle is not currently active.'}
                         </div>}
 
                         <div style={{ minHeight: '400px' }}>
