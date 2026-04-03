@@ -34,7 +34,66 @@ export default function Cycles() {
         }
         await updateCycle(c.id, { status: 'active' });
     };
-    const close = (c) => updateCycle(c.id, { status: 'closed' });
+    // --- State for Close Warning Modal ---
+    const [showCloseWarning, setShowCloseWarning] = useState(false);
+    const [cycleToClose, setCycleToClose] = useState(null);
+    const [closeWarnings, setCloseWarnings] = useState([]);
+
+    const handleClose = (c) => {
+        const allReviewers = users; // All roles: employee, hr, manager, admin
+        const warnings = [];
+
+        // 1. Users with no self-review at all for this cycle
+        const noReview = allReviewers.filter(u => !selfReviews.find(sr => sr.cycleId === c.id && sr.employeeId === u.id));
+        if (noReview.length > 0) {
+            warnings.push({ type: '❌ Missing Self-Review', names: noReview.map(u => `${u.name} (${u.role})`) });
+        }
+
+        // 2. Draft self-reviews (started but not submitted)
+        const drafts = selfReviews.filter(sr => sr.cycleId === c.id && sr.status === 'draft');
+        if (drafts.length > 0) {
+            const names = drafts.map(sr => {
+                const u = users.find(u => u.id === sr.employeeId);
+                return u ? `${u.name} (${u.role})` : null;
+            }).filter(Boolean);
+            warnings.push({ type: '📝 Draft Self-Reviews (Not Submitted)', names });
+        }
+
+        // 3. Users with submitted self-review but no manager evaluation
+        const submittedReviews = selfReviews.filter(sr => sr.cycleId === c.id && sr.status === 'submitted');
+        const noEval = submittedReviews.filter(sr => !evaluations.find(ev => ev.cycleId === c.id && ev.employeeId === sr.employeeId));
+        if (noEval.length > 0) {
+            const names = noEval.map(sr => {
+                const u = users.find(u => u.id === sr.employeeId);
+                return u ? `${u.name} (${u.role})` : null;
+            }).filter(Boolean);
+            warnings.push({ type: '⏳ Awaiting Manager Evaluation', names });
+        }
+
+        // 4. Evaluations pending HR/Admin approval
+        const pendingApprovals = evaluations.filter(ev => ev.cycleId === c.id && ev.status === 'pending_approval');
+        if (pendingApprovals.length > 0) {
+            const names = pendingApprovals.map(ev => {
+                const u = users.find(u => u.id === ev.employeeId);
+                return u ? `${u.name} (${u.role})` : null;
+            }).filter(Boolean);
+            warnings.push({ type: '🔔 Pending Approval', names });
+        }
+
+        if (warnings.length > 0) {
+            setCycleToClose(c);
+            setCloseWarnings(warnings);
+            setShowCloseWarning(true);
+        } else {
+            updateCycle(c.id, { status: 'closed' });
+        }
+    };
+    const confirmClose = () => {
+        updateCycle(cycleToClose.id, { status: 'closed' });
+        setShowCloseWarning(false);
+        setCycleToClose(null);
+        setCloseWarnings([]);
+    };
 
     // --- Deletion Handlers ---
     const handleDeleteClick = (c) => {
@@ -147,7 +206,7 @@ export default function Cycles() {
                                             </button>
                                         )}
                                         {c.status === 'active' && (
-                                            <button className="btn btn-secondary btn-sm" style={{ display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => close(c)}>
+                                            <button className="btn btn-secondary btn-sm" style={{ display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => handleClose(c)}>
                                                 <Icons.Square /> Close
                                             </button>
                                         )}
@@ -161,6 +220,92 @@ export default function Cycles() {
                     </tbody>
                 </table>
             </div>
+
+            {/* Cycle Close Warning Modal - Blue Theme */}
+            {showCloseWarning && cycleToClose && (
+                <div className="modal-overlay" style={{ zIndex: 9999, backdropFilter: 'blur(8px)', background: 'rgba(0,0,0,0.6)' }}>
+                    <div className="modal" style={{ maxWidth: '560px', borderRadius: '24px', border: 'none', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
+                        <div className="modal-header" style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', padding: '24px 32px', border: 'none' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <div style={{ background: 'rgba(255,255,255,0.2)', padding: '10px', borderRadius: '12px' }}>
+                                    <Icons.AlertTriangle style={{ color: '#fff', width: '24px', height: '24px' }} />
+                                </div>
+                                <div>
+                                    <h3 style={{ color: '#fff', fontSize: '20px', fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>Action Required</h3>
+                                    <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '12px', margin: '4px 0 0 0', fontWeight: 500 }}>Pending items detected in {cycleToClose.name}</p>
+                                </div>
+                            </div>
+                            <button className="close-btn" style={{ color: '#fff', opacity: 0.8 }} onClick={() => setShowCloseWarning(false)}>×</button>
+                        </div>
+
+                        <div className="modal-body" style={{ padding: '32px', background: 'var(--bg-card)' }}>
+                            <div style={{ marginBottom: '24px' }}>
+                                <div style={{ fontSize: '14px', color: 'var(--text-primary)', lineHeight: '1.6', fontWeight: 500 }}>
+                                    The following tasks must be completed or acknowledged before closing this cycle. Closing will lock all participant data.
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '320px', overflowY: 'auto', paddingRight: '4px' }}>
+                                {closeWarnings.map((w, i) => (
+                                    <div key={i} style={{
+                                        background: 'var(--bg-secondary)',
+                                        borderRadius: '16px',
+                                        padding: '16px',
+                                        border: '1px solid var(--border)',
+                                        borderLeft: '4px solid #3b82f6'
+                                    }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                            <span style={{ fontWeight: 700, fontSize: '11px', color: '#3b82f6', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{w.type}</span>
+                                            <span style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', padding: '2px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 700 }}>{w.names.length}</span>
+                                        </div>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                            {w.names.map((name, idx) => (
+                                                <span key={idx} style={{
+                                                    background: 'var(--bg-primary)',
+                                                    border: '1px solid var(--border)',
+                                                    padding: '4px 10px',
+                                                    borderRadius: '8px',
+                                                    fontSize: '12px',
+                                                    color: 'var(--text-secondary)',
+                                                    fontWeight: 500
+                                                }}>
+                                                    {name}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div style={{ marginTop: '24px', padding: '12px 16px', background: 'rgba(59, 130, 246, 0.05)', borderRadius: '12px', border: '1px solid rgba(59, 130, 246, 0.15)', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                                <Icons.Info style={{ color: '#3b82f6', width: '16px', height: '16px', marginTop: '2px', flexShrink: 0 }} />
+                                <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.5' }}>
+                                    Closing this cycle is an irreversible action. Records for the people listed above will be finalized in their current incomplete state.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="modal-footer" style={{ padding: '24px 32px', background: 'var(--bg-secondary)', borderTop: '1px solid var(--border)', display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                            <button className="btn btn-secondary" style={{ padding: '10px 20px', borderRadius: '12px', fontWeight: 600 }} onClick={() => setShowCloseWarning(false)}>Go Back</button>
+                            <button className="btn" onClick={confirmClose} style={{
+                                background: '#3b82f6',
+                                color: '#fff',
+                                padding: '10px 24px',
+                                borderRadius: '12px',
+                                fontWeight: 700,
+                                border: 'none',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                cursor: 'pointer',
+                                boxShadow: '0 4px 12px rgba(59, 130, 246, 0.35)'
+                            }}>
+                                <Icons.Square style={{ width: '16px', height: '16px' }} /> Confirm & Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Admin Delete Confirmation Modal */}
             {showDeleteConfirm && cycleToDelete && (
@@ -265,12 +410,12 @@ export default function Cycles() {
                             <div className="form-group">
                                 <label className="form-label">Status</label>
                                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                                    <div style={{ 
-                                        position: 'absolute', 
-                                        left: '14px', 
-                                        display: 'flex', 
-                                        alignItems: 'center', 
-                                        gap: '6px', 
+                                    <div style={{
+                                        position: 'absolute',
+                                        left: '14px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
                                         pointerEvents: 'none',
                                         color: 'var(--text-muted)',
                                         zIndex: 1
@@ -278,13 +423,13 @@ export default function Cycles() {
                                         <Icons.Cycles style={{ width: '14px', height: '14px' }} />
                                         <span style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '0.05em' }}>STATUS</span>
                                     </div>
-                                    <select 
-                                        className="form-select" 
-                                        value={form.status} 
+                                    <select
+                                        className="form-select"
+                                        value={form.status}
                                         onChange={e => setForm(p => ({ ...p, status: e.target.value }))}
-                                        style={{ 
-                                            paddingLeft: '85px', 
-                                            fontWeight: 700, 
+                                        style={{
+                                            paddingLeft: '85px',
+                                            fontWeight: 700,
                                             fontSize: '13px',
                                             width: '100%',
                                             background: 'var(--bg-secondary)',

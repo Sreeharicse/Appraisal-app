@@ -6,7 +6,7 @@ import Icons from '../../components/Icons';
 export default function Evaluate() {
     const { employeeId } = useParams();
     const navigate = useNavigate();
-    const { currentUser, users, cycles, getEvaluation, selfReviews, evaluations, submitEvaluation, calculateScore, getCategory, refreshData } = useApp();
+    const { currentUser, users, cycles, getEvaluation, selfReviews, evaluations, submitEvaluation, refreshData, questionSets, employeeOverrides } = useApp();
     const team = currentUser.role === 'admin'
         ? users.filter(u => u.id !== currentUser.id && (u.managerId === currentUser.id || !u.managerId))
         : users.filter(u => u.managerId === currentUser.id);
@@ -23,26 +23,21 @@ export default function Evaluate() {
     const [activeTab, setActiveTab] = useState(1);
     const [hasEdited, setHasEdited] = useState(false);
     const [showPopup, setShowPopup] = useState(false);
-    const [showEmpPicker, setShowEmpPicker] = useState(false);
     const [showRatingModal, setShowRatingModal] = useState(false);
     const [popupMessage, setPopupMessage] = useState({ title: '', body: '' });
 
+    // Find the currently selected cycle
     const cycle = cycles.find(c => String(c.id) === String(selectedCycleId));
-    const today = new Date().toISOString().split('T')[0];
-    const isOutsideDateWindow = cycle ? (today <= (cycle.employeeEndDate || cycle.endDate) || today > (cycle.managerEndDate || cycle.endDate)) : false;
+    const isClosed = cycle?.status === 'closed';
 
-    // Once saved as 'pending_approval' or 'approved', the evaluation is permanently locked
+    // Once saved as 'pending_approval' or 'approved', or if cycle is closed, the evaluation is permanently locked
     const isSubmitted = status === 'pending_approval' || status === 'approved';
-    const isReadOnly = isSubmitted || (status === 'draft' && isLocked) || isOutsideDateWindow || cycle?.status !== 'active';
+    const isReadOnly = isSubmitted || (status === 'draft' && isLocked) || isClosed;
 
     const [competencies, setCompetencies] = useState({});
     const [feedback, setFeedback] = useState('');
     const [finalRating, setFinalRating] = useState('');
     const [subRating, setSubRating] = useState('');
-
-    // Fallback for old fields
-    const [workRating, setWorkRating] = useState(0);
-    const [behaviorRating, setBehaviorRating] = useState(0);
 
     const TABS = [
         { id: 1, label: '🧩 Competencies' },
@@ -50,7 +45,7 @@ export default function Evaluate() {
         { id: 3, label: '💬 Feedback & Summary' }
     ];
 
-    const COMPETENCY_QUESTIONS = [
+    const DEFAULT_COMPETENCY_QUESTIONS = [
         { id: 'q1', label: '1. Quality of Work', desc: 'How consistently do you deliver high-quality work in your role? Describe how you ensure your tasks are completed accurately, efficiently, and meet the required standards.' },
         { id: 'q2', label: '2. Technical Competency', desc: 'Evaluate your technical skills required for your role. How effectively do you apply your technical knowledge to solve problems and complete assigned tasks?' },
         { id: 'q3', label: '3. Problem Solving', desc: 'Describe your ability to analyze problems and find effective solutions. Provide examples where you identified issues and implemented solutions that improved outcomes.' },
@@ -83,6 +78,52 @@ export default function Evaluate() {
     const empComps = selfReview?.metadata?.competencies || {};
     const isSelfReviewSubmitted = selfReview?.status === 'submitted' || selfReview?.status === 'approved';
 
+    // 2-Tier Question Set Resolution (mirrors SelfReview.jsx logic, but for the evaluated employee):
+    // Priority 1: Cycle-specific employee override (set by HR per employee per cycle)
+    // Priority 2: Job Title (designation) based mapping (global default)
+    const resolveEmpQuestionSet = (empId, cycleId) => {
+        const override = employeeOverrides?.find(
+            o => String(o.employeeId) === String(empId) && String(o.cycleId) === String(cycleId)
+        );
+        if (override) return questionSets.find(qs => qs.id === override.questionSetId) || null;
+
+        if (emp?.designation) {
+            const byDesignation = questionSets.find(qs => qs.targetDesignations?.includes(emp.designation));
+            if (byDesignation) return byDesignation;
+        }
+
+        // Priority 3: Common Question Set (Universal Default)
+        const commonSet = questionSets.find(qs => qs.isCommon);
+        if (commonSet) return commonSet;
+
+        // Priority 4: Smart Search (Set named "Common")
+        const namedCommon = questionSets.find(qs => qs.name.toLowerCase().includes('common'));
+        if (namedCommon) return namedCommon;
+
+        // Priority 5: First available set
+        return questionSets[0] || null;
+    };
+
+    const empAssignedSet = resolveEmpQuestionSet(selectedEmp, selectedCycleId);
+    const TEMPLATE_QUESTIONS = empAssignedSet ? empAssignedSet.questions : DEFAULT_COMPETENCY_QUESTIONS;
+
+    // Resolve question set: If cycle is closed OR review is already submitted, use the saved snapshot. 
+    // Otherwise, use the live designation-based template so HR edits still apply to drafts.
+    const isActuallySubmitted = selfReview?.status === 'submitted' || selfReview?.status === 'approved';
+
+    let COMPETENCY_QUESTIONS = TEMPLATE_QUESTIONS;
+
+    const hasSnapshot = selfReview?.metadata?.questions && selfReview.metadata.questions.length > 0;
+
+    // Priority: Snapshot (Submitted/Draft) > Resolved Set
+    if (isClosed || hasSnapshot) {
+        if (hasSnapshot) {
+            COMPETENCY_QUESTIONS = selfReview.metadata.questions;
+        } else if (isActuallySubmitted) {
+            COMPETENCY_QUESTIONS = DEFAULT_COMPETENCY_QUESTIONS;
+        }
+    }
+
     useEffect(() => {
         if (!selectedCycleId || !selectedEmp) return;
 
@@ -92,10 +133,15 @@ export default function Evaluate() {
 
         const ev = getEvaluation(selectedEmp, selectedCycleId);
 
+        // Flatten questions for initialization
+        const flatQs = (COMPETENCY_QUESTIONS.length > 0 && COMPETENCY_QUESTIONS[0].questions)
+            ? COMPETENCY_QUESTIONS.reduce((acc, s) => [...acc, ...s.questions], [])
+            : COMPETENCY_QUESTIONS;
+
         // Initialize manager competencies
         const loadedComps = ev?.metadata?.competencies || {};
         const initialComps = {};
-        COMPETENCY_QUESTIONS.forEach(q => {
+        flatQs.forEach(q => {
             initialComps[q.id] = loadedComps[q.id] || { rating: 0, comment: '' };
         });
         setCompetencies(initialComps);
@@ -103,8 +149,6 @@ export default function Evaluate() {
         setFeedback(ev?.feedback || '');
         setFinalRating(ev?.finalRating || '');
         setSubRating(ev?.subRating || '');
-        setWorkRating(ev?.workPerformanceRating || 0);
-        setBehaviorRating(ev?.behavioralRating || 0);
 
         if (ev) {
             setStatus(ev.status);
@@ -114,6 +158,7 @@ export default function Evaluate() {
             setStatus('new');
             setIsLocked(false);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedEmp, selectedCycleId, evaluations, selfReviews]);
 
     useEffect(() => {
@@ -127,7 +172,12 @@ export default function Evaluate() {
     useEffect(() => {
         if (isReadOnly || isSubmitted) return;
 
-        const ratings = Object.values(competencies).map(c => c.rating).filter(r => r > 0);
+        // Flatten questions for calculation
+        const flatQs = (COMPETENCY_QUESTIONS.length > 0 && COMPETENCY_QUESTIONS[0].questions)
+            ? COMPETENCY_QUESTIONS.reduce((acc, s) => [...acc, ...s.questions], [])
+            : COMPETENCY_QUESTIONS;
+
+        const ratings = flatQs.map(q => competencies[q.id]?.rating || 0).filter(r => r > 0);
         if (ratings.length > 0) {
             const avg = ratings.reduce((a, b) => a + b, 0) / ratings.length;
             // Round to 1 decimal place for the input field
@@ -135,7 +185,7 @@ export default function Evaluate() {
         } else {
             setSubRating('');
         }
-    }, [competencies, isReadOnly, isSubmitted]);
+    }, [competencies, isReadOnly, isSubmitted, COMPETENCY_QUESTIONS]);
 
     const handleEmpChange = (id) => {
         setSelectedEmp(id);
@@ -146,14 +196,19 @@ export default function Evaluate() {
         if (!selectedCycleId || !selectedEmp) return;
 
         if (finalStatus === 'pending_approval') {
+            // Flatten questions for validation
+            const flatQs = (COMPETENCY_QUESTIONS.length > 0 && COMPETENCY_QUESTIONS[0].questions)
+                ? COMPETENCY_QUESTIONS.reduce((acc, s) => [...acc, ...s.questions], [])
+                : COMPETENCY_QUESTIONS;
+
             // Validate all manager competencies have rating and comment
-            const unrated = COMPETENCY_QUESTIONS.filter(q => !competencies[q.id] || competencies[q.id].rating === 0);
+            const unrated = flatQs.filter(q => !competencies[q.id] || competencies[q.id].rating === 0);
             if (unrated.length > 0) {
                 alert('Please provide a rating for all competencies before submitting.');
                 setActiveTab(1);
                 return;
             }
-            const poorComments = COMPETENCY_QUESTIONS.filter(q => !competencies[q.id]?.comment || competencies[q.id].comment.trim().length < 20);
+            const poorComments = flatQs.filter(q => !competencies[q.id]?.comment || competencies[q.id].comment.trim().length < 20);
             if (poorComments.length > 0) {
                 alert('Please provide a detailed comment (min 20 chars) for all competencies.');
                 setActiveTab(1);
@@ -215,98 +270,149 @@ export default function Evaluate() {
     };
 
 
-    const renderCompetenciesTab = () => (
-        <div>
-            <div className="card-title" style={{ marginBottom: '8px' }}>Competency Evaluation</div>
-            <p className="section-subtitle" style={{ marginBottom: '16px' }}>Compare employee self-ratings with your own assessment.</p>
-            {COMPETENCY_QUESTIONS.map((q) => (
-                <div key={q.id} className="card" style={{ marginBottom: '12px', padding: '14px' }}>
-                    <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--blue-light)', marginBottom: '4px' }}>{q.label} <span style={{ color: '#ef4444', fontSize: '13px' }}>*</span></div>
-                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px', lineHeight: '1.4', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{q.desc}</div>
+    const renderCompetenciesTab = () => {
+        // Group questions by section.
+        let grouped = [];
+        if (COMPETENCY_QUESTIONS.length > 0 && COMPETENCY_QUESTIONS[0].questions) {
+            // New format: questions is an array of sections
+            grouped = COMPETENCY_QUESTIONS.map(s => ({
+                title: s.title,
+                questions: s.questions
+            }));
+        } else {
+            // Legacy flat format
+            const sections = [];
+            const seen = new Set();
+            COMPETENCY_QUESTIONS.forEach(q => {
+                const sec = q.section || 'Section 1';
+                if (!seen.has(sec)) { seen.add(sec); sections.push(sec); }
+            });
+            grouped = sections.map(sec => ({
+                title: sec,
+                questions: COMPETENCY_QUESTIONS.filter(q => (q.section || 'Section 1') === sec)
+            }));
+        }
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                        {/* Employee Part (Read-only) */}
-                        <div style={{ padding: '10px', borderRadius: '10px', background: 'rgba(56, 189, 248, 0.05)', border: '1px solid rgba(56, 189, 248, 0.1)' }}>
-                            <div style={{ fontWeight: 700, fontSize: '12px', marginBottom: '8px', color: 'var(--blue-light)' }}>👤 Employee Perspective</div>
-                            <div style={{ marginBottom: '8px' }}>
-                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '3px' }}>Self-Rating</div>
-                                <div style={{ padding: '5px 8px', background: 'var(--bg-secondary)', borderRadius: '6px', fontSize: '12px', fontWeight: 600 }}>
-                                    {RATING_OPTIONS.find(o => o.value === (empComps[q.id]?.rating || 0))?.label || 'Not rated'}
-                                </div>
-                            </div>
+        const SECTION_ICONS = {
+            'Job-specific': '💼', 'Problem-solving': '🧩', 'Leadership & Initiative': '🚀', 'Adaptability & Resilience': '🌱',
+            'Strategic Thinking': '🧠', 'Leadership & Ownership': '🏆', 'Decision Making': '📊', 'Innovation & Improvement': '🚀',
+            'Collaboration & Influence': '🤝', 'Performance & Results': '📈', 'Section 1': '📋'
+        };
+        const SECTION_COLORS = {
+            'Job-specific': '#3b82f6', 'Problem-solving': '#8b5cf6', 'Leadership & Initiative': '#10b981', 'Adaptability & Resilience': '#f59e0b',
+            'Strategic Thinking': '#c026d3', 'Leadership & Ownership': '#ea580c', 'Decision Making': '#0d9488', 'Innovation & Improvement': '#16a34a',
+            'Collaboration & Influence': '#db2777', 'Performance & Results': '#2563eb', 'Section 1': 'var(--blue-light)'
+        };
+
+        return (
+            <div>
+                <div className="card-title" style={{ marginBottom: '8px' }}>Competency Evaluation</div>
+                <p className="section-subtitle" style={{ marginBottom: '16px' }}>Compare employee self-ratings with your own assessment.</p>
+
+                {grouped.map(({ title, questions }) => (
+                    <div key={title} style={{ marginBottom: '40px' }}>
+                        {/* Section Header */}
+                        <div style={{
+                            display: 'flex', alignItems: 'center', gap: '12px',
+                            padding: '14px 20px', borderRadius: '14px', marginBottom: '24px',
+                            background: 'linear-gradient(90deg, var(--bg-secondary) 0%, var(--bg-card) 100%)',
+                            border: `1px solid var(--border)`,
+                            borderLeft: `5px solid ${SECTION_COLORS[title] || 'var(--blue-light)'}`,
+                            boxShadow: 'var(--nm-shadow-sm)'
+                        }}>
+                            <span style={{
+                                fontSize: '24px',
+                                background: 'var(--bg-card)',
+                                width: '40px', height: '40px',
+                                borderRadius: '10px',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                border: '1px solid var(--border)'
+                            }}>
+                                {SECTION_ICONS[title] || '📋'}
+                            </span>
                             <div>
-                                <div className="read-only-text" style={{ padding: '12px', paddingRight: '24px', background: 'var(--bg-secondary)', borderRadius: '8px', fontSize: '13px', height: '180px', maxHeight: '180px', overflowY: 'auto', fontStyle: empComps[q.id]?.comment ? 'normal' : 'italic', lineHeight: '1.5' }}>
-                                    {empComps[q.id]?.comment || 'No comments provided.'}
-                                </div>
+                                <div style={{ fontWeight: 900, fontSize: '18px', color: SECTION_COLORS[title] || 'var(--text-primary)', letterSpacing: '-0.02em' }}>{title}</div>
+                                <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>{questions.length} Questions for assessment</div>
                             </div>
                         </div>
 
-                        {/* Manager Part (Editable / Locked) */}
-                        <div style={{ padding: '10px', borderRadius: '10px', background: 'rgba(168, 85, 247, 0.05)', border: '1px solid rgba(168, 85, 247, 0.1)' }}>
-                            <div style={{ fontWeight: 700, fontSize: '12px', marginBottom: '8px', color: 'var(--purple)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                👨‍💼 Manager Perspective
-                                {isSubmitted && <span style={{ fontSize: '10px', background: 'rgba(10, 185, 129, 0.1)', color: '#10b981', padding: '1px 6px', borderRadius: '20px', fontWeight: 600 }}>✅ Submitted</span>}
-                                {!isSubmitted && status === 'draft' && <span style={{ fontSize: '10px', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', padding: '1px 6px', borderRadius: '20px', fontWeight: 600 }}>✍️ In Progress</span>}
+                        {questions.map((q) => (
+                            <div key={q.id} className="card" style={{ marginBottom: '12px', padding: '14px' }}>
+                                <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--blue-light)', marginBottom: '4px' }}>{q.label} <span style={{ color: '#ef4444', fontSize: '13px' }}>*</span></div>
+                                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px', lineHeight: '1.4' }}>{q.desc}</div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                                    {/* Employee Part (Read-only) */}
+                                    <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(56, 189, 248, 0.05)', border: '1px solid rgba(56, 189, 248, 0.1)' }}>
+                                        <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '12px', color: 'var(--blue-light)', display: 'flex', alignItems: 'center', gap: '8px' }}>👤 Employee Perspective</div>
+                                        <div style={{ marginBottom: '16px' }}>
+                                            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>Self-Rating</div>
+                                            <div style={{ padding: '10px 14px', background: 'var(--bg-secondary)', borderRadius: '8px', fontSize: '14px', fontWeight: 600, border: '1px solid var(--border)' }}>
+                                                {RATING_OPTIONS.find(o => o.value === (empComps[q.id]?.rating || 0))?.label || 'Not rated'}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div className="read-only-text" style={{ padding: '16px', paddingRight: '24px', background: 'var(--bg-secondary)', borderRadius: '10px', fontSize: '14px', height: '180px', maxHeight: '180px', overflowY: 'auto', fontStyle: empComps[q.id]?.comment ? 'normal' : 'italic', lineHeight: '1.5' }}>
+                                                {empComps[q.id]?.comment || 'No comments provided.'}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Manager Part (Editable / Locked) */}
+                                    <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(168, 85, 247, 0.05)', border: '1px solid rgba(168, 85, 247, 0.1)' }}>
+                                        <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '12px', color: 'var(--purple)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            👨‍💼 Manager Perspective
+                                            {isSubmitted && <span style={{ fontSize: '11px', background: 'rgba(10, 185, 129, 0.1)', color: '#10b981', padding: '2px 8px', borderRadius: '20px', fontWeight: 600 }}>✅ Submitted</span>}
+                                            {!isSubmitted && status === 'draft' && <span style={{ fontSize: '11px', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', padding: '2px 8px', borderRadius: '20px', fontWeight: 600 }}>✍️ In Progress</span>}
+                                        </div>
+                                        <div style={{ marginBottom: '16px' }}>
+                                            <label style={{ fontSize: '12px', color: isReadOnly ? 'var(--text-muted)' : 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Rating</label>
+                                            <select className="form-select" value={competencies[q.id]?.rating || 0}
+                                                disabled={isReadOnly}
+                                                style={{
+                                                    width: '100%',
+                                                    color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)',
+                                                    background: 'var(--bg-secondary)',
+                                                    opacity: 1,
+                                                    pointerEvents: isReadOnly ? 'none' : 'auto',
+                                                    cursor: isReadOnly ? 'not-allowed' : 'pointer'
+                                                }}
+                                                onChange={e => updateCompRating(q.id, parseInt(e.target.value))}>
+                                                {RATING_OPTIONS.map(opt => (
+                                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <textarea id={`comp-${q.id}`} className="form-input" placeholder={isSubmitted ? 'Submitted.' : (isLocked ? 'Draft locked...' : 'Manager feedback (min 20 chars)...')}
+                                                style={{
+                                                    width: '100%',
+                                                    height: '180px',
+                                                    minHeight: '180px',
+                                                    maxHeight: '180px',
+                                                    overflowY: 'auto',
+                                                    resize: 'none',
+                                                    fontSize: '14px',
+                                                    lineHeight: '1.5',
+                                                    color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)',
+                                                    background: 'var(--bg-secondary)',
+                                                    cursor: isReadOnly ? 'not-allowed' : 'text',
+                                                    padding: '16px'
+                                                }}
+                                                value={competencies[q.id]?.comment || ''}
+                                                readOnly={isReadOnly}
+                                                onChange={e => { if (!isReadOnly) updateCompComment(q.id, e.target.value); }}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div style={{ marginBottom: '8px' }}>
-                                <label style={{ fontSize: '11px', color: isReadOnly ? 'var(--text-muted)' : 'var(--text-secondary)', display: 'block', marginBottom: '3px' }}>Rating</label>
-                                <select className="form-select" value={competencies[q.id]?.rating || 0}
-                                    disabled={isReadOnly}
-                                    style={{
-                                        color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)',
-                                        background: 'var(--bg-secondary)',
-                                        opacity: 1,
-                                        fontSize: '12px',
-                                        padding: '5px 8px',
-                                        cursor: isReadOnly ? 'not-allowed' : 'pointer'
-                                    }}
-                                    onChange={e => updateCompRating(q.id, parseInt(e.target.value))}>
-                                    {RATING_OPTIONS.map(opt => (
-                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div>
-                                <textarea id={`comp-${q.id}`} className="form-input" placeholder={isSubmitted ? 'Submitted.' : (isLocked ? 'Draft locked...' : 'Manager feedback (min 20 chars)...')}
-                                    style={{
-                                        height: '180px',
-                                        minHeight: '180px',
-                                        maxHeight: '180px',
-                                        overflowY: 'auto',
-                                        resize: 'none',
-                                        fontSize: '13px',
-                                        lineHeight: '1.5',
-                                        color: isReadOnly ? 'var(--text-muted)' : 'var(--text-primary)',
-                                        background: 'var(--bg-secondary)',
-                                        cursor: isReadOnly ? 'not-allowed' : 'text',
-                                        padding: '12px'
-                                    }}
-                                    value={competencies[q.id]?.comment || ''}
-                                    readOnly={isReadOnly}
-                                    onChange={e => { if (!isReadOnly) updateCompComment(q.id, e.target.value); }}
-                                />
-                            </div>
-                        </div>
+                        ))}
                     </div>
-                </div>
-            ))}
-        </div>
-    );
-
-    const renderManagerReadOnlyBox = (content, placeholder) => (
-        <div className="read-only-text" style={{
-            padding: '12px',
-            background: 'rgba(168, 85, 247, 0.05)',
-            border: '1px solid rgba(168, 85, 247, 0.1)',
-            borderRadius: '12px',
-            height: '180px',
-            overflowY: 'scroll',
-            paddingRight: '36px',
-            color: content ? 'var(--text-primary)' : 'var(--text-muted)'
-        }}>
-            {content || placeholder}
-        </div>
-    );
+                ))}
+            </div>
+        );
+    };
 
     const renderEmployeeReadOnlyTab = (title, subtitle, content, placeholder) => (
         <div className="card" style={{ marginBottom: '32px', padding: '24px' }}>
@@ -363,6 +469,12 @@ export default function Evaluate() {
                     }}>
                         ✅ Evaluation Submitted &amp; Locked
                     </div>
+                ) : isClosed ? (
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px' }}>
+                        <button type="button" className="btn btn-primary" disabled style={{ padding: '16px 64px', fontWeight: 700, fontSize: '16px', opacity: 0.7 }}>
+                            🔒 Closed
+                        </button>
+                    </div>
                 ) : (
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px' }}>
                         {status === 'draft' && isLocked ? (
@@ -371,10 +483,15 @@ export default function Evaluate() {
                             </button>
                         ) : (
                             <button type="button" className="btn btn-primary" style={{ padding: '16px 64px', fontWeight: 700, fontSize: '16px' }} onClick={() => {
+                                // Flatten questions for pre-validation
+                                const flatQs = (COMPETENCY_QUESTIONS.length > 0 && COMPETENCY_QUESTIONS[0].questions)
+                                    ? COMPETENCY_QUESTIONS.reduce((acc, s) => [...acc, ...s.questions], [])
+                                    : COMPETENCY_QUESTIONS;
+
                                 // Pre-validate before opening the modal
-                                const unrated = COMPETENCY_QUESTIONS.filter(q => !competencies[q.id] || competencies[q.id].rating === 0);
+                                const unrated = flatQs.filter(q => !competencies[q.id] || competencies[q.id].rating === 0);
                                 if (unrated.length > 0) { alert('Please provide a rating for all competencies before submitting.'); setActiveTab(1); return; }
-                                const poorComments = COMPETENCY_QUESTIONS.filter(q => !competencies[q.id]?.comment || competencies[q.id].comment.trim().length < 20);
+                                const poorComments = flatQs.filter(q => !competencies[q.id]?.comment || competencies[q.id].comment.trim().length < 20);
                                 if (poorComments.length > 0) { alert('Please provide a detailed comment (min 20 chars) for all competencies.'); setActiveTab(1); return; }
                                 if (!feedback || feedback.trim().length < 20) { alert('Please provide a detailed final assessment (min 20 chars).'); return; }
                                 setShowRatingModal(true);
@@ -419,6 +536,7 @@ export default function Evaluate() {
             'No feedback provided.'
         )
     );
+    // No topBarAction used anymore here
 
     const renderTabContent = () => {
         switch (activeTab) {
@@ -481,37 +599,29 @@ export default function Evaluate() {
                     </div>
                 </div>
 
-                {/* Right: Cycle dropdown + Back + Save Draft */}
+                {/* Right: Cycle dropdown + Back Draft Button */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    {!isSubmitted && (
-                        <button 
-                            type="button" 
-                            className="btn btn-secondary" 
+
+                    {/* Draft Button */}
+                    {!isSubmitted && !isClosed && selectedEmp && isSelfReviewSubmitted && (
+                        <button
+                            className="btn btn-secondary"
                             onClick={() => handleSubmit('draft')}
-                            style={{ 
-                                padding: '8px 16px', 
-                                fontSize: '13px', 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                gap: '8px',
-                                background: 'rgba(168, 85, 247, 0.05)',
-                                border: '1px solid rgba(168, 85, 247, 0.1)',
-                                color: 'var(--purple)',
-                                fontWeight: 700
-                            }}
+                            style={{ height: '42px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)' }}
                         >
-                            💾 Save Draft
+                            <span style={{ fontSize: '16px' }}>💾</span>
+                            {status === 'new' ? 'Save Draft' : 'Update Draft'}
                         </button>
                     )}
 
                     {/* Cycle dropdown */}
                     <div style={{ position: 'relative', display: 'flex', alignItems: 'center', minWidth: '220px' }}>
-                        <div style={{ 
-                            position: 'absolute', 
-                            left: '14px', 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: '6px', 
+                        <div style={{
+                            position: 'absolute',
+                            left: '14px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
                             pointerEvents: 'none',
                             color: 'var(--text-muted)',
                             zIndex: 1
@@ -519,13 +629,13 @@ export default function Evaluate() {
                             <Icons.Cycles style={{ width: '14px', height: '14px' }} />
                             <span style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '0.05em' }}>CYCLE</span>
                         </div>
-                        <select 
-                            className="form-select" 
-                            value={selectedCycleId} 
+                        <select
+                            className="form-select"
+                            value={selectedCycleId}
                             onChange={e => { setSelectedCycleId(e.target.value); setStatus('draft'); setHasEdited(false); }}
-                            style={{ 
-                                paddingLeft: '75px', 
-                                fontWeight: 700, 
+                            style={{
+                                paddingLeft: '75px',
+                                fontWeight: 700,
                                 fontSize: '13px',
                                 width: '100%',
                                 background: 'var(--bg-secondary)',
@@ -533,8 +643,8 @@ export default function Evaluate() {
                             }}
                         >
                             <option value="">Select Cycle...</option>
-                            {cycles.map(c => (
-                                <option key={c.id} value={c.id}>{c.name}</option>
+                            {cycles.filter(c => c.status !== 'draft').map(c => (
+                                <option key={c.id} value={c.id}>{c.name} {c.status === 'closed' ? '(Closed)' : ''}</option>
                             ))}
                         </select>
                     </div>
@@ -602,9 +712,7 @@ export default function Evaluate() {
                             background: 'rgba(100,116,139,0.08)', border: '1px solid rgba(100,116,139,0.2)',
                             borderRadius: '12px', fontSize: '13px', color: 'var(--text-muted)'
                         }}>
-                            🔒 This evaluation is {isSubmitted ? 'submitted and' : (isOutsideDateWindow ? 'outside your review window and' : 'saved as a draft and')} <strong>read-only</strong>.
-                            {isOutsideDateWindow && ` (Your Window: After ${cycle?.employeeEndDate || cycle?.endDate} until ${cycle?.managerEndDate || cycle?.endDate})`}
-                            {cycle?.status !== 'active' && ' The cycle is not currently active.'}
+                            🔒 This evaluation is {isSubmitted ? 'submitted and' : 'saved as a draft and'} <strong>read-only</strong>.
                         </div>}
 
                         <div style={{ minHeight: '400px' }}>

@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import Icons from '../../components/Icons';
+import Avatar from '../../components/Avatar';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell, Legend
@@ -36,6 +37,38 @@ export default function Reports() {
         const scoreData = activeCycle ? getScore(emp.id, activeCycle.id) : null;
         return { ...emp, scoreData };
     }).filter(e => e.scoreData);
+
+    const allEmployeesData = useMemo(() => {
+        return employees.map(emp => {
+            const ev = activeCycle ? evaluations.find(e => e.employeeId === emp.id && e.cycleId === activeCycle.id) : null;
+            let pipelineStatus = 'not_started';
+            let statusObj = { label: 'Not Started', badge: 'badge-gray', pendingAction: 'Employee' };
+            
+            if (ev) {
+                pipelineStatus = ev.status;
+                if (ev.status === 'draft') {
+                    statusObj = { label: 'Draft', badge: 'badge-yellow', pendingAction: 'Employee' };
+                } else if (ev.status === 'submitted') {
+                    statusObj = { label: 'Ready for Eval', badge: 'badge-blue', pendingAction: 'Manager' };
+                } else if (ev.status === 'evaluated') {
+                    statusObj = { label: 'Pending Approval', badge: 'badge-purple', pendingAction: 'HR / Admin' };
+                } else if (ev.status === 'approved') {
+                    statusObj = { label: 'Completed', badge: 'badge-green', pendingAction: 'None' };
+                }
+            }
+            
+            const scoreData = (ev?.status === 'approved' && activeCycle) ? getScore(emp.id, activeCycle.id) : null;
+            return { ...emp, ev, pipelineStatus, statusObj, scoreData };
+        });
+    }, [employees, evaluations, activeCycle, getScore]);
+
+    const summaryCounts = useMemo(() => {
+        const counts = { not_started: 0, draft: 0, submitted: 0, evaluated: 0, approved: 0 };
+        allEmployeesData.forEach(e => {
+            if (counts[e.pipelineStatus] !== undefined) counts[e.pipelineStatus]++;
+        });
+        return counts;
+    }, [allEmployeesData]);
 
     // Histogram chart data (Score Distribution)
     const scoreBuckets = {
@@ -132,12 +165,12 @@ export default function Reports() {
                         Export CSV
                     </button>
                     <div style={{ position: 'relative', display: 'flex', alignItems: 'center', minWidth: '220px' }}>
-                        <div style={{ 
-                            position: 'absolute', 
-                            left: '14px', 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: '6px', 
+                        <div style={{
+                            position: 'absolute',
+                            left: '14px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
                             pointerEvents: 'none',
                             color: 'var(--text-muted)',
                             zIndex: 1
@@ -150,9 +183,9 @@ export default function Reports() {
                             value={selectedCycleId}
                             onChange={(e) => setSelectedCycleId(e.target.value)}
                             disabled={cycles.length === 0}
-                            style={{ 
-                                paddingLeft: '75px', 
-                                fontWeight: 700, 
+                            style={{
+                                paddingLeft: '75px',
+                                fontWeight: 700,
                                 fontSize: '13px',
                                 width: '100%',
                                 background: 'var(--bg-secondary)',
@@ -169,8 +202,50 @@ export default function Reports() {
                 </div>
             </div>
 
+            {/* Pipeline Summary Cards */}
+            {activeCycle && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '32px' }}>
+                    
+                    <div className="stat-card" style={{ padding: '20px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px' }}>
+                        <div style={{ color: 'var(--text-muted)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Not Started</div>
+                        <div style={{ fontSize: '32px', fontWeight: 800, color: 'var(--text-primary)', marginTop: '8px' }}>{summaryCounts.not_started}</div>
+                    </div>
+
+                    <div className="stat-card" style={{ padding: '20px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', position: 'relative', overflow: 'hidden' }}>
+                        <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '4px', background: '#f59e0b' }} />
+                        <div style={{ color: 'var(--text-muted)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Drafts</div>
+                        <div style={{ fontSize: '32px', fontWeight: 800, color: '#f59e0b', marginTop: '8px' }}>{summaryCounts.draft}</div>
+                    </div>
+
+                    <div className="stat-card" style={{ padding: '20px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', position: 'relative', overflow: 'hidden' }}>
+                        <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '4px', background: '#3b82f6' }} />
+                        <div style={{ color: 'var(--text-muted)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Awaiting Manager</div>
+                        <div style={{ fontSize: '32px', fontWeight: 800, color: '#3b82f6', marginTop: '8px' }}>{summaryCounts.submitted}</div>
+                    </div>
+
+                    <div className="stat-card" style={{ padding: '20px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', position: 'relative', overflow: 'hidden' }}>
+                        <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '4px', background: '#a855f7' }} />
+                        <div style={{ color: 'var(--text-muted)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Awaiting HR</div>
+                        <div style={{ fontSize: '32px', fontWeight: 800, color: '#a855f7', marginTop: '8px' }}>{summaryCounts.evaluated}</div>
+                    </div>
+
+                    <div className="stat-card" style={{ padding: '20px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', position: 'relative', overflow: 'hidden' }}>
+                        <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '4px', background: '#10b981' }} />
+                        <div style={{ color: 'var(--text-muted)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Completed</div>
+                        <div style={{ fontSize: '32px', fontWeight: 800, color: '#10b981', marginTop: '8px' }}>{summaryCounts.approved}</div>
+                    </div>
+
+                </div>
+            )}
+
             {employeeScores.length === 0 && (
-                <div className="alert alert-warning">⚠️ No evaluated employees yet. Scores will appear once managers submit evaluations.</div>
+                <div className="alert alert-warning" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px 20px', borderRadius: '12px' }}>
+                    <Icons.Chart style={{ width: '20px', height: '20px', color: 'var(--yellow)' }} />
+                    <div>
+                        <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '2px' }}>Analytics Pending Approval</div>
+                        <div style={{ fontSize: '12px', opacity: 0.8 }}>Score distributions and performance charts will be available here once appraisals are officially <b>approved by HR</b>.</div>
+                    </div>
+                </div>
             )}
 
             {employeeScores.length > 0 && (
@@ -217,41 +292,71 @@ export default function Reports() {
                         </div>
                     </div>
 
-                    {/* Individual Score Table */}
-                    <div className="table-container">
-                        <div className="table-header"><h3>Individual Reports</h3></div>
+                    {/* Comprehensive Pipeline Table */}
+                    <div className="table-container" style={{ marginTop: '24px' }}>
+                        <div className="table-header">
+                            <div>
+                                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700 }}>Comprehensive Pipeline Report</h3>
+                                <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: 'var(--text-muted)' }}>Status tracking for all employees in the current cycle</p>
+                            </div>
+                        </div>
                         <table>
                             <thead>
-                                <tr><th>Employee</th><th>Role</th><th>Department</th><th>Score</th><th>Category</th><th>Status</th></tr>
+                                <tr>
+                                    <th>Employee</th>
+                                    <th>Role</th>
+                                    <th>Department</th>
+                                    <th>Pipeline Status</th>
+                                    <th>Pending Action From</th>
+                                    <th>Final Score</th>
+                                </tr>
                             </thead>
                             <tbody>
-                                {employeeScores.map(emp => {
+                                {allEmployeesData.map(emp => (
+                                    <tr key={emp.id}>
+                                        <td>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <Avatar avatarData={emp.avatar} name={emp.name} size={28} />
+                                                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{emp.name}</span>
+                                            </div>
+                                        </td>
+                                        <td><span className={`badge ${emp.role === 'hr' ? 'badge-purple' : emp.role === 'manager' ? 'badge-blue' : 'badge-gray'}`} style={{ textTransform: 'capitalize' }}>{emp.role}</span></td>
+                                        <td>{emp.department}</td>
+                                        
+                                        <td>
+                                            <span className={`badge ${emp.statusObj.badge}`} style={{ 
+                                                display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                                boxShadow: emp.pipelineStatus === 'approved' ? '0 2px 8px rgba(16,185,129,0.2)' : 'none' 
+                                            }}>
+                                                {emp.pipelineStatus === 'approved' && <Icons.Check style={{ width: '12px', height: '12px' }} />}
+                                                {emp.statusObj.label}
+                                            </span>
+                                        </td>
+                                        
+                                        <td>
+                                            {emp.statusObj.pendingAction !== 'None' ? (
+                                                <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                                                    {emp.statusObj.pendingAction}
+                                                </span>
+                                            ) : (
+                                                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>-</span>
+                                            )}
+                                        </td>
 
-                                    const ev = evaluations.find(e => e.employeeId === emp.id && e.cycleId === activeCycle?.id);
-                                    return (
-                                        <tr key={emp.id}>
-                                            <td>
+                                        <td>
+                                            {emp.scoreData ? (
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                    <div className="avatar" style={{ width: '28px', height: '28px', fontSize: '11px' }}>{emp.avatar}</div>
-                                                    <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{emp.name}</span>
+                                                    <div style={{ fontWeight: 800, fontSize: '16px', color: 'var(--purple-light)' }}>
+                                                        {emp.scoreData.score}
+                                                    </div>
+                                                    <span className={`badge ${emp.scoreData.category.badge}`}>{emp.scoreData.category.label}</span>
                                                 </div>
-                                            </td>
-                                            <td><span className={`badge ${emp.role === 'hr' ? 'badge-purple' : emp.role === 'manager' ? 'badge-blue' : 'badge-gray'}`} style={{ textTransform: 'capitalize' }}>{emp.role}</span></td>
-                                            <td>{emp.department}</td>
-
-                                            <td>
-                                                <div style={{ fontWeight: 800, fontSize: '18px', color: 'var(--purple-light)' }}>
-                                                    {emp.scoreData.score}
-                                                </div>
-                                                <div className="progress-bar" style={{ width: '80px' }}>
-                                                    <div className="progress-fill" style={{ width: `${emp.scoreData.score}%` }} />
-                                                </div>
-                                            </td>
-                                            <td><span className={`badge ${emp.scoreData.category.badge}`}>{emp.scoreData.category.label}</span></td>
-                                            <td><span className={`badge ${ev?.status === 'approved' ? 'badge-green' : 'badge-yellow'}`}>{ev?.status?.replace('_', ' ') || 'pending'}</span></td>
-                                        </tr>
-                                    );
-                                })}
+                                            ) : (
+                                                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Pending</span>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
                             </tbody>
                         </table>
                     </div>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { calculateScore } from '../../context/AppContext';
 import Icons from '../../components/Icons';
+import Avatar from '../../components/Avatar';
 
 const StarRating = ({ value, onChange, readonly = false }) => {
     return (
@@ -68,10 +69,10 @@ export default function Approvals() {
     const getCurrentApproverId = (ev) => {
         let currentApproverId = users.find(u => u.id === ev.managerId)?.managerId;
         const evApprovals = approvals.filter(a => String(a.evalId) === String(ev.id));
-        
+
         // Follow the approval chain
         let hasMoreApprovers = true;
-        while(currentApproverId && hasMoreApprovers) {
+        while (currentApproverId && hasMoreApprovers) {
             const hasApproved = evApprovals.some(a => a.approvedBy === currentApproverId);
             if (hasApproved) {
                 currentApproverId = users.find(u => u.id === currentApproverId)?.managerId;
@@ -84,7 +85,7 @@ export default function Approvals() {
 
     const filterByRole = (ev) => {
         const currentApproverId = getCurrentApproverId(ev);
-        
+
         if (currentUser.role === 'manager') {
             return currentApproverId === currentUser.id;
         }
@@ -102,7 +103,7 @@ export default function Approvals() {
 
     const handleApprove = (evalId) => {
         const currentApproverId = getCurrentApproverId(evaluations.find(e => e.id === evalId));
-        
+
         // If manager is approving (not final step)
         if (currentApproverId && currentUser.role === 'manager') {
             approveEvaluation(evalId, comment[evalId] || '', 0, true); // true = isIntermediate
@@ -148,15 +149,11 @@ export default function Approvals() {
                 const avgHr = getAvgHrRating(ev.id);
                 const allRated = avgHr > 0;
 
-                // Calculate live preview score using Core vs. Behavioral weighting
+                // Calculate live preview score using new flat 70/20/10 formula
                 const comps = ev.metadata?.competencies || {};
-                const CORE_IDS = ['q1', 'q2', 'q3', 'q4'];
-                const BEHAVIORAL_IDS = ['q5', 'q6', 'q7', 'q10', 'q11', 'q14'];
-                const coreRatings = CORE_IDS.map(id => comps[id]?.rating).filter(r => r > 0);
-                const behavioralRatings = BEHAVIORAL_IDS.map(id => comps[id]?.rating).filter(r => r > 0);
-                const coreAvg = coreRatings.length > 0 ? coreRatings.reduce((a, b) => a + b, 0) / coreRatings.length : 0;
-                const behavioralAvg = behavioralRatings.length > 0 ? behavioralRatings.reduce((a, b) => a + b, 0) / behavioralRatings.length : 0;
-                const previewScoreMath = calculateScore(coreAvg, behavioralAvg, ev.subRating || 0, avgHr);
+                const allRatings = Object.values(comps).map(c => c?.rating).filter(r => r > 0);
+                const allQsAvg = allRatings.length > 0 ? allRatings.reduce((a, b) => a + b, 0) / allRatings.length : 0;
+                const previewScoreMath = calculateScore(allQsAvg, 0, ev.subRating || 0, avgHr);
                 const previewCategory = getCategory(previewScoreMath);
 
                 return (
@@ -164,7 +161,7 @@ export default function Approvals() {
                         {/* Employee Header Row */}
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <div className="avatar">{emp?.avatar}</div>
+                                <Avatar avatarData={emp?.avatar} name={emp?.name} size={40} />
                                 <div>
                                     <div style={{ fontWeight: 700, fontSize: '15px' }}>{emp?.name}</div>
                                     <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Evaluated by {mgr?.name} · {ev.submittedAt} · {cycle?.name}</div>
@@ -204,39 +201,33 @@ export default function Approvals() {
                                     </div>
                                 </div>
 
-                                {/* Compact Breakdown Bars */}
+                                {/* Compact Breakdown Bars (70/20/10 alignment) */}
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                    {/* Core */}
+                                    {/* Competencies (70%) */}
                                     <div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
-                                            <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Core Performance <span style={{ color: 'var(--blue-light)', fontWeight: 700 }}>45%</span></span>
-                                            <span style={{ fontWeight: 700, color: 'var(--blue-light)' }}>{coreAvg.toFixed(1)}/5</span>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '4px' }}>
+                                            <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Competencies Avg <span style={{ color: 'var(--blue-light)', fontWeight: 700 }}>70%</span></span>
+                                            <span style={{ fontWeight: 700, color: 'var(--blue-light)' }}>{allQsAvg > 0 ? allQsAvg.toFixed(1) : '—'}/5</span>
                                         </div>
-                                        <div className="progress-bar" style={{ height: '6px' }}><div className="progress-fill" style={{ width: `${(coreAvg / 5) * 100}%`, background: 'var(--blue-light)' }} /></div>
+                                        <div className="progress-bar" style={{ height: '5px' }}><div className="progress-fill" style={{ width: `${(allQsAvg / 5) * 100}%`, background: 'var(--blue-light)' }} /></div>
                                     </div>
-                                    {/* Behavioral */}
+
+                                    {/* Manager Sub-Rating (20%) */}
                                     <div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
-                                            <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Behavioral Traits <span style={{ color: '#06b6d4', fontWeight: 700 }}>30%</span></span>
-                                            <span style={{ fontWeight: 700, color: '#06b6d4' }}>{behavioralAvg.toFixed(1)}/5</span>
-                                        </div>
-                                        <div className="progress-bar" style={{ height: '6px' }}><div className="progress-fill" style={{ width: `${(behavioralAvg / 5) * 100}%`, background: '#06b6d4' }} /></div>
-                                    </div>
-                                    {/* Sub-Rating */}
-                                    <div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
-                                            <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Sub-Rating <span style={{ color: 'var(--purple)', fontWeight: 700 }}>25%</span></span>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '4px' }}>
+                                            <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Manager Sub-Rating <span style={{ color: 'var(--purple)', fontWeight: 700 }}>20%</span></span>
                                             <span style={{ fontWeight: 700, color: 'var(--purple)' }}>{ev.subRating || '—'}/5</span>
                                         </div>
-                                        <div className="progress-bar" style={{ height: '6px' }}><div className="progress-fill" style={{ width: `${((ev.subRating || 0) / 5) * 100}%`, background: 'var(--purple)' }} /></div>
+                                        <div className="progress-bar" style={{ height: '5px' }}><div className="progress-fill" style={{ width: `${((ev.subRating || 0) / 5) * 100}%`, background: 'var(--purple)' }} /></div>
                                     </div>
-                                    {/* HR */}
+
+                                    {/* HR Assessment (10%) */}
                                     <div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '4px' }}>
                                             <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>HR Assessment <span style={{ color: 'var(--yellow)', fontWeight: 700 }}>10%</span></span>
                                             <span style={{ fontWeight: 700, color: allRated ? 'var(--yellow)' : 'var(--text-muted)' }}>{allRated ? avgHr.toFixed(1) : '—'}/5</span>
                                         </div>
-                                        <div className="progress-bar" style={{ height: '6px' }}><div className="progress-fill" style={{ width: allRated ? `${(avgHr / 5) * 100}%` : '0%', background: 'var(--yellow)' }} /></div>
+                                        <div className="progress-bar" style={{ height: '5px' }}><div className="progress-fill" style={{ width: allRated ? `${(avgHr / 5) * 100}%` : '0%', background: 'var(--yellow)' }} /></div>
                                     </div>
                                 </div>
                             </div>
@@ -257,7 +248,7 @@ export default function Approvals() {
                                             <StarRating
                                                 value={(hrRatings[ev.id] || {})[q.id] || 0}
                                                 onChange={(val) => setHrRatingForQuestion(ev.id, q.id, val)}
-                                                readonly={currentUser.role === 'manager'}
+                                                readonly={cycle?.status === 'closed' || currentUser.role === 'manager'}
                                             />
                                         </div>
                                     ))}
@@ -267,7 +258,7 @@ export default function Approvals() {
                                     <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: 500 }}>{currentUser.role === 'manager' ? 'Manager Comment' : 'HR Comment (Sent to Employee)'}</div>
                                     <textarea
                                         className="form-input"
-                                        placeholder={currentUser.role === 'manager' ? "Leave a comment for the next approver..." : "HR feedback..."}
+                                        placeholder="HR feedback..."
                                         style={{ height: '70px', fontSize: '12px', overflowY: 'auto', resize: 'none' }}
                                         value={comment[ev.id] || ''}
                                         onChange={e => setComment(prev => ({ ...prev, [ev.id]: e.target.value }))}
@@ -276,11 +267,17 @@ export default function Approvals() {
                             </div>
                         </div>
 
-                        {/* Manager Feedback — compact */}
-                        <div style={{ background: 'var(--bg-secondary)', borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', border: '1px solid var(--border)' }}>
-                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px' }}>Manager Summary Feedback</div>
-                            <p className="read-only-text" style={{ fontSize: '13px', lineHeight: '1.5', wordBreak: 'break-word', overflowWrap: 'break-word', maxHeight: '72px', overflowY: 'auto', margin: 0 }}>
-                                {ev.feedback || 'No feedback provided.'}
+                        {/* Manager Overall Assessment — Rating Classification + Sub-Rating + Feedback */}
+                        <div style={{ background: 'rgba(99, 102, 241, 0.03)', borderRadius: '14px', padding: '16px 20px', marginBottom: '16px', border: '1px solid rgba(99, 102, 241, 0.12)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Manager Overall Assessment</div>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                    {ev.finalRating && <span className="badge badge-green" style={{ fontSize: '11px', padding: '4px 10px', fontWeight: 700 }}>{ev.finalRating}</span>}
+                                    {ev.subRating && <span className="badge badge-purple" style={{ fontSize: '11px', padding: '4px 10px', fontWeight: 700 }}>Score: {ev.subRating}/5</span>}
+                                </div>
+                            </div>
+                            <p className="read-only-text" style={{ fontSize: '13px', lineHeight: '1.6', color: 'var(--text-primary)', margin: 0, maxHeight: '120px', overflowY: 'auto', fontStyle: ev.feedback ? 'normal' : 'italic' }}>
+                                {ev.feedback || 'No manager feedback provided.'}
                             </p>
                         </div>
 
@@ -288,10 +285,10 @@ export default function Approvals() {
                         <div style={{ display: 'flex', gap: '10px' }}>
                             <button
                                 className="btn btn-success"
-                                style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: (currentUser.role === 'manager' || allRated) ? 1 : 0.5 }}
-                                disabled={currentUser.role !== 'manager' && !allRated}
+                                style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: allRated ? 1 : 0.5 }}
+                                disabled={!allRated}
                                 onClick={() => handleApprove(ev.id)}>
-                                <Icons.Check /> {currentUser.role === 'manager' ? 'Approve & Forward' : (allRated ? 'Final Approve Evaluation' : 'Complete HR Ratings to Approve')}
+                                <Icons.Check /> {allRated ? 'Approve Evaluation' : 'Complete HR Ratings to Approve'}
                             </button>
                             <button
                                 className="btn btn-secondary"
