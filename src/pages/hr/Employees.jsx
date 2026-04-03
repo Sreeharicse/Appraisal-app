@@ -77,7 +77,22 @@ export default function Employees() {
     const [fetchError, setFetchError] = useState('');
     const [profilePhoto, setProfilePhoto] = useState(null);
 
-    const managers = users.filter(u => u.role === 'manager' || u.role === 'admin');
+    const isCircular = (targetManagerId, employeeId) => {
+        if (!targetManagerId || !employeeId) return false;
+        let currentId = targetManagerId;
+        while(currentId) {
+            if(currentId === employeeId) return true;
+            const mgr = users.find(u => u.id === currentId);
+            currentId = mgr ? mgr.managerId : null;
+        }
+        return false;
+    };
+
+    const availableManagers = users.filter(u => 
+        (u.role === 'manager' || u.role === 'admin') &&
+        u.id !== editing?.id &&
+        !isCircular(u.id, editing?.id)
+    );
     const filtered = users.filter(u =>
         u.name.toLowerCase().includes(search.toLowerCase()) ||
         u.email.toLowerCase().includes(search.toLowerCase()) ||
@@ -273,7 +288,7 @@ export default function Employees() {
                     </thead>
                     <tbody>
                         {filtered.map(u => {
-                            const mgr = managers.find(m => m.id === u.managerId);
+                            const mgr = users.find(m => m.id === u.managerId);
                             return (
                                 <tr key={u.id}>
                                     <td>
@@ -512,9 +527,12 @@ export default function Employees() {
                             <div className="form-group">
                                 <label className="form-label">Reporting Manager</label>
                                 <select className="form-select" value={form.managerId}
-                                    onChange={e => setForm(p => ({ ...p, managerId: e.target.value }))}>
+                                    onChange={e => setForm(p => ({ ...p, managerId: e.target.value }))}
+                                    disabled={currentUser.role !== 'admin'}
+                                    style={currentUser.role !== 'admin' ? { cursor: 'not-allowed', backgroundColor: 'var(--bg-secondary)', opacity: 0.7 } : {}}
+                                >
                                     <option value="">None</option>
-                                    {managers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                                    {availableManagers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                                 </select>
                             </div>
 

@@ -6,9 +6,9 @@ import Icons from '../../components/Icons';
 export default function Evaluate() {
     const { employeeId } = useParams();
     const navigate = useNavigate();
-    const { currentUser, users, cycles, getEvaluation, selfReviews, evaluations, submitEvaluation, calculateScore, getCategory, refreshData, setTopBarAction, questionSets, employeeOverrides } = useApp();
+    const { currentUser, users, cycles, getEvaluation, selfReviews, evaluations, submitEvaluation, refreshData, questionSets, employeeOverrides } = useApp();
     const team = currentUser.role === 'admin'
-        ? users.filter(u => u.role === 'hr' || u.role === 'manager')
+        ? users.filter(u => u.id !== currentUser.id && (u.managerId === currentUser.id || !u.managerId))
         : users.filter(u => u.managerId === currentUser.id);
     const activeCycles = cycles.filter(c => c.status === 'active');
 
@@ -23,18 +23,21 @@ export default function Evaluate() {
     const [activeTab, setActiveTab] = useState(1);
     const [hasEdited, setHasEdited] = useState(false);
     const [showPopup, setShowPopup] = useState(false);
-    const [showEmpPicker, setShowEmpPicker] = useState(false);
     const [showRatingModal, setShowRatingModal] = useState(false);
     const [popupMessage, setPopupMessage] = useState({ title: '', body: '' });
+
+    // Find the currently selected cycle
+    const cycle = cycles.find(c => String(c.id) === String(selectedCycleId));
+    const isClosed = cycle?.status === 'closed';
+
+    // Once saved as 'pending_approval' or 'approved', or if cycle is closed, the evaluation is permanently locked
+    const isSubmitted = status === 'pending_approval' || status === 'approved';
+    const isReadOnly = isSubmitted || (status === 'draft' && isLocked) || isClosed;
 
     const [competencies, setCompetencies] = useState({});
     const [feedback, setFeedback] = useState('');
     const [finalRating, setFinalRating] = useState('');
     const [subRating, setSubRating] = useState('');
-
-    // Fallback for old fields
-    const [workRating, setWorkRating] = useState(0);
-    const [behaviorRating, setBehaviorRating] = useState(0);
 
     const TABS = [
         { id: 1, label: '🧩 Competencies' },
@@ -70,7 +73,6 @@ export default function Evaluate() {
         }
     }, [activeCycles, selectedCycleId]);
 
-    const cycle = cycles.find(c => String(c.id) === String(selectedCycleId));
     const emp = users.find(u => String(u.id) === String(selectedEmp));
     const selfReview = cycle && emp ? selfReviews.find(r => String(r.employeeId) === String(selectedEmp) && String(r.cycleId) === String(cycle.id)) : null;
     const empComps = selfReview?.metadata?.competencies || {};
@@ -108,11 +110,6 @@ export default function Evaluate() {
     // Resolve question set: If cycle is closed OR review is already submitted, use the saved snapshot. 
     // Otherwise, use the live designation-based template so HR edits still apply to drafts.
     const isActuallySubmitted = selfReview?.status === 'submitted' || selfReview?.status === 'approved';
-    const isClosed = cycle?.status === 'closed';
-
-    // Once saved as 'pending_approval' or 'approved', or if cycle is closed, the evaluation is permanently locked
-    const isSubmitted = status === 'pending_approval' || status === 'approved';
-    const isReadOnly = isSubmitted || (status === 'draft' && isLocked) || isClosed;
 
     let COMPETENCY_QUESTIONS = TEMPLATE_QUESTIONS;
 
@@ -152,8 +149,6 @@ export default function Evaluate() {
         setFeedback(ev?.feedback || '');
         setFinalRating(ev?.finalRating || '');
         setSubRating(ev?.subRating || '');
-        setWorkRating(ev?.workPerformanceRating || 0);
-        setBehaviorRating(ev?.behavioralRating || 0);
 
         if (ev) {
             setStatus(ev.status);
@@ -163,6 +158,7 @@ export default function Evaluate() {
             setStatus('new');
             setIsLocked(false);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedEmp, selectedCycleId, evaluations, selfReviews]);
 
     useEffect(() => {
@@ -417,21 +413,6 @@ export default function Evaluate() {
             </div>
         );
     };
-
-    const renderManagerReadOnlyBox = (content, placeholder) => (
-        <div className="read-only-text" style={{
-            padding: '12px',
-            background: 'rgba(168, 85, 247, 0.05)',
-            border: '1px solid rgba(168, 85, 247, 0.1)',
-            borderRadius: '12px',
-            height: '180px',
-            overflowY: 'scroll',
-            paddingRight: '36px',
-            color: content ? 'var(--text-primary)' : 'var(--text-muted)'
-        }}>
-            {content || placeholder}
-        </div>
-    );
 
     const renderEmployeeReadOnlyTab = (title, subtitle, content, placeholder) => (
         <div className="card" style={{ marginBottom: '32px', padding: '24px' }}>
@@ -731,7 +712,7 @@ export default function Evaluate() {
                             background: 'rgba(100,116,139,0.08)', border: '1px solid rgba(100,116,139,0.2)',
                             borderRadius: '12px', fontSize: '13px', color: 'var(--text-muted)'
                         }}>
-                            🔒 {isClosed ? 'This cycle is closed. No further changes are allowed.' : <>This evaluation is {isSubmitted ? 'submitted and' : 'saved as a draft and'} <strong>read-only</strong>.</>}
+                            🔒 This evaluation is {isSubmitted ? 'submitted and' : 'saved as a draft and'} <strong>read-only</strong>.
                         </div>}
 
                         <div style={{ minHeight: '400px' }}>

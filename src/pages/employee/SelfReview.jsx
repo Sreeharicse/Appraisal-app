@@ -94,7 +94,7 @@ export default function SelfReview() {
     const isActive = cycle?.status === 'active';
     const isClosed = cycle?.status === 'closed';
     const isSubmitted = status !== 'new' && status !== 'draft';
-    const isReadOnly = isSubmitted || (status === 'draft' && isLocked) || !isActive;
+    const isReadOnly = isSubmitted || (status === 'draft' && isLocked);
 
     // Resolve question set: If cycle is closed OR review is already submitted, use the saved snapshot. 
     // Otherwise, use the live designation-based template so HR edits still apply to drafts.
@@ -646,9 +646,7 @@ export default function SelfReview() {
                     background: 'rgba(100,116,139,0.08)', border: '1px solid rgba(100,116,139,0.2)',
                     borderRadius: '12px', fontSize: '13px', color: 'var(--text-muted)'
                 }}>
-                    🔒 {!isActive
-                        ? `This cycle is ${cycle?.status}. No changes are allowed.`
-                        : <>This review is {isSubmitted ? 'submitted and' : 'saved as a draft and'} <strong>read-only</strong>.</>}
+                    🔒 This review is {isSubmitted ? 'submitted and' : 'saved as a draft and'} <strong>read-only</strong>.
                 </div>}
 
                 <div style={{ minHeight: '400px' }}>

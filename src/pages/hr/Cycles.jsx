@@ -6,7 +6,7 @@ export default function Cycles() {
     const { currentUser, users, cycles, selfReviews, evaluations, approvals, addCycle, updateCycle, deleteCycle, requestCycleDelete, getScore } = useApp();
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
-    const [form, setForm] = useState({ name: '', startDate: '', endDate: '', status: 'draft' });
+    const [form, setForm] = useState({ name: '', startDate: '', endDate: '', employeeEndDate: '', managerEndDate: '', status: 'draft' });
 
     // Deletion Flow State
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -15,8 +15,8 @@ export default function Cycles() {
     const [confirmName, setConfirmName] = useState('');
     const [deleteRequested, setDeleteRequested] = useState({});
 
-    const openAdd = () => { setEditing(null); setForm({ name: '', startDate: '', endDate: '', status: 'draft' }); setShowModal(true); };
-    const openEdit = (c) => { setEditing(c); setForm({ name: c.name, startDate: c.startDate, endDate: c.endDate, status: c.status }); setShowModal(true); };
+    const openAdd = () => { setEditing(null); setForm({ name: '', startDate: '', endDate: '', employeeEndDate: '', managerEndDate: '', status: 'draft' }); setShowModal(true); };
+    const openEdit = (c) => { setEditing(c); setForm({ name: c.name, startDate: c.startDate, endDate: c.endDate, employeeEndDate: c.employeeEndDate || c.endDate, managerEndDate: c.managerEndDate || c.endDate, status: c.status }); setShowModal(true); };
 
     const handleSave = async () => {
         if (!form.name || !form.startDate || !form.endDate) return;
@@ -213,22 +213,6 @@ export default function Cycles() {
                                         <button className="btn btn-secondary btn-sm" style={{ display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => openEdit(c)}>
                                             <Icons.Edit /> Edit
                                         </button>
-
-                                        {currentUser?.role === 'admin' ? (
-                                            <button className="btn btn-danger btn-sm" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => handleDeleteClick(c)}>
-                                                <Icons.Trash />
-                                            </button>
-                                        ) : (
-                                            <button
-                                                className="btn btn-secondary btn-sm"
-                                                style={{ display: 'flex', alignItems: 'center', gap: '4px', opacity: deleteRequested[c.id] ? 0.5 : 1 }}
-                                                onClick={() => handleDeleteClick(c)}
-                                                disabled={deleteRequested[c.id]}
-                                                title="Request Admin to Delete"
-                                            >
-                                                {deleteRequested[c.id] ? 'Requested' : 'Req Delete'}
-                                            </button>
-                                        )}
                                     </div>
                                 </td>
                             </tr>
@@ -411,6 +395,16 @@ export default function Cycles() {
                                 <div className="form-group">
                                     <label className="form-label">End Date *</label>
                                     <input className="form-input" type="date" value={form.endDate} onChange={e => setForm(p => ({ ...p, endDate: e.target.value }))} />
+                                </div>
+                            </div>
+                            <div className="form-grid">
+                                <div className="form-group">
+                                    <label className="form-label">Employee Deadline</label>
+                                    <input className="form-input" type="date" value={form.employeeEndDate} onChange={e => setForm(p => ({ ...p, employeeEndDate: e.target.value }))} />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Manager Deadline</label>
+                                    <input className="form-input" type="date" value={form.managerEndDate} onChange={e => setForm(p => ({ ...p, managerEndDate: e.target.value }))} />
                                 </div>
                             </div>
                             <div className="form-group">

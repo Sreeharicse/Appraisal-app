@@ -33,7 +33,7 @@ const HR_QUESTIONS = [
 ];
 
 export default function Approvals() {
-    const { evaluations, users, cycles, approveEvaluation, rejectEvaluation, saveHRDraft, getScore, currentUser, getCategory } = useApp();
+    const { evaluations, users, cycles, approvals, approveEvaluation, rejectEvaluation, saveHRDraft, getScore, currentUser, getCategory } = useApp();
     const [comment, setComment] = React.useState({});
     const [hrRatings, setHrRatings] = React.useState({});
 
@@ -66,14 +66,31 @@ export default function Approvals() {
         return sum / values.length;
     };
 
-    const filterByRole = (ev) => {
-        const emp = users.find(u => u.id === ev.employeeId);
-        if (currentUser.role === 'admin') {
-            return emp?.role !== 'admin'; // Admin sees everyone except other admins
+    const getCurrentApproverId = (ev) => {
+        let currentApproverId = users.find(u => u.id === ev.managerId)?.managerId;
+        const evApprovals = approvals.filter(a => String(a.evalId) === String(ev.id));
+
+        // Follow the approval chain
+        let hasMoreApprovers = true;
+        while (currentApproverId && hasMoreApprovers) {
+            const hasApproved = evApprovals.some(a => a.approvedBy === currentApproverId);
+            if (hasApproved) {
+                currentApproverId = users.find(u => u.id === currentApproverId)?.managerId;
+            } else {
+                hasMoreApprovers = false;
+            }
         }
-        if (currentUser.role === 'hr') {
-            // HR sees only regular employees, not other HRs or Managers
-            return emp?.role === 'employee';
+        return currentApproverId;
+    };
+
+    const filterByRole = (ev) => {
+        const currentApproverId = getCurrentApproverId(ev);
+
+        if (currentUser.role === 'manager') {
+            return currentApproverId === currentUser.id;
+        }
+        if (currentUser.role === 'hr' || currentUser.role === 'admin') {
+            return !currentApproverId;
         }
         return false;
     };
@@ -85,9 +102,21 @@ export default function Approvals() {
     const getCycleById = (id) => cycles.find(c => c.id === id);
 
     const handleApprove = (evalId) => {
+        const currentApproverId = getCurrentApproverId(evaluations.find(e => e.id === evalId));
+
+        // If manager is approving (not final step)
+        if (currentApproverId && currentUser.role === 'manager') {
+            approveEvaluation(evalId, comment[evalId] || '', 0, true); // true = isIntermediate
+            return;
+        }
+
+        // Final HR/Admin approval
         const avgHr = getAvgHrRating(evalId);
-        if (avgHr === 0) return;
-        approveEvaluation(evalId, comment[evalId] || '', avgHr);
+        if (avgHr === 0) {
+            alert('Please complete all HR ratings before final approval.');
+            return;
+        }
+        approveEvaluation(evalId, comment[evalId] || '', avgHr, false);
     };
 
     return (
@@ -108,7 +137,7 @@ export default function Approvals() {
                     <div style={{ fontSize: '48px', marginBottom: '16px', color: 'var(--blue-light)' }}><Icons.Check style={{ width: '60px', height: '60px' }} /></div>
                     <h3 style={{ marginBottom: '8px' }}>No Pending Approvals</h3>
                     <p style={{ color: 'var(--text-muted)', maxWidth: '500px', margin: '0 auto 24px', lineHeight: '1.6' }}>
-                        Evaluations appear here once managers complete reviews for their team members.
+                        Evaluations will appear here when they reach your level in the approval hierarchy.
                     </p>
                 </div>
             )}
@@ -218,20 +247,19 @@ export default function Approvals() {
                                             </div>
                                             <StarRating
                                                 value={(hrRatings[ev.id] || {})[q.id] || 0}
-                                                readonly={cycle?.status === 'closed'}
                                                 onChange={(val) => setHrRatingForQuestion(ev.id, q.id, val)}
+                                                readonly={cycle?.status === 'closed' || currentUser.role === 'manager'}
                                             />
                                         </div>
                                     ))}
                                 </div>
 
                                 <div>
-                                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: 500 }}>HR Comment (Sent to Employee)</div>
+                                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: 500 }}>{currentUser.role === 'manager' ? 'Manager Comment' : 'HR Comment (Sent to Employee)'}</div>
                                     <textarea
                                         className="form-input"
-                                        placeholder={cycle?.status === 'closed' ? "Cycle closed." : "HR feedback..."}
-                                        readOnly={cycle?.status === 'closed'}
-                                        style={{ height: '70px', fontSize: '12px', overflowY: 'auto', resize: 'none', cursor: cycle?.status === 'closed' ? 'not-allowed' : 'text', opacity: cycle?.status === 'closed' ? 0.7 : 1 }}
+                                        placeholder="HR feedback..."
+                                        style={{ height: '70px', fontSize: '12px', overflowY: 'auto', resize: 'none' }}
                                         value={comment[ev.id] || ''}
                                         onChange={e => setComment(prev => ({ ...prev, [ev.id]: e.target.value }))}
                                     />
@@ -255,38 +283,26 @@ export default function Approvals() {
 
                         {/* Action Buttons */}
                         <div style={{ display: 'flex', gap: '10px' }}>
-                            {cycle?.status === 'closed' ? (
-                                <div style={{
-                                    padding: '12px 20px', width: '100%',
-                                    background: 'rgba(100,116,139,0.08)', border: '1px solid rgba(100,116,139,0.2)',
-                                    borderRadius: '12px', fontSize: '13px', color: 'var(--text-muted)'
+                            <button
+                                className="btn btn-success"
+                                style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: allRated ? 1 : 0.5 }}
+                                disabled={!allRated}
+                                onClick={() => handleApprove(ev.id)}>
+                                <Icons.Check /> {allRated ? 'Approve Evaluation' : 'Complete HR Ratings to Approve'}
+                            </button>
+                            <button
+                                className="btn btn-secondary"
+                                style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                                onClick={async () => {
+                                    const res = await saveHRDraft(ev.id, comment[ev.id] || '', hrRatings[ev.id] || {});
+                                    if (res) alert('Progress saved successfully.');
                                 }}>
-                                    🔒 This cycle is closed. No further changes are allowed.
-                                </div>
-                            ) : (
-                                <>
-                                    <button
-                                        className="btn btn-success"
-                                        style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: allRated ? 1 : 0.5 }}
-                                        disabled={!allRated}
-                                        onClick={() => handleApprove(ev.id)}>
-                                        <Icons.Check /> {allRated ? 'Approve Evaluation' : 'Complete HR Ratings to Approve'}
-                                    </button>
-                                    <button
-                                        className="btn btn-secondary"
-                                        style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-                                        onClick={async () => {
-                                            const res = await saveHRDraft(ev.id, comment[ev.id] || '', hrRatings[ev.id] || {});
-                                            if (res) alert('Progress saved successfully.');
-                                        }}>
-                                        💾 Save Progress
-                                    </button>
-                                    <button className="btn btn-danger" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-                                        onClick={() => { if (window.confirm('Reject this evaluation?')) rejectEvaluation(ev.id, comment[ev.id]); }}>
-                                        <Icons.X /> Reject
-                                    </button>
-                                </>
-                            )}
+                                💾 Save Progress
+                            </button>
+                            <button className="btn btn-danger" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                                onClick={() => { if (window.confirm('Reject this evaluation?')) rejectEvaluation(ev.id, comment[ev.id]); }}>
+                                <Icons.X /> Reject
+                            </button>
                         </div>
                     </div>
                 );

@@ -31,7 +31,7 @@ export default function Dashboard() {
 
     // -- Manager / Admin Stats
     const teamMembers = useMemo(() => {
-        if (currentUser.role === 'admin') return users.filter(u => u.role === 'hr' || u.role === 'manager');
+        if (currentUser.role === 'admin') return users.filter(u => u.id !== currentUser.id && (u.managerId === currentUser.id || !u.managerId));
         return users.filter(u => u.managerId === currentUser.id);
     }, [users, currentUser]);
     const pendingEvaluations = useMemo(() => {
@@ -117,7 +117,11 @@ export default function Dashboard() {
                         {activeCycle ? activeCycle.name : 'None'}
                     </div>
                     <div className="kpi-change">
-                        {activeCycle ? `Ends ${new Date(activeCycle.endDate).toLocaleDateString()}` : 'No active cycle'}
+                        {activeCycle ? `Ends ${new Date(
+                            currentUser.role === 'employee' ? (activeCycle.employeeEndDate || activeCycle.endDate) :
+                            currentUser.role === 'manager' ? (activeCycle.managerEndDate || activeCycle.endDate) :
+                            activeCycle.endDate
+                        ).toLocaleDateString()}` : 'No active cycle'}
                     </div>
                 </div>
                 {/* Self Review Card - Now First after Active Cycle */}
