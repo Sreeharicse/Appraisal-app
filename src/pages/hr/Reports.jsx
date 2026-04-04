@@ -12,13 +12,10 @@ const COLORS = ['#10b981', '#06b6d4', '#7c3aed', '#f59e0b', '#ef4444'];
 export default function Reports() {
     const { users, cycles, evaluations, getScore, currentUser } = useApp();
     const [selectedCycleId, setSelectedCycleId] = React.useState('');
+    const [filterStatus, setFilterStatus] = React.useState('approved');
     const employees = useMemo(() => {
-        if (currentUser?.role === 'admin') {
-            return users.filter(u => u.role !== 'admin');
-        }
-        if (currentUser?.role === 'hr') {
-            // HR sees all employees and managers in reports
-            return users.filter(u => u.role === 'employee' || u.role === 'manager');
+        if (currentUser?.role === 'admin' || currentUser?.role === 'hr') {
+            return users;
         }
         return users.filter(u => u.role === 'employee');
     }, [users, currentUser]);
@@ -202,39 +199,37 @@ export default function Reports() {
                 </div>
             </div>
 
-            {/* Pipeline Summary Cards */}
+            {/* Pipeline Summary Cards (Filters) */}
             {activeCycle && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '32px' }}>
-                    
-                    <div className="stat-card" style={{ padding: '20px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px' }}>
-                        <div style={{ color: 'var(--text-muted)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Not Started</div>
-                        <div style={{ fontSize: '32px', fontWeight: 800, color: 'var(--text-primary)', marginTop: '8px' }}>{summaryCounts.not_started}</div>
-                    </div>
-
-                    <div className="stat-card" style={{ padding: '20px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', position: 'relative', overflow: 'hidden' }}>
-                        <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '4px', background: '#f59e0b' }} />
-                        <div style={{ color: 'var(--text-muted)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Drafts</div>
-                        <div style={{ fontSize: '32px', fontWeight: 800, color: '#f59e0b', marginTop: '8px' }}>{summaryCounts.draft}</div>
-                    </div>
-
-                    <div className="stat-card" style={{ padding: '20px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', position: 'relative', overflow: 'hidden' }}>
-                        <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '4px', background: '#3b82f6' }} />
-                        <div style={{ color: 'var(--text-muted)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Awaiting Manager</div>
-                        <div style={{ fontSize: '32px', fontWeight: 800, color: '#3b82f6', marginTop: '8px' }}>{summaryCounts.submitted}</div>
-                    </div>
-
-                    <div className="stat-card" style={{ padding: '20px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', position: 'relative', overflow: 'hidden' }}>
-                        <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '4px', background: '#a855f7' }} />
-                        <div style={{ color: 'var(--text-muted)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Awaiting HR</div>
-                        <div style={{ fontSize: '32px', fontWeight: 800, color: '#a855f7', marginTop: '8px' }}>{summaryCounts.evaluated}</div>
-                    </div>
-
-                    <div className="stat-card" style={{ padding: '20px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', position: 'relative', overflow: 'hidden' }}>
-                        <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '4px', background: '#10b981' }} />
-                        <div style={{ color: 'var(--text-muted)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Completed</div>
-                        <div style={{ fontSize: '32px', fontWeight: 800, color: '#10b981', marginTop: '8px' }}>{summaryCounts.approved}</div>
-                    </div>
-
+                    {[
+                        { id: 'all', label: 'All Profiles', color: 'var(--text-secondary)', count: allEmployeesData.length },
+                        { id: 'not_started', label: 'Not Started', color: 'var(--text-muted)', count: summaryCounts.not_started },
+                        { id: 'draft', label: 'Drafts', color: '#f59e0b', count: summaryCounts.draft },
+                        { id: 'submitted', label: 'Awaiting Manager', color: '#3b82f6', count: summaryCounts.submitted },
+                        { id: 'evaluated', label: 'Awaiting HR', color: '#a855f7', count: summaryCounts.evaluated },
+                        { id: 'approved', label: 'Completed', color: '#10b981', count: summaryCounts.approved },
+                    ].map(card => (
+                        <div 
+                            key={card.id}
+                            className="stat-card" 
+                            onClick={() => setFilterStatus(card.id)}
+                            style={{ 
+                                padding: '20px', 
+                                background: filterStatus === card.id ? 'var(--bg-card-hover)' : 'var(--bg-card)', 
+                                border: filterStatus === card.id ? `2px solid ${card.color}` : '1px solid var(--border)', 
+                                borderRadius: '16px', 
+                                position: 'relative', 
+                                overflow: 'hidden',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease'
+                            }}
+                        >
+                            {card.id !== 'all' && card.id !== 'not_started' && <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '4px', background: card.color }} />}
+                            <div style={{ color: filterStatus === card.id ? card.color : 'var(--text-muted)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{card.label}</div>
+                            <div style={{ fontSize: '32px', fontWeight: 800, color: card.color, marginTop: '8px' }}>{card.count}</div>
+                        </div>
+                    ))}
                 </div>
             )}
 
@@ -312,7 +307,9 @@ export default function Reports() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {allEmployeesData.map(emp => (
+                                {allEmployeesData
+                                    .filter(emp => filterStatus === 'all' || emp.pipelineStatus === filterStatus)
+                                    .map(emp => (
                                     <tr key={emp.id}>
                                         <td>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
