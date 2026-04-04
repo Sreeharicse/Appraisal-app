@@ -73,6 +73,26 @@ export default function Cycles() {
         }
     };
 
+    const handleReopenPhase = async (phase) => {
+        if (!cycleToManage) return;
+        if (!window.confirm(`Are you sure you want to reopen the ${phase} phase?`)) return;
+
+        try {
+            const liveCycle = cycles.find(c => c.id === cycleToManage.id) || cycleToManage;
+            if (phase === 'Self Review') {
+                await updateCycle(cycleToManage.id, { selfReviewEndDate: liveCycle.endDate });
+            } else if (phase === 'Evaluation') {
+                await updateCycle(cycleToManage.id, { evaluationEndDate: liveCycle.endDate });
+            } else if (phase === 'Cycle') {
+                await updateCycle(cycleToManage.id, { status: 'active' });
+            }
+            setShowLifecycleModal(false);
+        } catch (e) {
+            console.error(e);
+            alert('Failed to reopen phase.');
+        }
+    };
+
     const handleClose = (c) => {
         const allReviewers = users; // All roles: employee, hr, manager, admin
         const warnings = [];
@@ -282,17 +302,23 @@ export default function Cycles() {
                                         <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '16px', lineHeight: '1.4' }}>Immediately lock all employee self-reviews from further edits.</p>
                                         {(() => {
                                             const liveCycle = cycles.find(c => c.id === cycleToManage.id) || cycleToManage;
+                                            if (liveCycle.status === 'closed') {
+                                                return <button className="btn btn-secondary" style={{ width: '100%', opacity: 0.5, cursor: 'not-allowed' }} disabled>🔒 Locked by Cycle</button>;
+                                            }
                                             const d = liveCycle.selfReviewEndDate ? new Date(liveCycle.selfReviewEndDate) : null;
                                             if (d) d.setHours(23, 59, 59, 999);
-                                            const isClosed = liveCycle.status === 'closed' || (d && new Date() > d);
-                                            return (
+                                            const isClosed = (d && new Date() > d);
+                                            return isClosed ? (
+                                                <button className="btn btn-outline" style={{ width: '100%', borderColor: 'var(--blue)', color: 'var(--blue)' }} onClick={() => handleReopenPhase('Self Review')}>
+                                                    🔄 Reopen Phase
+                                                </button>
+                                            ) : (
                                                 <button 
                                                     className="btn btn-secondary" 
-                                                    style={{ width: '100%', opacity: isClosed ? 0.5 : 1, cursor: isClosed ? 'not-allowed' : 'pointer' }}
-                                                    disabled={isClosed}
+                                                    style={{ width: '100%' }}
                                                     onClick={() => handleClosePhase('Self Review')}
                                                 >
-                                                    {isClosed ? '✔️ Already Closed' : 'Force Close Self Review'}
+                                                    Force Close Self Review
                                                 </button>
                                             );
                                         })()}
@@ -304,17 +330,23 @@ export default function Cycles() {
                                         <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '16px', lineHeight: '1.4' }}>Immediately lock manager evaluations. (Auto-locks Self Reviews)</p>
                                         {(() => {
                                             const liveCycle = cycles.find(c => c.id === cycleToManage.id) || cycleToManage;
+                                            if (liveCycle.status === 'closed') {
+                                                return <button className="btn btn-secondary" style={{ width: '100%', opacity: 0.5, cursor: 'not-allowed' }} disabled>🔒 Locked by Cycle</button>;
+                                            }
                                             const d = liveCycle.evaluationEndDate ? new Date(liveCycle.evaluationEndDate) : null;
                                             if (d) d.setHours(23, 59, 59, 999);
-                                            const isClosed = liveCycle.status === 'closed' || (d && new Date() > d);
-                                            return (
+                                            const isClosed = (d && new Date() > d);
+                                            return isClosed ? (
+                                                <button className="btn btn-outline" style={{ width: '100%', borderColor: 'var(--blue)', color: 'var(--blue)' }} onClick={() => handleReopenPhase('Evaluation')}>
+                                                    🔄 Reopen Phase
+                                                </button>
+                                            ) : (
                                                 <button 
                                                     className="btn btn-secondary" 
-                                                    style={{ width: '100%', opacity: isClosed ? 0.5 : 1, cursor: isClosed ? 'not-allowed' : 'pointer' }}
-                                                    disabled={isClosed}
+                                                    style={{ width: '100%' }}
                                                     onClick={() => handleClosePhase('Evaluation')}
                                                 >
-                                                    {isClosed ? '✔️ Already Closed' : 'Force Close Evaluation'}
+                                                    Force Close Evaluation
                                                 </button>
                                             );
                                         })()}
@@ -327,7 +359,9 @@ export default function Cycles() {
                                         {(() => {
                                             const liveCycle = cycles.find(c => c.id === cycleToManage.id) || cycleToManage;
                                             return liveCycle.status === 'closed' ? (
-                                                <button className="btn btn-success" style={{ width: '100%' }} disabled>✔️ Fully Closed</button>
+                                                <button className="btn btn-outline" style={{ width: '100%', borderColor: 'var(--green)', color: 'var(--green)' }} onClick={() => handleReopenPhase('Cycle')}>
+                                                    🔄 Reopen Cycle
+                                                </button>
                                             ) : (
                                                 <button className="btn btn-danger" style={{ width: '100%' }} onClick={() => {
                                                     setShowLifecycleModal(false);
