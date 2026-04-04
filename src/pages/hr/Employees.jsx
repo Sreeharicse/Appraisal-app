@@ -528,8 +528,8 @@ export default function Employees() {
                                 <label className="form-label">Reporting Manager</label>
                                 <select className="form-select" value={form.managerId}
                                     onChange={e => setForm(p => ({ ...p, managerId: e.target.value }))}
-                                    disabled={currentUser.role !== 'admin'}
-                                    style={currentUser.role !== 'admin' ? { cursor: 'not-allowed', backgroundColor: 'var(--bg-secondary)', opacity: 0.7 } : {}}
+                                    disabled={currentUser.role !== 'admin' && currentUser.role !== 'hr'}
+                                    style={currentUser.role !== 'admin' && currentUser.role !== 'hr' ? { cursor: 'not-allowed', backgroundColor: 'var(--bg-secondary)', opacity: 0.7 } : {}}
                                 >
                                     <option value="">None</option>
                                     {availableManagers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
