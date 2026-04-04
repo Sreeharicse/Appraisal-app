@@ -19,7 +19,6 @@ const EMPLOYEE_LINKS = [...BASE_LINKS];
 const MANAGER_LINKS = [
     ...BASE_LINKS,
     { to: '/manager', label: 'Evaluate Team', icon: <Icons.Users /> },
-    { to: '/hr/approvals', label: 'Approvals', icon: <Icons.Check /> },
     { to: '/manager/team-report', label: 'Team Report', icon: <Icons.Chart /> },
     { to: '/hr/employees', label: 'Employees', icon: <Icons.Users /> },
 ];

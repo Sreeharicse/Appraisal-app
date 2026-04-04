@@ -66,36 +66,18 @@ export default function Approvals() {
         return sum / values.length;
     };
 
-    const getCurrentApproverId = (ev) => {
-        let currentApproverId = users.find(u => u.id === ev.managerId)?.managerId;
-        const evApprovals = approvals.filter(a => String(a.evalId) === String(ev.id));
-
-        // Follow the approval chain
-        let hasMoreApprovers = true;
-        while (currentApproverId && hasMoreApprovers) {
-            const hasApproved = evApprovals.some(a => a.approvedBy === currentApproverId);
-            if (hasApproved) {
-                currentApproverId = users.find(u => u.id === currentApproverId)?.managerId;
-            } else {
-                hasMoreApprovers = false;
-            }
-        }
-        return currentApproverId;
-    };
-
     const filterByRole = (ev) => {
-        const currentApproverId = getCurrentApproverId(ev);
+        const empRole = getUserById(ev.employeeId)?.role;
 
-        // If the current user is the explicitly designated next approver in the manager chain
-        if (currentUser.id === currentApproverId) {
-            return true;
+        if (currentUser.role === 'hr') {
+            // HR approves Employee & Manager evaluations
+            return empRole === 'employee' || empRole === 'manager';
         }
-        
-        // HR and Admin have global visibility of all pending approvals
-        if (currentUser.role === 'hr' || currentUser.role === 'admin') {
-            return true;
+        if (currentUser.role === 'admin') {
+            // Admin approves HR & Admin evaluations
+            return empRole === 'hr' || empRole === 'admin';
         }
-        
+
         return false;
     };
 
@@ -106,21 +88,13 @@ export default function Approvals() {
     const getCycleById = (id) => cycles.find(c => c.id === id);
 
     const handleApprove = (evalId) => {
-        const currentApproverId = getCurrentApproverId(evaluations.find(e => e.id === evalId));
-
-        // If manager is approving (not final step)
-        if (currentApproverId && currentUser.role === 'manager') {
-            approveEvaluation(evalId, comment[evalId] || '', 0, true); // true = isIntermediate
-            return;
-        }
-
         // Final HR/Admin approval
         const avgHr = getAvgHrRating(evalId);
         if (avgHr === 0) {
             alert('Please complete all HR ratings before final approval.');
             return;
         }
-        approveEvaluation(evalId, comment[evalId] || '', avgHr, false);
+        approveEvaluation(evalId, comment[evalId] || '', avgHr);
     };
 
     return (

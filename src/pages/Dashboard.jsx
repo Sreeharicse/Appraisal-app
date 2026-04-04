@@ -48,9 +48,14 @@ export default function Dashboard() {
     const totalEmployees = users.length;
     const pendingHRApprovals = evaluations.filter(ev => {
         if (ev.status !== 'pending_approval') return false;
-        const emp = users.find(u => u.id === ev.employeeId);
-        if (currentUser.role === 'admin') return emp?.role !== 'admin';
-        if (currentUser.role === 'hr') return emp?.role === 'employee';
+        const empRole = users.find(u => u.id === ev.employeeId)?.role;
+        
+        if (currentUser.role === 'admin') {
+            return empRole === 'hr' || empRole === 'admin';
+        }
+        if (currentUser.role === 'hr') {
+            return empRole === 'employee' || empRole === 'manager';
+        }
         return false;
     });
 
