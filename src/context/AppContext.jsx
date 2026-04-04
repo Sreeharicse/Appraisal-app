@@ -1070,6 +1070,13 @@ export function AppProvider({ children }) {
     const submitSelfReview = async (review) => {
         const cycle = cycles.find(c => String(c.id) === String(review.cycleId));
         if (cycle && cycle.status !== 'active') return { success: false, error: 'Self-reviews can only be submitted for active cycles.' };
+        if (cycle) {
+            const d = new Date(cycle.selfReviewEndDate || cycle.endDate);
+            d.setHours(23, 59, 59, 999);
+            if (new Date() > d) {
+                return { success: false, error: 'Self Review phase is closed. No further changes allowed.' };
+            }
+        }
 
         const existing = selfReviews.find(r => r.cycleId === review.cycleId && r.employeeId === review.employeeId);
 
@@ -1209,6 +1216,14 @@ export function AppProvider({ children }) {
     // ──── Evaluations ────
     const submitEvaluation = async (evaluation) => {
         if (isCycleClosed(evaluation.cycleId)) return { success: false, error: 'This cycle is closed. No further changes are allowed.' };
+        const cycle = cycles.find(c => String(c.id) === String(evaluation.cycleId));
+        if (cycle) {
+            const d = new Date(cycle.evaluationEndDate || cycle.endDate);
+            d.setHours(23, 59, 59, 999);
+            if (new Date() > d) {
+                return { success: false, error: 'Evaluation phase is closed. No further changes allowed.' };
+            }
+        }
         const existing = evaluations.find(e => e.cycleId === evaluation.cycleId && e.employeeId === evaluation.employeeId);
 
         const encryptedCompetencies = {};

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import Icons from '../../components/Icons';
+import CycleStepper from '../../components/CycleStepper';
 
 export default function Cycles() {
     const { currentUser, users, cycles, selfReviews, evaluations, approvals, addCycle, updateCycle, deleteCycle, requestCycleDelete, getScore } = useApp();
@@ -38,6 +39,39 @@ export default function Cycles() {
     const [showCloseWarning, setShowCloseWarning] = useState(false);
     const [cycleToClose, setCycleToClose] = useState(null);
     const [closeWarnings, setCloseWarnings] = useState([]);
+
+    // --- State for Lifecycle Management Modal ---
+    const [showLifecycleModal, setShowLifecycleModal] = useState(false);
+    const [cycleToManage, setCycleToManage] = useState(null);
+
+    const openLifecycle = (c) => {
+        setCycleToManage(c);
+        setShowLifecycleModal(true);
+    };
+
+    const handleClosePhase = async (phase) => {
+        if (!cycleToManage) return;
+        if (!window.confirm(`Are you sure you want to forcibly close the ${phase} phase? This will lock data immediately.`)) return;
+
+        try {
+            // Set past date to instantly bypass the 23:59:59 end-of-day math and lock globally
+            const forceCloseDate = new Date();
+            forceCloseDate.setDate(forceCloseDate.getDate() - 1);
+            const pastIso = forceCloseDate.toISOString();
+
+            if (phase === 'Self Review') {
+                await updateCycle(cycleToManage.id, { selfReviewEndDate: pastIso });
+            } else if (phase === 'Evaluation') {
+                await updateCycle(cycleToManage.id, { evaluationEndDate: pastIso });
+            } else if (phase === 'Cycle') {
+                await updateCycle(cycleToManage.id, { status: 'closed' });
+            }
+            setShowLifecycleModal(false);
+        } catch (e) {
+            console.error(e);
+            alert('Failed to close phase.');
+        }
+    };
 
     const handleClose = (c) => {
         const allReviewers = users; // All roles: employee, hr, manager, admin
@@ -206,8 +240,8 @@ export default function Cycles() {
                                             </button>
                                         )}
                                         {c.status === 'active' && (
-                                            <button className="btn btn-secondary btn-sm" style={{ display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => handleClose(c)}>
-                                                <Icons.Square /> Close
+                                            <button className="btn btn-secondary btn-sm" style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--blue)', color: '#fff', border: 'none' }} onClick={() => openLifecycle(c)}>
+                                                <Icons.Cycles style={{width:'14px', height:'14px'}} /> Manage Lifecycle
                                             </button>
                                         )}
                                         <button className="btn btn-secondary btn-sm" style={{ display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => openEdit(c)}>
@@ -220,6 +254,96 @@ export default function Cycles() {
                     </tbody>
                 </table>
             </div>
+
+            {/* Lifecycle Management Modal */}
+            {showLifecycleModal && cycleToManage && (
+                <div className="modal-overlay" style={{ zIndex: 9999 }}>
+                    <div className="modal" style={{ maxWidth: '800px', width: '90%' }}>
+                        <div className="modal-header">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <Icons.Cycles style={{ color: 'var(--purple)' }} />
+                                <div>
+                                    <h3 style={{ margin: 0 }}>Manage Cycle Lifecycle</h3>
+                                    <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{cycleToManage.name}</div>
+                                </div>
+                            </div>
+                            <button className="close-btn" onClick={() => setShowLifecycleModal(false)}>×</button>
+                        </div>
+                        <div className="modal-body" style={{ padding: '24px' }}>
+                            <CycleStepper cycle={cycles.find(c => c.id === cycleToManage.id) || cycleToManage} />
+
+                            <div style={{ marginTop: '32px' }}>
+                                <h4 style={{ marginBottom: '16px', fontSize: '14px', color: 'var(--text-primary)' }}>Manual Closure Actions</h4>
+                                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                                    
+                                    {/* Action 1: Close Self Review */}
+                                    <div style={{ flex: 1, minWidth: '200px', background: 'var(--bg-secondary)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                                        <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '8px' }}>Close Self Review</div>
+                                        <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '16px', lineHeight: '1.4' }}>Immediately lock all employee self-reviews from further edits.</p>
+                                        {(() => {
+                                            const liveCycle = cycles.find(c => c.id === cycleToManage.id) || cycleToManage;
+                                            const d = liveCycle.selfReviewEndDate ? new Date(liveCycle.selfReviewEndDate) : null;
+                                            if (d) d.setHours(23, 59, 59, 999);
+                                            const isClosed = liveCycle.status === 'closed' || (d && new Date() > d);
+                                            return (
+                                                <button 
+                                                    className="btn btn-secondary" 
+                                                    style={{ width: '100%', opacity: isClosed ? 0.5 : 1, cursor: isClosed ? 'not-allowed' : 'pointer' }}
+                                                    disabled={isClosed}
+                                                    onClick={() => handleClosePhase('Self Review')}
+                                                >
+                                                    {isClosed ? '✔️ Already Closed' : 'Force Close Self Review'}
+                                                </button>
+                                            );
+                                        })()}
+                                    </div>
+
+                                    {/* Action 2: Close Evaluation */}
+                                    <div style={{ flex: 1, minWidth: '200px', background: 'var(--bg-secondary)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                                        <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '8px' }}>Close Evaluation</div>
+                                        <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '16px', lineHeight: '1.4' }}>Immediately lock manager evaluations. (Auto-locks Self Reviews)</p>
+                                        {(() => {
+                                            const liveCycle = cycles.find(c => c.id === cycleToManage.id) || cycleToManage;
+                                            const d = liveCycle.evaluationEndDate ? new Date(liveCycle.evaluationEndDate) : null;
+                                            if (d) d.setHours(23, 59, 59, 999);
+                                            const isClosed = liveCycle.status === 'closed' || (d && new Date() > d);
+                                            return (
+                                                <button 
+                                                    className="btn btn-secondary" 
+                                                    style={{ width: '100%', opacity: isClosed ? 0.5 : 1, cursor: isClosed ? 'not-allowed' : 'pointer' }}
+                                                    disabled={isClosed}
+                                                    onClick={() => handleClosePhase('Evaluation')}
+                                                >
+                                                    {isClosed ? '✔️ Already Closed' : 'Force Close Evaluation'}
+                                                </button>
+                                            );
+                                        })()}
+                                    </div>
+
+                                    {/* Action 3: Final Close */}
+                                    <div style={{ flex: 1, minWidth: '200px', background: 'var(--bg-secondary)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                                        <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '8px' }}>Close Entire Cycle</div>
+                                        <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '16px', lineHeight: '1.4' }}>Locks all queues and officially finalizes all cycle data forever.</p>
+                                        {(() => {
+                                            const liveCycle = cycles.find(c => c.id === cycleToManage.id) || cycleToManage;
+                                            return liveCycle.status === 'closed' ? (
+                                                <button className="btn btn-success" style={{ width: '100%' }} disabled>✔️ Fully Closed</button>
+                                            ) : (
+                                                <button className="btn btn-danger" style={{ width: '100%' }} onClick={() => {
+                                                    setShowLifecycleModal(false);
+                                                    handleClose(liveCycle);
+                                                }}>
+                                                    ⚠️ Fully Close Cycle
+                                                </button>
+                                            );
+                                        })()}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Cycle Close Warning Modal - Blue Theme */}
             {showCloseWarning && cycleToClose && (

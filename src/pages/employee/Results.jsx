@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
+import { decrypt, decryptJSON } from '../../utils/encryption';
 
 export default function Results() {
     const { currentUser, cycles, getEvaluation, evaluations, getSelfReview, getScore, getUserById, approvals } = useApp();
@@ -28,6 +29,9 @@ export default function Results() {
 
     const hasApprovedEval = ev && ev.status === 'approved';
     const hasPendingEval = ev && ev.status === 'pending_approval';
+
+    // Extract HR Rating robustly
+    const hrRatingVal = ev ? (parseFloat(ev.hrRating) || parseFloat(approval?.hrRating) || 0) : 0;
 
     return (
         <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
@@ -147,14 +151,14 @@ export default function Results() {
                                 <div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
                                         <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>HR Assessment <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(10%)</span></span>
-                                        {ev.hrRating > 0 ? (
-                                            <span style={{ fontWeight: 700, color: 'var(--yellow)' }}>{Math.round(ev.hrRating * 10) / 10}/5 → {Math.round((ev.hrRating / 5) * 10)} pts</span>
+                                        {hrRatingVal > 0 ? (
+                                            <span style={{ fontWeight: 700, color: 'var(--yellow)' }}>{Math.round(hrRatingVal * 10) / 10}/5 → {Math.round((hrRatingVal / 5) * 10)} pts</span>
                                         ) : (
                                             <span style={{ fontWeight: 600, color: 'var(--text-muted)' }}>Not Evaluated</span>
                                         )}
                                     </div>
                                     <div className="progress-bar" style={{ height: '8px' }}>
-                                        <div className="progress-fill" style={{ width: ev.hrRating > 0 ? `${(ev.hrRating / 5) * 100}%` : '0%', background: ev.hrRating > 0 ? 'var(--yellow)' : 'var(--border)' }} />
+                                        <div className="progress-fill" style={{ width: hrRatingVal > 0 ? `${(hrRatingVal / 5) * 100}%` : '0%', background: hrRatingVal > 0 ? 'var(--yellow)' : 'var(--border)' }} />
                                     </div>
                                 </div>
 
@@ -174,7 +178,16 @@ export default function Results() {
                                 fontSize: '13px', lineHeight: '1.7', color: 'var(--text-secondary)', border: '1px solid var(--border)',
                                 height: '180px', overflowY: 'scroll', wordBreak: 'break-word', whiteSpace: 'pre-wrap'
                             }}>
-                                {ev.feedback || 'Your manager has not provided detailed written feedback for this cycle.'}
+                                {(() => {
+                                    if (!ev.feedback) return 'Your manager has not provided detailed written feedback for this cycle.';
+                                    if (ev.feedback.startsWith('{')) {
+                                        try {
+                                            const metadata = decryptJSON(ev.feedback);
+                                            return decrypt(metadata.feedback) || ev.feedback;
+                                        } catch (e) {}
+                                    }
+                                    return decrypt(ev.feedback) || ev.feedback;
+                                })()}
                             </div>
                         </div>
 
@@ -196,13 +209,14 @@ export default function Results() {
                                     }
 
                                     try {
-                                        if (approval.comment.startsWith('{')) {
-                                            const parsed = JSON.parse(approval.comment);
-                                            return parsed.comment || approval.comment;
+                                        let cmt = decrypt(approval.comment);
+                                        if (cmt.startsWith('{')) {
+                                            const parsed = JSON.parse(cmt);
+                                            return decrypt(parsed.comment) || parsed.comment || approval.comment;
                                         }
-                                        return approval.comment;
+                                        return cmt;
                                     } catch (e) {
-                                        return approval.comment;
+                                        return decrypt(approval.comment);
                                     }
                                 })()}
                             </div>

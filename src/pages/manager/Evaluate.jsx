@@ -742,7 +742,7 @@ export default function Evaluate() {
                                 background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)',
                                 borderRadius: '12px', fontSize: '13px', color: 'var(--red)', fontWeight: 600
                             }}>
-                                ⚠️ The deadline for Manager Evaluations has passed. No further actions are allowed.
+                                ⚠️ Evaluation phase is closed. No further changes allowed.
                             </div>
                         )}
 

@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import Icons from '../components/Icons';
 import Avatar from '../components/Avatar';
+import CycleStepper from '../components/CycleStepper';
 import { useNavigate } from 'react-router-dom';
 
 export default function Dashboard() {
@@ -172,6 +173,14 @@ export default function Dashboard() {
             {!hasSelfReview && (
                 <div style={{ marginBottom: '24px' }}>
                     <button className="btn btn-primary" onClick={() => navigate('/employee/self-review')}>Start Self Review</button>
+                </div>
+            )}
+
+            {/* ----- ALL ROLES: Active Cycle Progress UI ----- */}
+            {activeCycle && (
+                <div style={{ marginBottom: '32px' }}>
+                    <div style={{ fontSize: '16px', fontWeight: 700, marginBottom: '8px' }}>Current Cycle Progress</div>
+                    <CycleStepper cycle={activeCycle} />
                 </div>
             )}
 
