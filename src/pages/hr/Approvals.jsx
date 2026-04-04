@@ -66,6 +66,9 @@ export default function Approvals() {
         return sum / values.length;
     };
 
+    const getUserById = (id) => users.find(u => u.id === id);
+    const getCycleById = (id) => cycles.find(c => c.id === id);
+
     const filterByRole = (ev) => {
         const empRole = getUserById(ev.employeeId)?.role;
 
@@ -83,9 +86,6 @@ export default function Approvals() {
 
     const pending = evaluations.filter(e => e.status === 'pending_approval' && filterByRole(e));
     const historical = evaluations.filter(e => e.status !== 'pending_approval' && filterByRole(e));
-
-    const getUserById = (id) => users.find(u => u.id === id);
-    const getCycleById = (id) => cycles.find(c => c.id === id);
 
     const handleApprove = (evalId) => {
         // Final HR/Admin approval
