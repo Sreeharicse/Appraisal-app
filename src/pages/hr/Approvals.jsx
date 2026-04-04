@@ -86,12 +86,16 @@ export default function Approvals() {
     const filterByRole = (ev) => {
         const currentApproverId = getCurrentApproverId(ev);
 
-        if (currentUser.role === 'manager') {
-            return currentApproverId === currentUser.id;
+        // If the current user is the explicitly designated next approver in the manager chain
+        if (currentUser.id === currentApproverId) {
+            return true;
         }
+        
+        // HR and Admin have global visibility of all pending approvals
         if (currentUser.role === 'hr' || currentUser.role === 'admin') {
-            return !currentApproverId;
+            return true;
         }
+        
         return false;
     };
 

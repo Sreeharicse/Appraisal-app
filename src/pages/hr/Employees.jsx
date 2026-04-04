@@ -62,8 +62,8 @@ export default function Employees() {
     const [search, setSearch] = useState('');
     const [toast, setToast] = useState(null); // { type: 'success'|'error', msg: string }
 
-    const profileReviewStarted = editing && selfReviews.some(r => 
-        String(r.employeeId) === String(editing.id) && 
+    const profileReviewStarted = editing && selfReviews.some(r =>
+        String(r.employeeId) === String(editing.id) &&
         (r.status === 'draft' || r.status === 'submitted')
     );
 
@@ -80,15 +80,15 @@ export default function Employees() {
     const isCircular = (targetManagerId, employeeId) => {
         if (!targetManagerId || !employeeId) return false;
         let currentId = targetManagerId;
-        while(currentId) {
-            if(currentId === employeeId) return true;
+        while (currentId) {
+            if (currentId === employeeId) return true;
             const mgr = users.find(u => u.id === currentId);
             currentId = mgr ? mgr.managerId : null;
         }
         return false;
     };
 
-    const availableManagers = users.filter(u => 
+    const availableManagers = users.filter(u =>
         (u.role === 'manager' || u.role === 'admin') &&
         u.id !== editing?.id &&
         !isCircular(u.id, editing?.id)
@@ -116,11 +116,11 @@ export default function Employees() {
     const openEdit = (u) => {
         setEditing(u);
         setForm({ name: u.name, email: u.email, role: u.role, designation: u.designation || '', department: u.department || '', managerId: u.managerId || '' });
-        
+
         // Preselect common question set if available
         const commonSet = questionSets.find(qs => qs.isCommon);
         setOverrideForm({ cycleId: '', questionSetId: commonSet ? commonSet.id : '' });
-        
+
         resetModal();
         setShowModal(true);
     };
@@ -472,8 +472,8 @@ export default function Employees() {
                                 </div>
                                 <div className="form-group">
                                     <label className="form-label">Job Title / Designation</label>
-                                    <select 
-                                        className="form-select" 
+                                    <select
+                                        className="form-select"
                                         value={form.designation}
                                         onChange={e => setForm(p => ({ ...p, designation: e.target.value }))}
                                     >
@@ -481,20 +481,20 @@ export default function Employees() {
                                         {designations.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
                                     </select>
                                     {profileReviewStarted && (
-                                        <div style={{ 
-                                            fontSize: '11px', 
-                                            color: 'var(--blue)', 
-                                            marginTop: '6px', 
-                                            fontWeight: 600, 
-                                            display: 'flex', 
-                                            alignItems: 'center', 
+                                        <div style={{
+                                            fontSize: '11px',
+                                            color: 'var(--blue)',
+                                            marginTop: '6px',
+                                            fontWeight: 600,
+                                            display: 'flex',
+                                            alignItems: 'center',
                                             gap: '4px',
                                             padding: '4px 8px',
                                             background: 'rgba(59, 130, 246, 0.05)',
                                             borderRadius: '4px',
                                             border: '1px solid rgba(59, 130, 246, 0.1)'
                                         }}>
-                                            <Icons.Info style={{ width: 14, height: 14 }} /> 
+                                            <Icons.Info style={{ width: 14, height: 14 }} />
                                             Designation updated. Question Set remains unchanged as review has already started.
                                         </div>
                                     )}
@@ -562,14 +562,14 @@ export default function Employees() {
                                             {currentEmployeeOverrides.map(override => {
                                                 const c = cycles.find(cy => cy.id === override.cycleId);
                                                 const q = questionSets.find(qs => qs.id === override.questionSetId);
-                                                
+
                                                 // Check if a review has already started for this cycle
-                                                const reviewStarted = selfReviews.some(r => 
-                                                    String(r.employeeId) === String(editing.id) && 
-                                                    String(r.cycleId) === String(override.cycleId) && 
+                                                const reviewStarted = selfReviews.some(r =>
+                                                    String(r.employeeId) === String(editing.id) &&
+                                                    String(r.cycleId) === String(override.cycleId) &&
                                                     (r.status === 'draft' || r.status === 'submitted')
                                                 );
-                                                
+
                                                 const isCycleClosed = c?.status === 'closed';
 
                                                 return (
@@ -600,10 +600,10 @@ export default function Employees() {
                                                             )}
                                                         </div>
                                                         {(reviewStarted || isCycleClosed) && (
-                                                            <div style={{ 
-                                                                fontSize: '11px', 
-                                                                color: '#ef4444', 
-                                                                marginTop: '4px', 
+                                                            <div style={{
+                                                                fontSize: '11px',
+                                                                color: '#ef4444',
+                                                                marginTop: '4px',
                                                                 paddingLeft: '4px',
                                                                 fontWeight: 600,
                                                                 display: 'flex',
@@ -623,11 +623,11 @@ export default function Employees() {
                                     {(() => {
                                         const activeCycle = cycles.find(c => c.status === 'active');
                                         if (!activeCycle) return <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>No active cycle available.</div>;
-                                        
+
                                         const hasOverride = currentEmployeeOverrides.some(o => o.cycleId === activeCycle.id);
-                                        const reviewStarted = selfReviews.some(r => 
-                                            String(r.employeeId) === String(editing.id) && 
-                                            String(r.cycleId) === String(activeCycle.id) && 
+                                        const reviewStarted = selfReviews.some(r =>
+                                            String(r.employeeId) === String(editing.id) &&
+                                            String(r.cycleId) === String(activeCycle.id) &&
                                             (r.status === 'draft' || r.status === 'submitted')
                                         );
 
