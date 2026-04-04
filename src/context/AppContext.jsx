@@ -4,6 +4,8 @@ import { PERFORMANCE_CATEGORIES } from '../data/constants';
 import { encrypt, decrypt, encryptJSON, decryptJSON, MASKED, AUTHORIZED_ROLES, logDecryptionAccess } from '../utils/encryption';
 import { sendEmailNotification, employeeSubmitEmail, managerSubmitEmail, hrApproveEmail, cycleCreatedEmail, hrEvaluationSubmittedEmail } from '../utils/emailService';
 
+export const CONFIG_DRAFT_EDIT_AFTER_DEADLINE = false;
+
 const AppContext = createContext(null);
 
 export function calculateScore(allQsAvg, _unused, subRating, hrRating = 0) {
@@ -142,8 +144,9 @@ export function AppProvider({ children }) {
             name: c.name,
             startDate: c.start_date,
             endDate: c.end_date,
-            employeeEndDate: c.employee_end_date || c.end_date,
-            managerEndDate: c.manager_end_date || c.end_date,
+            selfReviewEndDate: c.self_review_end_date || c.end_date,
+            evaluationEndDate: c.evaluation_end_date || c.end_date,
+            approvalEndDate: c.approval_end_date || c.end_date,
             status: c.status,
             createdBy: c.created_by,
         })));
@@ -885,7 +888,7 @@ export function AppProvider({ children }) {
     // ──── Cycles CRUD ────
     const addCycle = async (cycle) => {
         if (localStorage.getItem('fake_session_role')) {
-            const mapped = { id: crypto.randomUUID(), name: cycle.name, startDate: cycle.startDate, endDate: cycle.endDate, employeeEndDate: cycle.employeeEndDate || cycle.endDate, managerEndDate: cycle.managerEndDate || cycle.endDate, status: cycle.status || 'draft', createdBy: currentUser?.id };
+            const mapped = { id: crypto.randomUUID(), name: cycle.name, startDate: cycle.startDate, endDate: cycle.endDate, selfReviewEndDate: cycle.selfReviewEndDate || cycle.endDate, evaluationEndDate: cycle.evaluationEndDate || cycle.endDate, approvalEndDate: cycle.approvalEndDate || cycle.endDate, status: cycle.status || 'draft', createdBy: currentUser?.id };
             setCycles(p => {
                 const updated = [...p, mapped];
                 localStorage.setItem('fake_cycles', JSON.stringify(updated));
@@ -911,8 +914,9 @@ export function AppProvider({ children }) {
             name: cycle.name,
             start_date: cycle.startDate,
             end_date: cycle.endDate,
-            employee_end_date: cycle.employeeEndDate || cycle.endDate,
-            manager_end_date: cycle.managerEndDate || cycle.endDate,
+            self_review_end_date: cycle.selfReviewEndDate || cycle.endDate,
+            evaluation_end_date: cycle.evaluationEndDate || cycle.endDate,
+            approval_end_date: cycle.approvalEndDate || cycle.endDate,
             status: cycle.status || 'draft',
             created_by: currentUser?.id,
         }).select().single();
@@ -921,7 +925,7 @@ export function AppProvider({ children }) {
             return null;
         }
         if (data) {
-            const mapped = { id: data.id, name: data.name, startDate: data.start_date, endDate: data.end_date, employeeEndDate: data.employee_end_date, managerEndDate: data.manager_end_date, status: data.status, createdBy: data.created_by };
+            const mapped = { id: data.id, name: data.name, startDate: data.start_date, endDate: data.end_date, selfReviewEndDate: data.self_review_end_date, evaluationEndDate: data.evaluation_end_date, approvalEndDate: data.approval_end_date, status: data.status, createdBy: data.created_by };
             setCycles(p => [...p, mapped]);
 
             if (mapped.status === 'active') {
@@ -966,8 +970,9 @@ export function AppProvider({ children }) {
         if (updates.name !== undefined) dbUpdates.name = updates.name;
         if (updates.startDate !== undefined) dbUpdates.start_date = updates.startDate;
         if (updates.endDate !== undefined) dbUpdates.end_date = updates.endDate;
-        if (updates.employeeEndDate !== undefined) dbUpdates.employee_end_date = updates.employeeEndDate;
-        if (updates.managerEndDate !== undefined) dbUpdates.manager_end_date = updates.managerEndDate;
+        if (updates.selfReviewEndDate !== undefined) dbUpdates.self_review_end_date = updates.selfReviewEndDate;
+        if (updates.evaluationEndDate !== undefined) dbUpdates.evaluation_end_date = updates.evaluationEndDate;
+        if (updates.approvalEndDate !== undefined) dbUpdates.approval_end_date = updates.approvalEndDate;
         if (updates.status !== undefined) dbUpdates.status = updates.status;
 
         const { error } = await supabase.from('cycles').update(dbUpdates).eq('id', id);

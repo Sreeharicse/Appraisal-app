@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useApp } from '../../context/AppContext';
+import { useApp, CONFIG_DRAFT_EDIT_AFTER_DEADLINE } from '../../context/AppContext';
 import Icons from '../../components/Icons';
 
 export default function SelfReview() {
@@ -91,10 +91,25 @@ export default function SelfReview() {
     }, [activeCycles, selectedCycleId]);
 
     const cycle = cycles.find(c => String(c.id) === String(selectedCycleId));
+    // Deadline logic
+    const deadlineStr = cycle?.selfReviewEndDate || cycle?.endDate;
+    let isPastDeadline = false;
+    if (deadlineStr) {
+        const d = new Date(deadlineStr);
+        d.setHours(23, 59, 59, 999);
+        isPastDeadline = new Date() > d;
+    }
+
     const isActive = cycle?.status === 'active';
     const isClosed = cycle?.status === 'closed';
     const isSubmitted = status !== 'new' && status !== 'draft';
-    const isReadOnly = isSubmitted || (status === 'draft' && isLocked);
+    
+    // Strict locking logic based on config
+    const isLockedByDeadline = isPastDeadline && !CONFIG_DRAFT_EDIT_AFTER_DEADLINE;
+    const isReadOnly = isSubmitted || (status === 'draft' && isLocked) || isLockedByDeadline || isClosed;
+
+    const canSubmit = isActive && !isSubmitted && !isPastDeadline && !isClosed;
+    const canSaveDraft = isActive && !isSubmitted && !isClosed && (!isPastDeadline || CONFIG_DRAFT_EDIT_AFTER_DEADLINE);
 
     // Resolve question set: If cycle is closed OR review is already submitted, use the saved snapshot. 
     // Otherwise, use the live designation-based template so HR edits still apply to drafts.
@@ -512,7 +527,7 @@ export default function SelfReview() {
             )}
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '32px' }}>
-                {!isSubmitted && isActive && (
+                {canSubmit && (
                     <button type="button" className="btn btn-primary" onClick={() => handleSubmit('submitted')} style={{ padding: '12px 32px', fontWeight: 700 }}>
                         🚀 Submit Full Appraisal
                     </button>
@@ -522,7 +537,12 @@ export default function SelfReview() {
                         ✅ Submitted
                     </button>
                 )}
-                {!isSubmitted && !isActive && (
+                {!isSubmitted && isPastDeadline && !isClosed && (
+                    <button type="button" className="btn btn-primary" disabled style={{ padding: '12px 32px', fontWeight: 700, opacity: 0.7, background: 'var(--red)' }}>
+                        🔒 Deadline Passed
+                    </button>
+                )}
+                {!isSubmitted && (!isActive || isClosed) && (
                     <button type="button" className="btn btn-primary" disabled style={{ padding: '12px 32px', fontWeight: 700, opacity: 0.7 }}>
                         🔒 {isClosed ? 'Closed' : 'Not Active'}
                     </button>
@@ -579,7 +599,7 @@ export default function SelfReview() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
 
                     {/* Edit button when draft is locked */}
-                    {!isSubmitted && isActive && status === 'draft' && isLocked && (
+                    {canSaveDraft && status === 'draft' && isLocked && (
                         <button
                             className="btn btn-secondary"
                             onClick={() => setIsLocked(false)}
@@ -591,7 +611,7 @@ export default function SelfReview() {
                     )}
 
                     {/* Save/Update Draft button when unlocked */}
-                    {!isSubmitted && isActive && !(status === 'draft' && isLocked) && (
+                    {canSaveDraft && !(status === 'draft' && isLocked) && (
                         <button
                             className="btn btn-secondary"
                             onClick={() => handleSubmit('draft')}
@@ -641,13 +661,24 @@ export default function SelfReview() {
 
             {/* Full-width Content Area */}
             <div style={{ maxWidth: '1400px', margin: '0 auto', paddingTop: '24px' }}>
-                {isReadOnly && <div style={{
-                    marginBottom: '20px', padding: '12px 20px',
-                    background: 'rgba(100,116,139,0.08)', border: '1px solid rgba(100,116,139,0.2)',
-                    borderRadius: '12px', fontSize: '13px', color: 'var(--text-muted)'
-                }}>
-                    🔒 This review is {isSubmitted ? 'submitted and' : 'saved as a draft and'} <strong>read-only</strong>.
-                </div>}
+                {isReadOnly && !isPastDeadline && (
+                    <div style={{
+                        marginBottom: '20px', padding: '12px 20px',
+                        background: 'rgba(100,116,139,0.08)', border: '1px solid rgba(100,116,139,0.2)',
+                        borderRadius: '12px', fontSize: '13px', color: 'var(--text-muted)'
+                    }}>
+                        🔒 This review is {isSubmitted ? 'submitted and' : 'saved as a draft and'} <strong>read-only</strong>.
+                    </div>
+                )}
+                {isPastDeadline && !isSubmitted && !isClosed && (
+                    <div style={{
+                        marginBottom: '20px', padding: '12px 20px',
+                        background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)',
+                        borderRadius: '12px', fontSize: '13px', color: 'var(--red)', fontWeight: 600
+                    }}>
+                        ⚠️ The deadline for Self Review submission has passed. No further actions are allowed.
+                    </div>
+                )}
 
                 <div style={{ minHeight: '400px' }}>
                     {!selectedCycleId && <div className="alert alert-warning">⚠️ No active appraisal cycle found.</div>}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useApp } from '../../context/AppContext';
+import { useApp, CONFIG_DRAFT_EDIT_AFTER_DEADLINE } from '../../context/AppContext';
 import { calculateScore } from '../../context/AppContext';
 import Icons from '../../components/Icons';
 import Avatar from '../../components/Avatar';
@@ -94,6 +94,15 @@ export default function Approvals() {
             alert('Please complete all HR ratings before final approval.');
             return;
         }
+        const cycle = getCycleById(evaluations.find(e => e.id === evalId)?.cycleId);
+        if (cycle) {
+            const deadline = new Date(cycle.approvalEndDate || cycle.endDate);
+            deadline.setHours(23, 59, 59, 999);
+            if (new Date() > deadline) {
+                alert('The deadline for approvals has passed. You can no longer approve evaluations.');
+                return;
+            }
+        }
         approveEvaluation(evalId, comment[evalId] || '', avgHr);
     };
 
@@ -133,6 +142,14 @@ export default function Approvals() {
                 const allQsAvg = allRatings.length > 0 ? allRatings.reduce((a, b) => a + b, 0) / allRatings.length : 0;
                 const previewScoreMath = calculateScore(allQsAvg, 0, ev.subRating || 0, avgHr);
                 const previewCategory = getCategory(previewScoreMath);
+                
+                const deadlineStr = cycle?.approvalEndDate || cycle?.endDate;
+                let isPastDeadline = false;
+                if (deadlineStr) {
+                    const d = new Date(deadlineStr);
+                    d.setHours(23, 59, 59, 999);
+                    isPastDeadline = new Date() > d;
+                }
 
                 return (
                     <div key={ev.id} className="card" style={{ marginBottom: '24px', padding: '24px' }}>
@@ -260,28 +277,34 @@ export default function Approvals() {
                         </div>
 
                         {/* Action Buttons */}
-                        <div style={{ display: 'flex', gap: '10px' }}>
-                            <button
-                                className="btn btn-success"
-                                style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: allRated ? 1 : 0.5 }}
-                                disabled={!allRated}
-                                onClick={() => handleApprove(ev.id)}>
-                                <Icons.Check /> {allRated ? 'Approve Evaluation' : 'Complete HR Ratings to Approve'}
-                            </button>
-                            <button
-                                className="btn btn-secondary"
-                                style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-                                onClick={async () => {
-                                    const res = await saveHRDraft(ev.id, comment[ev.id] || '', hrRatings[ev.id] || {});
-                                    if (res) alert('Progress saved successfully.');
-                                }}>
-                                💾 Save Progress
-                            </button>
-                            <button className="btn btn-danger" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-                                onClick={() => { if (window.confirm('Reject this evaluation?')) rejectEvaluation(ev.id, comment[ev.id]); }}>
-                                <Icons.X /> Reject
-                            </button>
-                        </div>
+                        {isPastDeadline ? (
+                            <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: 'var(--red)', fontWeight: 600, textAlign: 'center' }}>
+                                ⚠️ The approval deadline has passed. This evaluation can no longer be modified or approved.
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <button
+                                    className="btn btn-success"
+                                    style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: allRated ? 1 : 0.5 }}
+                                    disabled={!allRated}
+                                    onClick={() => handleApprove(ev.id)}>
+                                    <Icons.Check /> {allRated ? 'Approve Evaluation' : 'Complete HR Ratings to Approve'}
+                                </button>
+                                <button
+                                    className="btn btn-secondary"
+                                    style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                                    onClick={async () => {
+                                        const res = await saveHRDraft(ev.id, comment[ev.id] || '', hrRatings[ev.id] || {});
+                                        if (res) alert('Progress saved successfully.');
+                                    }}>
+                                    💾 Save Progress
+                                </button>
+                                <button className="btn btn-danger" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                                    onClick={() => { if (window.confirm('Reject this evaluation?')) rejectEvaluation(ev.id, comment[ev.id]); }}>
+                                    <Icons.X /> Reject
+                                </button>
+                            </div>
+                        )}
                     </div>
                 );
             })}

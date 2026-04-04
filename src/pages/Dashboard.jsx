@@ -25,6 +25,20 @@ export default function Dashboard() {
         }
     };
 
+    const getCountdownText = () => {
+        if (!activeCycle) return 'No active cycle';
+        const targetDateStr = currentUser.role === 'employee' ? (activeCycle.selfReviewEndDate || activeCycle.endDate) :
+                              currentUser.role === 'manager' ? (activeCycle.evaluationEndDate || activeCycle.endDate) :
+                              (activeCycle.approvalEndDate || activeCycle.endDate);
+        const targetDate = new Date(targetDateStr);
+        targetDate.setHours(23, 59, 59, 999);
+        const diffDays = Math.ceil((targetDate - new Date()) / (1000 * 60 * 60 * 24));
+        
+        if (diffDays > 0) return `Ends in ${diffDays} day${diffDays === 1 ? '' : 's'}`;
+        if (diffDays === 0) return 'Ends today';
+        return `Overdue by ${Math.abs(diffDays)} day${Math.abs(diffDays) === 1 ? '' : 's'}`;
+    };
+
     // -- Personal Stats (All Roles)
     const hasSelfReview = selfReviews.some(sr => sr.employeeId === currentUser.id && sr.cycleId === activeCycle?.id);
     const myEvaluation = evaluations.find(e => e.employeeId === currentUser.id && e.cycleId === activeCycle?.id);
@@ -117,16 +131,16 @@ export default function Dashboard() {
             <div className="grid grid-3" style={{ marginBottom: '24px' }}>
                 <div className="kpi-card" style={{ '--accent-color': 'var(--blue-light)', cursor: 'pointer' }} onClick={() => activeCycle && navigate(`/employee/cycle/${activeCycle.id}`)}>
                     <div className="kpi-icon"><Icons.Calendar /></div>
-                    <div className="kpi-label">Active Cycle</div>
+                    <div className="kpi-label">
+                        {currentUser.role === 'employee' ? 'Self Review Deadline' : 
+                         currentUser.role === 'manager' ? 'Evaluation Deadline' : 
+                         'Approval Deadline'}
+                    </div>
                     <div className="kpi-value" style={{ fontSize: '22px', marginTop: '8px' }}>
                         {activeCycle ? activeCycle.name : 'None'}
                     </div>
                     <div className="kpi-change">
-                        {activeCycle ? `Ends ${new Date(
-                            currentUser.role === 'employee' ? (activeCycle.employeeEndDate || activeCycle.endDate) :
-                            currentUser.role === 'manager' ? (activeCycle.managerEndDate || activeCycle.endDate) :
-                            activeCycle.endDate
-                        ).toLocaleDateString()}` : 'No active cycle'}
+                        {getCountdownText()}
                     </div>
                 </div>
                 {/* Self Review Card - Now First after Active Cycle */}

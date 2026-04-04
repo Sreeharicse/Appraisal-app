@@ -89,7 +89,7 @@ export default function Employees() {
     };
 
     const availableManagers = users.filter(u =>
-        (u.role === 'manager' || u.role === 'admin') &&
+        (u.role === 'manager' || u.role === 'admin' || u.role === 'hr') &&
         u.id !== editing?.id &&
         !isCircular(u.id, editing?.id)
     );

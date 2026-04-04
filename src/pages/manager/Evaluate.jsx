@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useApp } from '../../context/AppContext';
+import { useApp, CONFIG_DRAFT_EDIT_AFTER_DEADLINE } from '../../context/AppContext';
 import { useParams, useNavigate } from 'react-router-dom';
 import Icons from '../../components/Icons';
 
@@ -30,9 +30,22 @@ export default function Evaluate() {
     const cycle = cycles.find(c => String(c.id) === String(selectedCycleId));
     const isClosed = cycle?.status === 'closed';
 
+    // Deadline Logic
+    const deadlineStr = cycle?.evaluationEndDate || cycle?.endDate;
+    let isPastDeadline = false;
+    if (deadlineStr) {
+        const d = new Date(deadlineStr);
+        d.setHours(23, 59, 59, 999);
+        isPastDeadline = new Date() > d;
+    }
+
     // Once saved as 'pending_approval' or 'approved', or if cycle is closed, the evaluation is permanently locked
     const isSubmitted = status === 'pending_approval' || status === 'approved';
-    const isReadOnly = isSubmitted || (status === 'draft' && isLocked) || isClosed;
+    const isLockedByDeadline = isPastDeadline && !CONFIG_DRAFT_EDIT_AFTER_DEADLINE;
+    const isReadOnly = isSubmitted || (status === 'draft' && isLocked) || isClosed || isLockedByDeadline;
+
+    const canSubmit = !isSubmitted && !isPastDeadline && !isClosed;
+    const canSaveDraft = !isSubmitted && !isClosed && (!isPastDeadline || CONFIG_DRAFT_EDIT_AFTER_DEADLINE);
 
     const [competencies, setCompetencies] = useState({});
     const [feedback, setFeedback] = useState('');
@@ -478,26 +491,34 @@ export default function Evaluate() {
                 ) : (
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px' }}>
                         {status === 'draft' && isLocked ? (
-                            <button type="button" className="btn btn-secondary" style={{ padding: '16px 32px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }} onClick={() => setIsLocked(false)}>
-                                ✏️ Edit Evaluation
-                            </button>
+                            canSaveDraft ? (
+                                <button type="button" className="btn btn-secondary" style={{ padding: '16px 32px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }} onClick={() => setIsLocked(false)}>
+                                    ✏️ Edit Evaluation
+                                </button>
+                            ) : null
                         ) : (
-                            <button type="button" className="btn btn-primary" style={{ padding: '16px 64px', fontWeight: 700, fontSize: '16px' }} onClick={() => {
-                                // Flatten questions for pre-validation
-                                const flatQs = (COMPETENCY_QUESTIONS.length > 0 && COMPETENCY_QUESTIONS[0].questions)
-                                    ? COMPETENCY_QUESTIONS.reduce((acc, s) => [...acc, ...s.questions], [])
-                                    : COMPETENCY_QUESTIONS;
+                            canSubmit ? (
+                                <button type="button" className="btn btn-primary" style={{ padding: '16px 64px', fontWeight: 700, fontSize: '16px' }} onClick={() => {
+                                    // Flatten questions for pre-validation
+                                    const flatQs = (COMPETENCY_QUESTIONS.length > 0 && COMPETENCY_QUESTIONS[0].questions)
+                                        ? COMPETENCY_QUESTIONS.reduce((acc, s) => [...acc, ...s.questions], [])
+                                        : COMPETENCY_QUESTIONS;
 
-                                // Pre-validate before opening the modal
-                                const unrated = flatQs.filter(q => !competencies[q.id] || competencies[q.id].rating === 0);
-                                if (unrated.length > 0) { alert('Please provide a rating for all competencies before submitting.'); setActiveTab(1); return; }
-                                const poorComments = flatQs.filter(q => !competencies[q.id]?.comment || competencies[q.id].comment.trim().length < 20);
-                                if (poorComments.length > 0) { alert('Please provide a detailed comment (min 20 chars) for all competencies.'); setActiveTab(1); return; }
-                                if (!feedback || feedback.trim().length < 20) { alert('Please provide a detailed final assessment (min 20 chars).'); return; }
-                                setShowRatingModal(true);
-                            }}>
-                                🏁 Submit Evaluation
-                            </button>
+                                    // Pre-validate before opening the modal
+                                    const unrated = flatQs.filter(q => !competencies[q.id] || competencies[q.id].rating === 0);
+                                    if (unrated.length > 0) { alert('Please provide a rating for all competencies before submitting.'); setActiveTab(1); return; }
+                                    const poorComments = flatQs.filter(q => !competencies[q.id]?.comment || competencies[q.id].comment.trim().length < 20);
+                                    if (poorComments.length > 0) { alert('Please provide a detailed comment (min 20 chars) for all competencies.'); setActiveTab(1); return; }
+                                    if (!feedback || feedback.trim().length < 20) { alert('Please provide a detailed final assessment (min 20 chars).'); return; }
+                                    setShowRatingModal(true);
+                                }}>
+                                    🏁 Submit Evaluation
+                                </button>
+                            ) : isPastDeadline ? (
+                                <button type="button" className="btn btn-primary" disabled style={{ padding: '16px 64px', fontWeight: 700, fontSize: '16px', opacity: 0.7, background: 'var(--red)' }}>
+                                    🔒 Deadline Passed
+                                </button>
+                            ) : null
                         )}
                     </div>
                 )}
@@ -603,7 +624,7 @@ export default function Evaluate() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
 
                     {/* Draft Button */}
-                    {!isSubmitted && !isClosed && selectedEmp && isSelfReviewSubmitted && (
+                    {canSaveDraft && selectedEmp && isSelfReviewSubmitted && (
                         <button
                             className="btn btn-secondary"
                             onClick={() => handleSubmit('draft')}
@@ -707,13 +728,23 @@ export default function Evaluate() {
                     </div>
                 ) : (
                     <div>
-                        {isReadOnly && !hasEdited && <div style={{
+                        {isReadOnly && !isPastDeadline && <div style={{
                             marginBottom: '20px', padding: '12px 20px',
                             background: 'rgba(100,116,139,0.08)', border: '1px solid rgba(100,116,139,0.2)',
                             borderRadius: '12px', fontSize: '13px', color: 'var(--text-muted)'
                         }}>
                             🔒 This evaluation is {isSubmitted ? 'submitted and' : 'saved as a draft and'} <strong>read-only</strong>.
                         </div>}
+
+                        {isPastDeadline && !isSubmitted && !isClosed && (
+                            <div style={{
+                                marginBottom: '20px', padding: '12px 20px',
+                                background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)',
+                                borderRadius: '12px', fontSize: '13px', color: 'var(--red)', fontWeight: 600
+                            }}>
+                                ⚠️ The deadline for Manager Evaluations has passed. No further actions are allowed.
+                            </div>
+                        )}
 
                         <div style={{ minHeight: '400px' }}>
                             {renderTabContent()}

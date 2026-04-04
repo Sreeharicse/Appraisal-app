@@ -6,7 +6,7 @@ export default function Cycles() {
     const { currentUser, users, cycles, selfReviews, evaluations, approvals, addCycle, updateCycle, deleteCycle, requestCycleDelete, getScore } = useApp();
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
-    const [form, setForm] = useState({ name: '', startDate: '', endDate: '', employeeEndDate: '', managerEndDate: '', status: 'draft' });
+    const [form, setForm] = useState({ name: '', startDate: '', endDate: '', selfReviewEndDate: '', evaluationEndDate: '', approvalEndDate: '', status: 'draft' });
 
     // Deletion Flow State
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -15,8 +15,8 @@ export default function Cycles() {
     const [confirmName, setConfirmName] = useState('');
     const [deleteRequested, setDeleteRequested] = useState({});
 
-    const openAdd = () => { setEditing(null); setForm({ name: '', startDate: '', endDate: '', employeeEndDate: '', managerEndDate: '', status: 'draft' }); setShowModal(true); };
-    const openEdit = (c) => { setEditing(c); setForm({ name: c.name, startDate: c.startDate, endDate: c.endDate, employeeEndDate: c.employeeEndDate || c.endDate, managerEndDate: c.managerEndDate || c.endDate, status: c.status }); setShowModal(true); };
+    const openAdd = () => { setEditing(null); setForm({ name: '', startDate: '', endDate: '', selfReviewEndDate: '', evaluationEndDate: '', approvalEndDate: '', status: 'draft' }); setShowModal(true); };
+    const openEdit = (c) => { setEditing(c); setForm({ name: c.name, startDate: c.startDate, endDate: c.endDate, selfReviewEndDate: c.selfReviewEndDate || c.endDate, evaluationEndDate: c.evaluationEndDate || c.endDate, approvalEndDate: c.approvalEndDate || c.endDate, status: c.status }); setShowModal(true); };
 
     const handleSave = async () => {
         if (!form.name || !form.startDate || !form.endDate) return;
@@ -399,13 +399,17 @@ export default function Cycles() {
                             </div>
                             <div className="form-grid">
                                 <div className="form-group">
-                                    <label className="form-label">Employee Deadline</label>
-                                    <input className="form-input" type="date" value={form.employeeEndDate} onChange={e => setForm(p => ({ ...p, employeeEndDate: e.target.value }))} />
+                                    <label className="form-label">Self Review Deadline</label>
+                                    <input className="form-input" type="date" value={form.selfReviewEndDate} onChange={e => setForm(p => ({ ...p, selfReviewEndDate: e.target.value }))} />
                                 </div>
                                 <div className="form-group">
-                                    <label className="form-label">Manager Deadline</label>
-                                    <input className="form-input" type="date" value={form.managerEndDate} onChange={e => setForm(p => ({ ...p, managerEndDate: e.target.value }))} />
+                                    <label className="form-label">Evaluation Deadline</label>
+                                    <input className="form-input" type="date" value={form.evaluationEndDate} onChange={e => setForm(p => ({ ...p, evaluationEndDate: e.target.value }))} />
                                 </div>
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">HR / Admin Approval Deadline</label>
+                                <input className="form-input" type="date" value={form.approvalEndDate} onChange={e => setForm(p => ({ ...p, approvalEndDate: e.target.value }))} />
                             </div>
                             <div className="form-group">
                                 <label className="form-label">Status</label>
