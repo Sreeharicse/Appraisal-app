@@ -964,10 +964,9 @@ export function AppProvider({ children }) {
             setCycles(p => [mapped, ...p]); // prepend so newest shows first
 
             if (mapped.status === 'active') {
-                const allUsers = users.filter(u => u.role === 'employee' || u.role === 'manager');
-                const allUserIds = allUsers.map(u => u.id);
+                const allUserIds = users.map(u => u.id);
                 createNotification(allUserIds, 'New Appraisal Cycle', `The ${mapped.name} cycle has been launched.`, 'info', '/employee/self-review');
-                allUsers.forEach(emp => {
+                users.forEach(emp => {
                     sendEmailNotification(emp.email, 'New Appraisal Cycle Launched', cycleCreatedEmail(emp.name, mapped.name, mapped.startDate, mapped.endDate));
                 });
             }
@@ -985,7 +984,7 @@ export function AppProvider({ children }) {
             });
             if (updates.status === 'active') {
                 const cName = cycles.find(c => c.id === id)?.name || updates.name || "A";
-                const allUserIds = users.filter(u => u.role === 'employee' || u.role === 'manager').map(u => u.id);
+                const allUserIds = users.map(u => u.id);
                 createNotification(allUserIds, 'Appraisal Cycle Active', `The ${cName} cycle is now active.`, 'info', '/employee/self-review');
                 allUserIds.forEach(uid => {
                     const emp = users.find(u => u.id === uid);
@@ -1022,7 +1021,7 @@ export function AppProvider({ children }) {
         setCycles(p => p.map(c => c.id === id ? { ...c, ...normalizedUpdates } : c));
         if (updates.status === 'active') {
             const cName = cycles.find(c => c.id === id)?.name || updates.name || "A";
-            const allUserIds = users.filter(u => u.role === 'employee' || u.role === 'manager').map(u => u.id);
+            const allUserIds = users.map(u => u.id);
             createNotification(allUserIds, 'Appraisal Cycle Active', `The ${cName} cycle is now active.`, 'info', '/employee/self-review');
             allUserIds.forEach(uid => {
                 const emp = users.find(u => u.id === uid);
