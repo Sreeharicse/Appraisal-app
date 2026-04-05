@@ -26,6 +26,15 @@ export function getCategory(score) {
     return PERFORMANCE_CATEGORIES[PERFORMANCE_CATEGORIES.length - 1];
 }
 
+// Shared date normalizer: strips timestamps → returns plain YYYY-MM-DD for Supabase DATE columns and <input type="date">
+export function toDateOnly(val) {
+    if (!val) return null;
+    if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return null;
+    return d.toISOString().split('T')[0];
+}
+
 export function AppProvider({ children }) {
     const [currentUser, setCurrentUser] = useState(null);
     const [users, setUsers] = useState([]);
@@ -142,11 +151,11 @@ export function AppProvider({ children }) {
         setCycles((cyclesData || []).map(c => ({
             id: c.id,
             name: c.name,
-            startDate: c.start_date,
-            endDate: c.end_date,
-            selfReviewEndDate: c.self_review_end_date || c.end_date,
-            evaluationEndDate: c.evaluation_end_date || c.end_date,
-            approvalEndDate: c.approval_end_date || c.end_date,
+            startDate: toDateOnly(c.start_date),
+            endDate: toDateOnly(c.end_date),
+            selfReviewEndDate: toDateOnly(c.self_review_end_date) || toDateOnly(c.end_date),
+            evaluationEndDate: toDateOnly(c.evaluation_end_date) || toDateOnly(c.end_date),
+            approvalEndDate: toDateOnly(c.approval_end_date) || toDateOnly(c.end_date),
             status: c.status,
             createdBy: c.created_by,
         })));
@@ -912,16 +921,16 @@ export function AppProvider({ children }) {
 
         const { data, error } = await supabase.from('cycles').insert({
             name: cycle.name,
-            start_date: cycle.startDate,
-            end_date: cycle.endDate,
-            self_review_end_date: cycle.selfReviewEndDate || cycle.endDate,
-            evaluation_end_date: cycle.evaluationEndDate || cycle.endDate,
-            approval_end_date: cycle.approvalEndDate || cycle.endDate,
+            start_date: toDateOnly(cycle.startDate),
+            end_date: toDateOnly(cycle.endDate),
+            self_review_end_date: toDateOnly(cycle.selfReviewEndDate) || toDateOnly(cycle.endDate),
+            evaluation_end_date: toDateOnly(cycle.evaluationEndDate) || toDateOnly(cycle.endDate),
+            approval_end_date: toDateOnly(cycle.approvalEndDate) || toDateOnly(cycle.endDate),
             status: cycle.status || 'draft',
             created_by: currentUser?.id,
         }).select().single();
         if (error) {
-            console.error('Supabase error adding cycle:', error.message);
+            console.error('[addCycle] Supabase error:', error.message);
             return null;
         }
         if (data) {
@@ -968,28 +977,37 @@ export function AppProvider({ children }) {
 
         const dbUpdates = {};
         if (updates.name !== undefined) dbUpdates.name = updates.name;
-        if (updates.startDate !== undefined) dbUpdates.start_date = updates.startDate;
-        if (updates.endDate !== undefined) dbUpdates.end_date = updates.endDate;
-        if (updates.selfReviewEndDate !== undefined) dbUpdates.self_review_end_date = updates.selfReviewEndDate;
-        if (updates.evaluationEndDate !== undefined) dbUpdates.evaluation_end_date = updates.evaluationEndDate;
-        if (updates.approvalEndDate !== undefined) dbUpdates.approval_end_date = updates.approvalEndDate;
+        if (updates.startDate !== undefined) dbUpdates.start_date = toDateOnly(updates.startDate);
+        if (updates.endDate !== undefined) dbUpdates.end_date = toDateOnly(updates.endDate);
+        if (updates.selfReviewEndDate !== undefined) dbUpdates.self_review_end_date = toDateOnly(updates.selfReviewEndDate);
+        if (updates.evaluationEndDate !== undefined) dbUpdates.evaluation_end_date = toDateOnly(updates.evaluationEndDate);
+        if (updates.approvalEndDate !== undefined) dbUpdates.approval_end_date = toDateOnly(updates.approvalEndDate);
         if (updates.status !== undefined) dbUpdates.status = updates.status;
 
         const { error } = await supabase.from('cycles').update(dbUpdates).eq('id', id);
-        if (!error) {
-            setCycles(p => p.map(c => c.id === id ? { ...c, ...updates } : c));
-            if (updates.status === 'active') {
-                const cName = cycles.find(c => c.id === id)?.name || updates.name || "A";
-                const allUserIds = users.filter(u => u.role === 'employee' || u.role === 'manager').map(u => u.id);
-                createNotification(allUserIds, 'Appraisal Cycle Active', `The ${cName} cycle is now active.`, 'info', '/employee/self-review');
-                allUserIds.forEach(uid => {
-                    const emp = users.find(u => u.id === uid);
-                    if (emp) {
-                        const cycle = cycles.find(c => c.id === id);
-                        sendEmailNotification(emp.email, 'Appraisal Cycle Active', cycleCreatedEmail(emp.name, cName, cycle?.startDate || '', cycle?.endDate || ''));
-                    }
-                });
-            }
+        if (error) {
+            console.error('[updateCycle] Supabase error:', error.message, '| Payload:', dbUpdates);
+            throw new Error(error.message);
+        }
+        // Update local state — normalize dates too
+        const normalizedUpdates = { ...updates };
+        if (normalizedUpdates.startDate) normalizedUpdates.startDate = toDateOnly(normalizedUpdates.startDate);
+        if (normalizedUpdates.endDate) normalizedUpdates.endDate = toDateOnly(normalizedUpdates.endDate);
+        if (normalizedUpdates.selfReviewEndDate) normalizedUpdates.selfReviewEndDate = toDateOnly(normalizedUpdates.selfReviewEndDate);
+        if (normalizedUpdates.evaluationEndDate) normalizedUpdates.evaluationEndDate = toDateOnly(normalizedUpdates.evaluationEndDate);
+        if (normalizedUpdates.approvalEndDate) normalizedUpdates.approvalEndDate = toDateOnly(normalizedUpdates.approvalEndDate);
+        setCycles(p => p.map(c => c.id === id ? { ...c, ...normalizedUpdates } : c));
+        if (updates.status === 'active') {
+            const cName = cycles.find(c => c.id === id)?.name || updates.name || "A";
+            const allUserIds = users.filter(u => u.role === 'employee' || u.role === 'manager').map(u => u.id);
+            createNotification(allUserIds, 'Appraisal Cycle Active', `The ${cName} cycle is now active.`, 'info', '/employee/self-review');
+            allUserIds.forEach(uid => {
+                const emp = users.find(u => u.id === uid);
+                if (emp) {
+                    const cycle = cycles.find(c => c.id === id);
+                    sendEmailNotification(emp.email, 'Appraisal Cycle Active', cycleCreatedEmail(emp.name, cName, cycle?.startDate || '', cycle?.endDate || ''));
+                }
+            });
         }
     };
 

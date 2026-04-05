@@ -17,7 +17,34 @@ export default function Cycles() {
     const [deleteRequested, setDeleteRequested] = useState({});
 
     const openAdd = () => { setEditing(null); setForm({ name: '', startDate: '', endDate: '', selfReviewEndDate: '', evaluationEndDate: '', approvalEndDate: '', status: 'draft' }); setShowModal(true); };
-    const openEdit = (c) => { setEditing(c); setForm({ name: c.name, startDate: c.startDate, endDate: c.endDate, selfReviewEndDate: c.selfReviewEndDate || c.endDate, evaluationEndDate: c.evaluationEndDate || c.endDate, approvalEndDate: c.approvalEndDate || c.endDate, status: c.status }); setShowModal(true); };
+
+    // Normalize any date value (ISO string, datetime, or plain date) to YYYY-MM-DD for <input type="date">
+    const toDateStr = (val) => {
+        if (!val) return '';
+        // If it already looks like YYYY-MM-DD (no time component), return it directly
+        if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+        // Otherwise parse and extract date portion in local timezone
+        const d = new Date(val);
+        if (isNaN(d.getTime())) return '';
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    };
+
+    const openEdit = (c) => {
+        setEditing(c);
+        setForm({
+            name: c.name,
+            startDate: toDateStr(c.startDate),
+            endDate: toDateStr(c.endDate),
+            selfReviewEndDate: toDateStr(c.selfReviewEndDate) || toDateStr(c.endDate),
+            evaluationEndDate: toDateStr(c.evaluationEndDate) || toDateStr(c.endDate),
+            approvalEndDate: toDateStr(c.approvalEndDate) || toDateStr(c.endDate),
+            status: c.status
+        });
+        setShowModal(true);
+    };
 
     const handleSave = async () => {
         if (!form.name || !form.startDate || !form.endDate) return;
@@ -69,9 +96,14 @@ export default function Cycles() {
         }
 
         // Normal save (no status change, or new cycle)
-        if (editing) await updateCycle(editing.id, form);
-        else await addCycle(form);
-        setShowModal(false);
+        try {
+            if (editing) await updateCycle(editing.id, form);
+            else await addCycle(form);
+            setShowModal(false);
+        } catch (err) {
+            console.error('[handleSave] Error saving cycle:', err);
+            alert(`Failed to save cycle: ${err.message || 'Unknown error. Check console.'}`);
+        }
     };
 
     const statusBadge = { draft: 'badge-gray', active: 'badge-green', closed: 'badge-red' };
