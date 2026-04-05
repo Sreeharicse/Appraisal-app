@@ -88,11 +88,15 @@ export default function Employees() {
         return false;
     };
 
-    const availableManagers = users.filter(u =>
-        (u.role === 'manager' || u.role === 'admin' || u.role === 'hr') &&
-        u.id !== editing?.id &&
-        !isCircular(u.id, editing?.id)
-    );
+    const availableManagers = users.filter(u => {
+        if (u.id === editing?.id) return false;
+
+        if (form.role === 'admin') {
+            return u.role === 'admin';
+        }
+
+        return u.role === 'manager' || u.role === 'admin';
+    });
     const filtered = users.filter(u =>
         u.name.toLowerCase().includes(search.toLowerCase()) ||
         u.email.toLowerCase().includes(search.toLowerCase()) ||

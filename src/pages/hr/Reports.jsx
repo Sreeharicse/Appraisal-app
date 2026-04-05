@@ -256,7 +256,7 @@ export default function Reports() {
                         </ResponsiveContainer>
                     </div>
                 </div>
-            ) : activeCycle && (
+            ) : activeCycle && currentUser?.role !== 'admin' && currentUser?.role !== 'hr' ? (
                 <div className="alert alert-warning" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px 20px', borderRadius: '12px', marginBottom: '24px' }}>
                     <Icons.Chart style={{ width: '20px', height: '20px', color: 'var(--yellow)' }} />
                     <div>
@@ -264,7 +264,7 @@ export default function Reports() {
                         <div style={{ fontSize: '12px', opacity: 0.8 }}>Score charts will appear once HR approves evaluations. Pipeline table below shows all current statuses.</div>
                     </div>
                 </div>
-            )}
+            ) : null}
 
             {/* ── Comprehensive Pipeline Table — ALWAYS VISIBLE ── */}
             {activeCycle && (
