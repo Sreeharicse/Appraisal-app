@@ -88,12 +88,13 @@ export function AppProvider({ children }) {
             try {
                 const { data, error } = await supabase.from(table).select(query);
                 if (error) {
-                    console.error(`Error fetching ${table}:`, error);
+                    console.error(`[fetchTable] Error fetching ${table}:`, error.message, error.details || '');
                     return [];
                 }
+                console.log(`[fetchTable] ${table}: fetched ${data?.length ?? 0} rows`);
                 return data || [];
             } catch (err) {
-                console.error(`Exception fetching ${table}:`, err);
+                console.error(`[fetchTable] Exception fetching ${table}:`, err);
                 return [];
             }
         };
@@ -227,6 +228,10 @@ export function AppProvider({ children }) {
                     console.error("Failed to parse review metadata", e);
                 }
 
+                // Status resolution: DB column r.status takes priority (set by submitSelfReview),
+                // fall back to metadata.status for legacy records, default 'draft'
+                const resolvedStatus = r.status || metadata.status || 'draft';
+
                 const isJson = r.comments && r.comments.startsWith('{');
                 return {
                     id: r.id,
@@ -236,7 +241,7 @@ export function AppProvider({ children }) {
                     comments: isJson ? (metadata.comments || '') : (decrypt(r.comments) || r.comments),
                     metadata: metadata,
                     submittedAt: r.submitted_at,
-                    status: metadata.status || 'submitted'
+                    status: resolvedStatus,
                 };
             }));
         setEvaluations((evalsData || [])
@@ -919,6 +924,16 @@ export function AppProvider({ children }) {
             return mapped;
         }
 
+        console.log('[addCycle] Inserting:', {
+            name: cycle.name,
+            start_date: toDateOnly(cycle.startDate),
+            end_date: toDateOnly(cycle.endDate),
+            self_review_end_date: toDateOnly(cycle.selfReviewEndDate) || toDateOnly(cycle.endDate),
+            evaluation_end_date: toDateOnly(cycle.evaluationEndDate) || toDateOnly(cycle.endDate),
+            approval_end_date: toDateOnly(cycle.approvalEndDate) || toDateOnly(cycle.endDate),
+            status: cycle.status || 'draft',
+        });
+
         const { data, error } = await supabase.from('cycles').insert({
             name: cycle.name,
             start_date: toDateOnly(cycle.startDate),
@@ -930,21 +945,29 @@ export function AppProvider({ children }) {
             created_by: currentUser?.id,
         }).select().single();
         if (error) {
-            console.error('[addCycle] Supabase error:', error.message);
-            return null;
+            console.error('[addCycle] Supabase error:', error.message, '| Code:', error.code, '| Details:', error.details);
+            throw new Error(error.message);
         }
         if (data) {
-            const mapped = { id: data.id, name: data.name, startDate: data.start_date, endDate: data.end_date, selfReviewEndDate: data.self_review_end_date, evaluationEndDate: data.evaluation_end_date, approvalEndDate: data.approval_end_date, status: data.status, createdBy: data.created_by };
-            setCycles(p => [...p, mapped]);
+            console.log('[addCycle] Success, inserted row:', data);
+            const mapped = {
+                id: data.id,
+                name: data.name,
+                startDate: toDateOnly(data.start_date),
+                endDate: toDateOnly(data.end_date),
+                selfReviewEndDate: toDateOnly(data.self_review_end_date) || toDateOnly(data.end_date),
+                evaluationEndDate: toDateOnly(data.evaluation_end_date) || toDateOnly(data.end_date),
+                approvalEndDate: toDateOnly(data.approval_end_date) || toDateOnly(data.end_date),
+                status: data.status,
+                createdBy: data.created_by,
+            };
+            setCycles(p => [mapped, ...p]); // prepend so newest shows first
 
             if (mapped.status === 'active') {
                 const allUsers = users.filter(u => u.role === 'employee' || u.role === 'manager');
                 const allUserIds = allUsers.map(u => u.id);
-                console.log(`[EMAIL DEBUG] Found ${allUsers.length} recipients for activated cycle.`);
-
                 createNotification(allUserIds, 'New Appraisal Cycle', `The ${mapped.name} cycle has been launched.`, 'info', '/employee/self-review');
                 allUsers.forEach(emp => {
-                    console.log(`[EMAIL DEBUG] Attempting to email: ${emp.name} <${emp.email}>`);
                     sendEmailNotification(emp.email, 'New Appraisal Cycle Launched', cycleCreatedEmail(emp.name, mapped.name, mapped.startDate, mapped.endDate));
                 });
             }
