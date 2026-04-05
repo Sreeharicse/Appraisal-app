@@ -22,36 +22,36 @@ function resolvePipeline(userId, cycleId, selfReviews, evaluations) {
 
     // Evaluation stages take priority when they exist
     if (ev) {
-        if (ev.status === 'approved')   return { stage: 'approved',   sr, ev };
-        if (ev.status === 'evaluated')  return { stage: 'evaluated',  sr, ev };
+        if (ev.status === 'approved') return { stage: 'approved', sr, ev };
+        if (ev.status === 'evaluated') return { stage: 'evaluated', sr, ev };
         if (ev.status === 'pending_approval') return { stage: 'evaluated', sr, ev };
-        if (ev.status === 'submitted')  return { stage: 'submitted',  sr, ev };
+        if (ev.status === 'submitted') return { stage: 'submitted', sr, ev };
     }
 
     // Fall back to self-review status
     if (sr) {
         if (sr.status === 'submitted') return { stage: 'submitted', sr, ev: null };
-        if (sr.status === 'draft')     return { stage: 'draft',     sr, ev: null };
-        return                               { stage: 'draft',     sr, ev: null }; // sr exists but unknown status = draft
+        if (sr.status === 'draft') return { stage: 'draft', sr, ev: null };
+        return { stage: 'draft', sr, ev: null }; // sr exists but unknown status = draft
     }
 
     return { stage: 'not_started', sr: null, ev: null };
 }
 
 const STAGE_META = {
-    not_started: { label: 'Not Started',      badge: 'badge-gray',   color: '#64748b' },
-    draft:       { label: 'Draft',            badge: 'badge-yellow', color: '#f59e0b' },
-    submitted:   { label: 'Awaiting Manager', badge: 'badge-blue',   color: '#3b82f6' },
-    evaluated:   { label: 'Awaiting HR',      badge: 'badge-purple', color: '#a855f7' },
-    approved:    { label: 'Completed',        badge: 'badge-green',  color: '#10b981' },
+    not_started: { label: 'Not Started', badge: 'badge-gray', color: '#64748b' },
+    draft: { label: 'Draft', badge: 'badge-yellow', color: '#f59e0b' },
+    submitted: { label: 'Awaiting Manager', badge: 'badge-blue', color: '#3b82f6' },
+    evaluated: { label: 'Awaiting HR', badge: 'badge-purple', color: '#a855f7' },
+    approved: { label: 'Completed', badge: 'badge-green', color: '#10b981' },
 };
 
 const NEXT_STEP = {
-    not_started: { text: '📝 Start Self Review',  color: '#94a3b8', bg: 'rgba(100,116,139,0.15)', border: 'rgba(100,116,139,0.25)' },
-    draft:       { text: '✏️ Submit Draft',       color: '#f59e0b', bg: 'rgba(245,158,11,0.12)',  border: 'rgba(245,158,11,0.3)'  },
-    submitted:   { text: '👤 Manager — Evaluate', color: '#3b82f6', bg: 'rgba(59,130,246,0.12)',  border: 'rgba(59,130,246,0.3)'  },
-    evaluated:   { text: '✅ HR — Approve',       color: '#a855f7', bg: 'rgba(168,85,247,0.12)',  border: 'rgba(168,85,247,0.3)'  },
-    approved:    { text: '🏆 Complete',           color: '#10b981', bg: 'rgba(16,185,129,0.12)',  border: 'rgba(16,185,129,0.3)'  },
+    not_started: { text: '📝 Start Self Review', color: '#94a3b8', bg: 'rgba(100,116,139,0.15)', border: 'rgba(100,116,139,0.25)' },
+    draft: { text: '✏️ Submit Draft', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.3)' },
+    submitted: { text: '👤 Manager — Evaluate', color: '#3b82f6', bg: 'rgba(59,130,246,0.12)', border: 'rgba(59,130,246,0.3)' },
+    evaluated: { text: '✅ HR — Approve', color: '#a855f7', bg: 'rgba(168,85,247,0.12)', border: 'rgba(168,85,247,0.3)' },
+    approved: { text: '🏆 Complete', color: '#10b981', bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.3)' },
 };
 
 export default function Reports() {
@@ -169,7 +169,7 @@ export default function Reports() {
                 </div>
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                     <button onClick={exportToCSV} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
                         Export CSV
                     </button>
                     <div style={{ position: 'relative', display: 'flex', alignItems: 'center', minWidth: '220px' }}>
@@ -196,12 +196,12 @@ export default function Reports() {
             {activeCycle && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '16px', marginBottom: '28px' }}>
                     {[
-                        { id: 'all',         label: 'All Profiles',    color: 'var(--text-secondary)', count: pipelineData.length },
-                        { id: 'not_started', label: 'Not Started',     color: '#64748b',               count: summaryCounts.not_started },
-                        { id: 'draft',       label: 'Draft',           color: '#f59e0b',               count: summaryCounts.draft },
-                        { id: 'submitted',   label: 'Awaiting Manager',color: '#3b82f6',               count: summaryCounts.submitted },
-                        { id: 'evaluated',   label: 'Awaiting HR',     color: '#a855f7',               count: summaryCounts.evaluated },
-                        { id: 'approved',    label: 'Completed',       color: '#10b981',               count: summaryCounts.approved },
+                        { id: 'all', label: 'All Profiles', color: 'var(--text-secondary)', count: pipelineData.length },
+                        { id: 'not_started', label: 'Not Started', color: '#64748b', count: summaryCounts.not_started },
+                        { id: 'draft', label: 'Draft', color: '#f59e0b', count: summaryCounts.draft },
+                        { id: 'submitted', label: 'Awaiting Manager', color: '#3b82f6', count: summaryCounts.submitted },
+                        { id: 'evaluated', label: 'Awaiting HR', color: '#a855f7', count: summaryCounts.evaluated },
+                        { id: 'approved', label: 'Completed', color: '#10b981', count: summaryCounts.approved },
                     ].map(card => (
                         <div
                             key={card.id}
