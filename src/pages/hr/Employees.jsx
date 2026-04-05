@@ -621,37 +621,38 @@ export default function Employees() {
 
                                     {/* Add new override */}
                                     {(() => {
-                                        const activeCycle = cycles.find(c => c.status === 'active');
-                                        if (!activeCycle) return <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>No active cycle available.</div>;
+                                        // Show all active and draft cycles (not just active)
+                                        const assignableCycles = cycles.filter(c => c.status === 'active' || c.status === 'draft');
+                                        if (assignableCycles.length === 0) return <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>No active or draft cycles available.</div>;
 
-                                        const hasOverride = currentEmployeeOverrides.some(o => o.cycleId === activeCycle.id);
-                                        const reviewStarted = selfReviews.some(r =>
+                                        // Filter out cycles that already have an override for this employee
+                                        const availableCycles = assignableCycles.filter(c => !currentEmployeeOverrides.some(o => o.cycleId === c.id));
+                                        if (availableCycles.length === 0) return <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>All available cycles already have a question set assigned.</div>;
+
+                                        const selectedCycleId = overrideForm.cycleId || availableCycles[0]?.id || '';
+                                        const selectedCycle = availableCycles.find(c => c.id === selectedCycleId) || availableCycles[0];
+                                        const reviewStarted = selectedCycle ? selfReviews.some(r =>
                                             String(r.employeeId) === String(editing.id) &&
-                                            String(r.cycleId) === String(activeCycle.id) &&
+                                            String(r.cycleId) === String(selectedCycle.id) &&
                                             (r.status === 'draft' || r.status === 'submitted')
-                                        );
-
-                                        if (hasOverride) return null; // Already assigned
+                                        ) : false;
 
                                         return (
                                             <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end', marginTop: currentEmployeeOverrides.length > 0 ? '12px' : '0' }}>
                                                 <div style={{ flex: 1 }}>
-                                                    <label style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Active Cycle</label>
-                                                    <div style={{
-                                                        height: '36px',
-                                                        fontSize: '13px',
-                                                        background: 'var(--bg-secondary)',
-                                                        border: '1px solid var(--border)',
-                                                        borderRadius: '6px',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        padding: '0 12px',
-                                                        color: 'var(--text-primary)',
-                                                        fontWeight: 600,
-                                                        opacity: reviewStarted ? 0.6 : 1
-                                                    }}>
-                                                        {activeCycle.name}
-                                                    </div>
+                                                    <label style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Cycle</label>
+                                                    <select
+                                                        className="form-select"
+                                                        style={{ height: '36px', fontSize: '13px' }}
+                                                        value={selectedCycleId}
+                                                        onChange={e => setOverrideForm(p => ({ ...p, cycleId: e.target.value }))}
+                                                    >
+                                                        {availableCycles.map(c => (
+                                                            <option key={c.id} value={c.id}>
+                                                                {c.name} ({c.status})
+                                                            </option>
+                                                        ))}
+                                                    </select>
                                                 </div>
                                                 <div style={{ flex: 1 }}>
                                                     <label style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Question Set</label>
@@ -659,7 +660,7 @@ export default function Employees() {
                                                         className="form-select"
                                                         style={{ height: '36px', fontSize: '13px' }}
                                                         value={overrideForm.questionSetId}
-                                                        onChange={e => setOverrideForm(p => ({ ...p, cycleId: activeCycle.id, questionSetId: e.target.value }))}
+                                                        onChange={e => setOverrideForm(p => ({ ...p, cycleId: selectedCycleId, questionSetId: e.target.value }))}
                                                         disabled={reviewStarted}
                                                     >
                                                         <option value="">-- Choose Set --</option>
@@ -670,9 +671,9 @@ export default function Employees() {
                                                     className="btn btn-secondary"
                                                     style={{ height: '36px', padding: '0 14px', fontSize: '13px', whiteSpace: 'nowrap' }}
                                                     onClick={() => {
-                                                        const activeCycle = cycles.find(c => c.status === 'active');
-                                                        if (!editing || !activeCycle || !overrideForm.questionSetId) return;
-                                                        saveEmployeeOverride(editing.id, activeCycle.id, overrideForm.questionSetId).then(res => {
+                                                        const targetCycleId = selectedCycleId;
+                                                        if (!editing || !targetCycleId || !overrideForm.questionSetId) return;
+                                                        saveEmployeeOverride(editing.id, targetCycleId, overrideForm.questionSetId).then(res => {
                                                             if (res.success) {
                                                                 setOverrideForm({ cycleId: '', questionSetId: '' });
                                                             } else {
