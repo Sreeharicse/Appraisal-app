@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { PERFORMANCE_CATEGORIES } from '../data/constants';
 import { encrypt, decrypt, encryptJSON, decryptJSON, MASKED, AUTHORIZED_ROLES, logDecryptionAccess } from '../utils/encryption';
@@ -37,6 +37,7 @@ export function toDateOnly(val) {
 
 export function AppProvider({ children }) {
     const [currentUser, setCurrentUser] = useState(null);
+    const currentUserRef = useRef(null); // Always reflects the latest currentUser for use in callbacks
     const [users, setUsers] = useState([]);
     const [departments, setDepartments] = useState([]);
     const [designations, setDesignations] = useState([]);
@@ -50,6 +51,9 @@ export function AppProvider({ children }) {
     const [employeeOverrides, setEmployeeOverrides] = useState([]);
     const [loading, setLoading] = useState(true);
     const [theme, setTheme] = useState(localStorage.getItem('app-theme') || 'dark');
+
+    // Keep ref in sync so fetchAllData (empty deps) can always read the latest user
+    useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
     const [encryptionKey, _setEncryptionKey] = useState(localStorage.getItem('admin_encryption_key') || 'techxl-secure-2026');
     const [showDecrypted, setShowDecrypted] = useState(false);
 
@@ -189,10 +193,14 @@ export function AppProvider({ children }) {
                 let profile = mappedUsers.find(u => u.id === activeUserId);
                 if (!profile && session.user.email) {
                     profile = mappedUsers.find(u => u.email === session.user.email);
-                    // Use the profile's actual ID for reportee lookup if it differs from auth UUID
                     if (profile) activeUserId = profile.id;
                 }
                 activeUserRole = profile?.role;
+            }
+            // Ultimate fallback: use already-known currentUser from state (via ref)
+            if (!activeUserRole && currentUserRef.current) {
+                activeUserRole = currentUserRef.current.role;
+                if (!activeUserId) activeUserId = currentUserRef.current.id;
             }
         }
 
