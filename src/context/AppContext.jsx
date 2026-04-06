@@ -228,9 +228,12 @@ export function AppProvider({ children }) {
                     console.error("Failed to parse review metadata", e);
                 }
 
-                // Status resolution: DB column r.status takes priority (set by submitSelfReview),
-                // fall back to metadata.status for legacy records, default 'draft'
-                const resolvedStatus = r.status || metadata.status || 'draft';
+                // Status resolution: if r.status is 'draft' but the JSON metadata claims 'submitted', 
+                // trust the JSON metadata since old rows were bugged and omitted DB status.
+                let resolvedStatus = r.status || metadata.status || 'draft';
+                if (resolvedStatus === 'draft' && metadata.status === 'submitted') {
+                    resolvedStatus = 'submitted';
+                }
 
                 const isJson = r.comments && r.comments.startsWith('{');
                 return {
@@ -1240,7 +1243,7 @@ export function AppProvider({ children }) {
                     console.log(`[SelfReview] No manager found for ${empName}, falling back to HR.`);
                     const hrs = users.filter(u => u.role === 'admin' || u.role === 'hr');
                     if (hrs.length > 0) {
-                        createNotification(hrs.map(h => h.id), 'Self-Review Submitted', `${empName} has submitted their self-review (no manager assigned).`, 'success', '/hr/approvals');
+                        createNotification(hrs.map(h => h.id), 'Self-Review Submitted', `${empName} has submitted their self-review (no manager assigned).`, 'success', '/manager');
                         hrs.forEach(hr => sendEmailNotification(hr.email, `Self-Review Submitted by ${empName}`, employeeSubmitEmail(empName, hr.name)));
                     }
                 }
