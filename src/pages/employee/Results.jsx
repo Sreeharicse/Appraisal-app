@@ -138,8 +138,8 @@ export default function Results() {
                                         return (
                                             <>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
-                                                    <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Competency Questions <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(70%)</span></span>
-                                                    <span style={{ fontWeight: 700, color: 'var(--blue-light)' }}>{allQsAvg.toFixed(1)}/5 → {qPts} pts</span>
+                                                    <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Competency Questions</span>
+                                                    <span style={{ fontWeight: 700, color: 'var(--blue-light)' }}>{qPts} pts</span>
                                                 </div>
                                                 <div className="progress-bar" style={{ height: '8px' }}><div className="progress-fill" style={{ width: `${(allQsAvg / 5) * 100}%`, background: 'var(--blue-light)' }} /></div>
                                             </>
@@ -147,12 +147,23 @@ export default function Results() {
                                     })()}
                                 </div>
 
+                                {/* Manager Assessment — 20% */}
+                                <div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
+                                        <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Manager Assessment</span>
+                                        <span style={{ fontWeight: 700, color: 'var(--purple-light)' }}>{Math.round(((ev.subRating || 0) / 5) * 20)} pts</span>
+                                    </div>
+                                    <div className="progress-bar" style={{ height: '8px' }}>
+                                        <div className="progress-fill" style={{ width: `${((ev.subRating || 0) / 5) * 100}%`, background: 'var(--purple-light)' }} />
+                                    </div>
+                                </div>
+
                                 {/* HR Assessment — 10% */}
                                 <div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
-                                        <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>HR Assessment <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(10%)</span></span>
+                                        <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>HR Assessment</span>
                                         {hrRatingVal > 0 ? (
-                                            <span style={{ fontWeight: 700, color: 'var(--yellow)' }}>{Math.round(hrRatingVal * 10) / 10}/5 → {Math.round((hrRatingVal / 5) * 10)} pts</span>
+                                            <span style={{ fontWeight: 700, color: 'var(--yellow)' }}>{Math.round((hrRatingVal / 5) * 10)} pts</span>
                                         ) : (
                                             <span style={{ fontWeight: 600, color: 'var(--text-muted)' }}>Not Evaluated</span>
                                         )}
