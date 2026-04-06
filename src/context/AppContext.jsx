@@ -1422,9 +1422,9 @@ export function AppProvider({ children }) {
                 const emp = users.find(u => u.id === evaluation.employeeId);
                 const empRole = emp?.role;
 
-                // If the evaluated employee is HR, Manager, or Admin, only Admins can approve → notify only Admins
-                // If the evaluated employee is a regular employee, notify both HR and Admin
-                const notifyApprovers = (empRole === 'hr' || empRole === 'manager' || empRole === 'admin')
+                // If the evaluated employee is HR or Admin, only Admins can approve → notify only Admins
+                // If the evaluated employee is a regular employee or manager, progress flows to HR → notify both HR and Admin
+                const notifyApprovers = (empRole === 'hr' || empRole === 'admin')
                     ? users.filter(u => u.role === 'admin')
                     : users.filter(u => u.role === 'admin' || u.role === 'hr');
 
