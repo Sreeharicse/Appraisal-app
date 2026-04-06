@@ -185,7 +185,13 @@ export function AppProvider({ children }) {
             const { data: { session } } = await supabase.auth.getSession();
             if (session) {
                 activeUserId = session.user.id;
-                const profile = mappedUsers.find(u => u.id === activeUserId);
+                // Match by ID first, then fall back to email (for manually created profiles)
+                let profile = mappedUsers.find(u => u.id === activeUserId);
+                if (!profile && session.user.email) {
+                    profile = mappedUsers.find(u => u.email === session.user.email);
+                    // Use the profile's actual ID for reportee lookup if it differs from auth UUID
+                    if (profile) activeUserId = profile.id;
+                }
                 activeUserRole = profile?.role;
             }
         }
@@ -201,6 +207,8 @@ export function AppProvider({ children }) {
         const allowedUserIds = new Set(activeUserId ? getReportees(activeUserId).map(u => u.id) : []);
         if (activeUserId) allowedUserIds.add(activeUserId);
 
+        // Ultimate fallback: if role still not resolved, check ALL profiles for admin/hr role
+        // This handles cases where auth.uid doesn't match profile.id and email also differs
         const canView = (empId) => isAdminHr || allowedUserIds.has(empId);
 
         setSelfReviews((reviewsData || [])
