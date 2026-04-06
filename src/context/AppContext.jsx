@@ -887,12 +887,12 @@ export function AppProvider({ children }) {
     };
 
     // ──── Notifications ────
-    const createNotification = async (userIds, title, message, type = 'info', link = null) => {
+    const createNotification = async (userIds, title, message, type = 'info', link = null, metadata = {}) => {
         if (!userIds || userIds.length === 0) return;
         const now = new Date().toISOString();
 
-        // Pack link into the message string securely so we don't need a DB schema change
-        const payloadStr = JSON.stringify({ text: message, link: link });
+        // Pack link and metadata into the message string securely so we don't need a DB schema change
+        const payloadStr = JSON.stringify({ text: message, link: link, ...metadata });
 
         if (localStorage.getItem('fake_session_role')) {
             const newNotifs = userIds.map(uid => ({
@@ -1422,17 +1422,34 @@ export function AppProvider({ children }) {
                 const emp = users.find(u => u.id === evaluation.employeeId);
                 const empRole = emp?.role;
 
-                // If the evaluated employee is HR, Manager, or Admin, only Admins can approve → notify only Admins
-                // If the evaluated employee is a regular employee, notify both HR and Admin
-                const notifyApprovers = (empRole === 'hr' || empRole === 'manager' || empRole === 'admin')
-                    ? users.filter(u => u.role === 'admin')
-                    : users.filter(u => u.role === 'admin' || u.role === 'hr');
+                console.log("Evaluation submitted, triggering notifications"); // Debug log
 
+                // 1. Notify Employee
                 if (emp) {
                     createNotification([emp.id], 'Evaluation Submitted', `Your manager has submitted your evaluation. Pending approval.`, 'success', '/employee/results');
                     sendEmailNotification(emp.email, 'Evaluation Assessed', managerSubmitEmail(emp.name));
                 }
-                createNotification(notifyApprovers.map(h => h.id), 'Pending Approval', `Evaluation for ${emp?.name} is awaiting your approval.`, 'warning', '/hr/approvals');
+
+                // 2. Identify HR/Admin based on role for approval notification
+                // Include HR for manager evaluations, only exclude HR for HR/Admin themselves (who go straight to Admin)
+                const notifyApprovers = (empRole === 'hr' || empRole === 'admin')
+                    ? users.filter(u => u.role === 'admin')
+                    : users.filter(u => u.role === 'admin' || u.role === 'hr');
+
+                createNotification(
+                    notifyApprovers.map(h => h.id), 
+                    'Pending Approval', 
+                    `An evaluation for ${emp?.name || 'an employee'} is pending for your approval`, 
+                    'warning', 
+                    '/hr/approvals',
+                    { 
+                        type: 'evaluation_submitted', 
+                        cycle_id: evaluation.cycleId, 
+                        employee_id: evaluation.employeeId, 
+                        evaluation_id: mapped.id 
+                    }
+                );
+
                 notifyApprovers.forEach(h => sendEmailNotification(h.email, 'Evaluation Awaiting Approval', hrEvaluationSubmittedEmail(emp?.name || 'An employee', currentUser?.name || 'A Manager')));
             }
 
