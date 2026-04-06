@@ -200,34 +200,27 @@ export default function Approvals() {
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                     {/* Competencies (70%) */}
                                     <div>
-                                        {(() => {
-                                            const qPts = Math.round((allQsAvg / 5) * 70);
-                                            return (
-                                                <>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '4px' }}>
-                                                        <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Competency Questions</span>
-                                                        <span style={{ fontWeight: 700, color: 'var(--blue-light)' }}>{qPts} pts</span>
-                                                    </div>
-                                                    <div className="progress-bar" style={{ height: '5px' }}><div className="progress-fill" style={{ width: `${(allQsAvg / 5) * 100}%`, background: 'var(--blue-light)' }} /></div>
-                                                </>
-                                            );
-                                        })()}
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '4px' }}>
+                                            <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Competencies Avg <span style={{ color: 'var(--blue-light)', fontWeight: 700 }}>70%</span></span>
+                                            <span style={{ fontWeight: 700, color: 'var(--blue-light)' }}>{allQsAvg > 0 ? allQsAvg.toFixed(1) : '—'}/5</span>
+                                        </div>
+                                        <div className="progress-bar" style={{ height: '5px' }}><div className="progress-fill" style={{ width: `${(allQsAvg / 5) * 100}%`, background: 'var(--blue-light)' }} /></div>
                                     </div>
 
-                                    {/* Manager Assessment (20%) */}
+                                    {/* Manager Sub-Rating (20%) */}
                                     <div>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '4px' }}>
-                                            <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Manager Assessment</span>
-                                            <span style={{ fontWeight: 700, color: 'var(--purple-light)' }}>{Math.round(((ev.subRating || 0) / 5) * 20)} pts</span>
+                                            <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Manager Sub-Rating <span style={{ color: 'var(--purple)', fontWeight: 700 }}>20%</span></span>
+                                            <span style={{ fontWeight: 700, color: 'var(--purple)' }}>{ev.subRating || '—'}/5</span>
                                         </div>
-                                        <div className="progress-bar" style={{ height: '5px' }}><div className="progress-fill" style={{ width: `${((ev.subRating || 0) / 5) * 100}%`, background: 'var(--purple-light)' }} /></div>
+                                        <div className="progress-bar" style={{ height: '5px' }}><div className="progress-fill" style={{ width: `${((ev.subRating || 0) / 5) * 100}%`, background: 'var(--purple)' }} /></div>
                                     </div>
 
                                     {/* HR Assessment (10%) */}
                                     <div>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '4px' }}>
-                                            <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>HR Assessment</span>
-                                            <span style={{ fontWeight: 700, color: allRated ? 'var(--yellow)' : 'var(--text-muted)' }}>{allRated ? Math.round((avgHr / 5) * 10) : 0} pts</span>
+                                            <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>HR Assessment <span style={{ color: 'var(--yellow)', fontWeight: 700 }}>10%</span></span>
+                                            <span style={{ fontWeight: 700, color: allRated ? 'var(--yellow)' : 'var(--text-muted)' }}>{allRated ? avgHr.toFixed(1) : '—'}/5</span>
                                         </div>
                                         <div className="progress-bar" style={{ height: '5px' }}><div className="progress-fill" style={{ width: allRated ? `${(avgHr / 5) * 100}%` : '0%', background: 'var(--yellow)' }} /></div>
                                     </div>
