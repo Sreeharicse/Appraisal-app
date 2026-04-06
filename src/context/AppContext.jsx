@@ -1431,10 +1431,10 @@ export function AppProvider({ children }) {
                 }
 
                 // 2. Identify HR/Admin based on role for approval notification
-                // Include HR for manager evaluations, only exclude HR for HR/Admin themselves (who go straight to Admin)
+                // Standard flow: Employee/Manager → HR. High privilege flow: HR/Admin → Admin.
                 const notifyApprovers = (empRole === 'hr' || empRole === 'admin')
                     ? users.filter(u => u.role === 'admin')
-                    : users.filter(u => u.role === 'admin' || u.role === 'hr');
+                    : users.filter(u => u.role === 'hr');
 
                 createNotification(
                     notifyApprovers.map(h => h.id), 
