@@ -205,11 +205,13 @@ export function AppProvider({ children }) {
         }
 
         const isAdminHr = activeUserRole === 'admin' || activeUserRole === 'hr';
-        const getReportees = (mgrId) => {
+        const getReportees = (mgrId, visited = new Set()) => {
+            if (visited.has(mgrId)) return [];
+            visited.add(mgrId);
             let res = [];
             const dir = mappedUsers.filter(u => u.managerId === mgrId);
             res.push(...dir);
-            dir.forEach(d => res.push(...getReportees(d.id)));
+            dir.forEach(d => res.push(...getReportees(d.id, visited)));
             return res;
         };
         const allowedUserIds = new Set(activeUserId ? getReportees(activeUserId).map(u => u.id) : []);
@@ -1411,9 +1413,9 @@ export function AppProvider({ children }) {
                 const emp = users.find(u => u.id === evaluation.employeeId);
                 const empRole = emp?.role;
 
-                // If the evaluated employee is HR or Manager, only Admins can approve → notify only Admins
+                // If the evaluated employee is HR, Manager, or Admin, only Admins can approve → notify only Admins
                 // If the evaluated employee is a regular employee, notify both HR and Admin
-                const notifyApprovers = (empRole === 'hr' || empRole === 'manager')
+                const notifyApprovers = (empRole === 'hr' || empRole === 'manager' || empRole === 'admin')
                     ? users.filter(u => u.role === 'admin')
                     : users.filter(u => u.role === 'admin' || u.role === 'hr');
 
