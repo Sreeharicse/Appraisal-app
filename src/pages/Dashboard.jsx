@@ -26,10 +26,11 @@ export default function Dashboard() {
         }
     };
 
-    const getCountdownText = () => {
+    const getCountdownText = (roleOverride) => {
         if (!activeCycle) return 'No active cycle';
-        const targetDateStr = currentUser.role === 'employee' ? (activeCycle.selfReviewEndDate || activeCycle.endDate) :
-            currentUser.role === 'manager' ? (activeCycle.evaluationEndDate || activeCycle.endDate) :
+        const role = roleOverride || currentUser.role;
+        const targetDateStr = role === 'employee' ? (activeCycle.selfReviewEndDate || activeCycle.endDate) :
+            role === 'manager' ? (activeCycle.evaluationEndDate || activeCycle.endDate) :
                 (activeCycle.approvalEndDate || activeCycle.endDate);
         const targetDate = new Date(targetDateStr);
         targetDate.setHours(23, 59, 59, 999);
@@ -129,7 +130,7 @@ export default function Dashboard() {
             </div>
 
             {/* ----- ALL ROLES: Personal Dashboard ----- */}
-            <div className="grid grid-3" style={{ marginBottom: '24px' }}>
+            <div className={`grid ${currentUser.role === 'employee' ? 'grid-3' : 'grid-4'}`} style={{ marginBottom: '24px' }}>
                 <div className="kpi-card" style={{ '--accent-color': 'var(--blue-light)', cursor: 'pointer' }} onClick={() => activeCycle && navigate(`/employee/cycle/${activeCycle.id}`)}>
                     <div className="kpi-icon"><Icons.Calendar /></div>
                     <div className="kpi-label">
@@ -144,6 +145,19 @@ export default function Dashboard() {
                         {getCountdownText()}
                     </div>
                 </div>
+
+                {currentUser.role !== 'employee' && (
+                    <div className="kpi-card" style={{ '--accent-color': 'var(--indigo)', cursor: 'pointer' }} onClick={() => navigate('/employee/self-review')}>
+                        <div className="kpi-icon"><Icons.Clock /></div>
+                        <div className="kpi-label">Self Review Deadline</div>
+                        <div className="kpi-value" style={{ fontSize: '22px', marginTop: '8px' }}>
+                            {activeCycle ? activeCycle.name : 'None'}
+                        </div>
+                        <div className="kpi-change">
+                            {getCountdownText('employee')}
+                        </div>
+                    </div>
+                )}
                 {/* Self Review Card - Now First after Active Cycle */}
                 <div className="kpi-card" style={{ '--accent-color': 'var(--purple)', cursor: 'pointer' }} onClick={() => navigate('/employee/self-review')}>
                     <div className="kpi-icon"><Icons.FileText /></div>
