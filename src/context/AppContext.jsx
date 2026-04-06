@@ -778,6 +778,15 @@ export function AppProvider({ children }) {
 
         // Update local state on success
         setUsers(p => p.map(u => u.id === id ? { ...u, ...updates, managerId: updates.managerId !== undefined ? updates.managerId : u.managerId } : u));
+        
+        if (currentUser && currentUser.id === id) {
+            setCurrentUser(prev => ({ 
+                ...prev, 
+                ...updates, 
+                managerId: updates.managerId !== undefined ? updates.managerId : prev.managerId 
+            }));
+        }
+        
         return { success: true };
     };
 
