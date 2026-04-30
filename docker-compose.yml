@@ -6,6 +6,6 @@ services:
         - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
         - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
     ports:
-      - "8080:80"
+      - "10000:10000"
     env_file:
       - .env

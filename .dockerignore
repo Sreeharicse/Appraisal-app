@@ -1,8 +1,8 @@
 node_modules
 dist
-.env
-.env.local
-.env.production
+# .env
+# .env.local
+# .env.production
 *.log
 debug-db.js
 test-db.js

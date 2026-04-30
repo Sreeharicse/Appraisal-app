@@ -93,14 +93,14 @@ export function AppProvider({ children }) {
         // Map snake_case DB columns → camelCase used by the UI
         setUsers((profilesData || []).map(p => ({
             id: p.id,
-            name: p.name,
+            name: p.name || p.full_name || p.email || "Unknown",
             email: p.email,
             role: p.role,
             department: p.department,
             designation: p.designation,
             avatar: p.avatar,
             managerId: p.manager_id,
-        })));
+        })))
         setDepartments((departmentsData || []).map(d => ({ id: d.id, name: d.name })));
         setDesignations((designationsData || []).map(d => ({ id: d.id, name: d.name })));
         setCycles((cyclesData || []).map(c => ({
@@ -290,9 +290,9 @@ export function AppProvider({ children }) {
                     .eq('id', session.user.id)
                     .single();
 
-                // If profile doesn't exist (e.g., first time SSO login), auto-create or link it
+                // If profile doesn't exist (e.g., first time SSO/email login), auto-create or link it
                 if (!profile) {
-                    // First, check if there's a profile with this email (pre-registered by HR)
+                    // Check if HR pre-registered a profile with this email
                     const { data: existingProfile } = await supabase
                         .from('profiles')
                         .select('*')
@@ -300,19 +300,42 @@ export function AppProvider({ children }) {
                         .single();
 
                     if (existingProfile) {
-                        // Link existing profile to this Auth user ID
-                        const { error: linkError } = await supabase
+                        // Try to update the profile PK to match the Auth UID
+                        await supabase
                             .from('profiles')
                             .update({ id: session.user.id })
                             .eq('email', session.user.email);
 
-                        if (!linkError) {
+                        // Verify the update actually worked — RLS can silently block it
+                        // (returns no error but 0 rows changed when employee lacks permission)
+                        const { data: verifyRow } = await supabase
+                            .from('profiles')
+                            .select('id')
+                            .eq('id', session.user.id)
+                            .maybeSingle();
+
+                        if (verifyRow) {
+                            // Update succeeded — profile now has Auth UID
                             profile = { ...existingProfile, id: session.user.id };
                         } else {
-                            console.error("Failed to link profile:", linkError.message);
+                            // RLS silently blocked the update — try INSERT instead
+                            // (requires the "Users can insert own profile" RLS policy in the DB)
+                            console.warn('[Auth] Profile PK update blocked by RLS, trying insert...');
+                            const { id: _oldId, created_at: _ca, ...profileData } = existingProfile;
+                            const { error: insError } = await supabase
+                                .from('profiles')
+                                .insert({ ...profileData, id: session.user.id });
+                            if (!insError) {
+                                profile = { ...existingProfile, id: session.user.id };
+                            } else {
+                                // Last resort: use the existing HR profile UUID as-is.
+                                // currentUser.id = HR_UUID which IS in profiles → FK satisfied.
+                                console.warn('[Auth] Insert also blocked, using HR profile UUID:', existingProfile.id);
+                                profile = existingProfile;
+                            }
                         }
                     } else {
-                        // No profile exists, create a new one
+                        // No profile at all — create a brand new one
                         const metadata = session.user.user_metadata || {};
                         const fullName = metadata.full_name || metadata.name || session.user.email?.split('@')[0] || 'Unknown User';
                         const avatar = fullName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
@@ -330,7 +353,7 @@ export function AppProvider({ children }) {
                         if (!error) {
                             profile = newProfile;
                         } else {
-                            console.error("Failed to auto-create profile:", error.message);
+                            console.error('Failed to auto-create profile:', error.message);
                         }
                     }
                 }
@@ -428,13 +451,50 @@ export function AppProvider({ children }) {
         // Wait for Supabase to finish storing the session internally.
         await new Promise(resolve => setTimeout(resolve, 100));
 
-        const { data: profiles } = await supabase
+        // Look up profile by Auth UID first
+        let { data: profiles } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', data.user.id);
 
-        const profile = profiles?.[0];
-        if (!profile) return { success: false, error: 'Profile not found. Contact admin.' };
+        let profile = profiles?.[0];
+
+        // If not found by Auth UID, check if HR pre-registered a profile by email
+        if (!profile) {
+            const { data: emailProfiles } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('email', data.user.email);
+
+            const existingProfile = emailProfiles?.[0];
+            if (existingProfile) {
+                // Try to update the profile PK to match Auth UID
+                const { error: linkError } = await supabase
+                    .from('profiles')
+                    .update({ id: data.user.id })
+                    .eq('email', data.user.email);
+
+                if (!linkError) {
+                    profile = { ...existingProfile, id: data.user.id };
+                } else {
+                    // PK update failed — insert a new profile row with Auth UID
+                    console.warn('Profile PK update failed in login(), inserting new row:', linkError.message);
+                    const { id: _oldId, created_at: _ca, ...profileData } = existingProfile;
+                    const { error: insError } = await supabase
+                        .from('profiles')
+                        .insert({ ...profileData, id: data.user.id });
+                    if (!insError) {
+                        profile = { ...existingProfile, id: data.user.id };
+                    } else {
+                        // Last resort: use existing HR profile so employee can still log in
+                        console.warn('Fallback insert failed, using HR profile:', insError.message);
+                        profile = existingProfile;
+                    }
+                }
+            }
+        }
+
+        if (!profile) return { success: false, error: 'Profile not found. Contact your HR administrator.' };
 
         const user = {
             id: profile.id,
@@ -923,19 +983,50 @@ export function AppProvider({ children }) {
             return mapped;
         }
 
+        // ── Always verify against the DB for imported employees whose local state
+        //    may have a stale/different UUID than what was originally persisted. ──
+        let dbExisting = existing;
+        if (!dbExisting) {
+            const { data: dbRows, error: lookupError } = await supabase
+                .from('self_reviews')
+                .select('id, employee_id, cycle_id')
+                .eq('employee_id', review.employeeId)
+                .eq('cycle_id', review.cycleId)
+                .order('submitted_at', { ascending: false })
+                .limit(1);
+            if (lookupError) {
+                console.warn('[SelfReview] DB lookup warning:', lookupError.message);
+            }
+            const dbRow = dbRows?.[0] || null;
+            if (dbRow) {
+                dbExisting = { id: dbRow.id, employeeId: dbRow.employee_id, cycleId: dbRow.cycle_id };
+            }
+        }
+
         const payload = {
             cycle_id: review.cycleId,
             employee_id: review.employeeId,
-            summary: encrypt(review.summary),
+            summary: encrypt(review.summary || ''),   // default to '' — never send undefined
             comments: packedComments,
             submitted_at: new Date().toISOString()
         };
 
         let result;
-        if (existing) {
-            result = await supabase.from('self_reviews').update(payload).eq('id', existing.id).select().single();
+        if (dbExisting) {
+            // Row already exists in DB — UPDATE by primary key (avoids 409 entirely)
+            result = await supabase
+                .from('self_reviews')
+                .update(payload)
+                .eq('id', dbExisting.id)
+                .select()
+                .single();
         } else {
-            result = await supabase.from('self_reviews').insert(payload).select().single();
+            // Truly new row — plain INSERT
+            result = await supabase
+                .from('self_reviews')
+                .insert(payload)
+                .select()
+                .single();
         }
 
         if (!result.error && result.data) {
@@ -950,9 +1041,14 @@ export function AppProvider({ children }) {
                 submittedAt: r.submitted_at,
                 status: review.status || 'draft'
             };
-            setSelfReviews(p => existing ? p.map(x => x.id === existing.id ? mapped : x) : [...p, mapped]);
+            setSelfReviews(p => {
+                const inState = p.find(x => x.id === mapped.id || (x.cycleId === mapped.cycleId && x.employeeId === mapped.employeeId));
+                return inState
+                    ? p.map(x => (x.id === mapped.id || (x.cycleId === mapped.cycleId && x.employeeId === mapped.employeeId)) ? mapped : x)
+                    : [...p, mapped];
+            });
             // Notify Manager or HR fallback ONLY if state just changed to submitted
-            if (mapped.status === 'submitted' && (!existing || existing.status !== 'submitted')) {
+            if (mapped.status === 'submitted' && (!dbExisting || existing?.status !== 'submitted')) {
                 const employee = users.find(u => u.id === mapped.employeeId);
                 const managerId = employee?.managerId;
                 const empManager = users.find(u => u.id === managerId);

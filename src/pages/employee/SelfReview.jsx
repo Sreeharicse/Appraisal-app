@@ -161,7 +161,7 @@ export default function SelfReview() {
             }
         }
 
-        await submitSelfReview({
+        const result = await submitSelfReview({
             cycleId: selectedCycleId,
             employeeId: currentUser.id,
 
@@ -170,6 +170,12 @@ export default function SelfReview() {
             learning,
             status: finalStatus
         });
+
+        if (!result) {
+            setPopupMessage({ title: '❌ Save Failed', body: 'There was an error saving your review. Please try again. If the problem persists, contact your HR administrator.' });
+            setShowPopup(true);
+            return;
+        }
 
         setStatus(finalStatus);
         setSubmitted(true);
