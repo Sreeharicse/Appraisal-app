@@ -14,6 +14,7 @@ import Cycles from './pages/hr/Cycles';
 import Approvals from './pages/hr/Approvals';
 import Reports from './pages/hr/Reports';
 import HRCycleDetail from './pages/hr/CycleDetail';
+import QuestionSets from './pages/hr/QuestionSets';
 
 // Admin pages
 import AdminSettings from './pages/admin/Settings';
@@ -26,7 +27,6 @@ import TeamReport from './pages/manager/TeamReport';
 import SelfReview from './pages/employee/SelfReview';
 import Results from './pages/employee/Results';
 import CycleDetail from './pages/employee/CycleDetail';
-import WireframeMockup from './pages/WireframeMockup';
 
 function ProtectedRoute({ children, allowedRoles }) {
   const { currentUser } = useApp();
@@ -64,8 +64,6 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={currentUser ? <Navigate to="/dashboard" replace /> : <Login />} />
-      <Route path="/wireframes" element={<WireframeMockup />} />
-
       {/* Unified Dashboard */}
       <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['all']}><Layout><UnifiedDashboard /></Layout></ProtectedRoute>} />
 
@@ -73,8 +71,9 @@ function AppRoutes() {
       <Route path="/hr/cycle/:cycleId" element={<ProtectedRoute allowedRoles={['hr']}><Layout><HRCycleDetail /></Layout></ProtectedRoute>} />
       <Route path="/hr/employees" element={<ProtectedRoute allowedRoles={['hr', 'manager']}><Layout><Employees /></Layout></ProtectedRoute>} />
       <Route path="/hr/cycles" element={<ProtectedRoute allowedRoles={['hr']}><Layout><Cycles /></Layout></ProtectedRoute>} />
-      <Route path="/hr/approvals" element={<ProtectedRoute allowedRoles={['hr', 'admin']}><Layout><Approvals /></Layout></ProtectedRoute>} />
+      <Route path="/hr/approvals" element={<ProtectedRoute allowedRoles={['hr', 'admin', 'manager']}><Layout><Approvals /></Layout></ProtectedRoute>} />
       <Route path="/hr/reports" element={<ProtectedRoute allowedRoles={['hr']}><Layout><Reports /></Layout></ProtectedRoute>} />
+      <Route path="/hr/question-sets" element={<ProtectedRoute allowedRoles={['hr', 'admin']}><Layout><QuestionSets /></Layout></ProtectedRoute>} />
 
       {/* Admin Routes */}
       <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={['admin']}><Layout><AdminSettings /></Layout></ProtectedRoute>} />

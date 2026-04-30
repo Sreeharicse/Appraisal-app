@@ -50,3 +50,8 @@ ON CONFLICT (name) DO NOTHING;
 INSERT INTO public.designations (name) VALUES 
 ('Software Engineer'), ('Senior Software Engineer'), ('Product Manager'), ('HR Specialist'), ('Sales Executive'), ('UX Designer')
 ON CONFLICT (name) DO NOTHING;
+
+-- 8. Add Date Control Columns to Appraisal Cycles
+ALTER TABLE public.cycles 
+ADD COLUMN IF NOT EXISTS employee_end_date DATE,
+ADD COLUMN IF NOT EXISTS manager_end_date DATE;

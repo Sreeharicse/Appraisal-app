@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import Icons from '../../components/Icons';
+import Avatar from '../../components/Avatar';
 import { useMsal } from '@azure/msal-react';
 import { loginRequest } from '../../auth/msalConfig';
 
@@ -51,14 +52,20 @@ const ROLE_BADGE = {
 
 /* ═══════════════════════════════════════════════════════════ */
 export default function Employees() {
-    const { currentUser, users, addUser, updateUser, deleteUser, refreshData, departments, designations } = useApp();
+    const { currentUser, users, addUser, updateUser, deleteUser, refreshData, departments, designations, questionSets, cycles, selfReviews, employeeOverrides, saveEmployeeOverride, deleteEmployeeOverride } = useApp();
     const isManager = currentUser.role === 'manager';
 
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
     const [form, setForm] = useState({ name: '', email: '', role: 'employee', designation: '', department: '', managerId: '' });
+    const [overrideForm, setOverrideForm] = useState({ cycleId: '', questionSetId: '' });
     const [search, setSearch] = useState('');
     const [toast, setToast] = useState(null); // { type: 'success'|'error', msg: string }
+
+    const profileReviewStarted = editing && selfReviews.some(r => 
+        String(r.employeeId) === String(editing.id) && 
+        (r.status === 'draft' || r.status === 'submitted')
+    );
 
     const showToast = (type, msg) => {
         setToast({ type, msg });
@@ -70,7 +77,22 @@ export default function Employees() {
     const [fetchError, setFetchError] = useState('');
     const [profilePhoto, setProfilePhoto] = useState(null);
 
-    const managers = users.filter(u => u.role === 'manager' || u.role === 'admin');
+    const isCircular = (targetManagerId, employeeId) => {
+        if (!targetManagerId || !employeeId) return false;
+        let currentId = targetManagerId;
+        while(currentId) {
+            if(currentId === employeeId) return true;
+            const mgr = users.find(u => u.id === currentId);
+            currentId = mgr ? mgr.managerId : null;
+        }
+        return false;
+    };
+
+    const availableManagers = users.filter(u => 
+        (u.role === 'manager' || u.role === 'admin') &&
+        u.id !== editing?.id &&
+        !isCircular(u.id, editing?.id)
+    );
     const filtered = users.filter(u =>
         u.name.toLowerCase().includes(search.toLowerCase()) ||
         u.email.toLowerCase().includes(search.toLowerCase()) ||
@@ -94,6 +116,11 @@ export default function Employees() {
     const openEdit = (u) => {
         setEditing(u);
         setForm({ name: u.name, email: u.email, role: u.role, designation: u.designation || '', department: u.department || '', managerId: u.managerId || '' });
+        
+        // Preselect common question set if available
+        const commonSet = questionSets.find(qs => qs.isCommon);
+        setOverrideForm({ cycleId: '', questionSetId: commonSet ? commonSet.id : '' });
+        
         resetModal();
         setShowModal(true);
     };
@@ -135,7 +162,23 @@ export default function Employees() {
                 });
                 if (photoRes.ok) {
                     const blob = await photoRes.blob();
-                    setProfilePhoto(URL.createObjectURL(blob));
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            const MAX_W = 150, MAX_H = 150;
+                            let w = img.width, h = img.height;
+                            if (w > h) { if (w > MAX_W) { h *= MAX_W / w; w = MAX_W; } }
+                            else { if (h > MAX_H) { w *= MAX_H / h; h = MAX_H; } }
+                            canvas.width = w; canvas.height = h;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0, w, h);
+                            setProfilePhoto(canvas.toDataURL('image/jpeg', 0.8));
+                        };
+                        img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(blob);
                 }
             } catch (_) { /* photo is optional */ }
 
@@ -154,7 +197,8 @@ export default function Employees() {
 
     const handleSave = async () => {
         if (!form.name || !form.email) return;
-        const avatar = form.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+        const fallbackInitials = form.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+        const avatar = profilePhoto || (editing && editing.avatar?.startsWith('data:image') ? editing.avatar : fallbackInitials);
         if (editing) {
             const result = await updateUser(editing.id, { ...form, avatar });
             if (result?.success) {
@@ -171,6 +215,24 @@ export default function Employees() {
         setShowModal(false);
         resetModal();
     };
+
+    const handleAddOverride = async () => {
+        if (!editing || !overrideForm.cycleId || !overrideForm.questionSetId) return;
+        const res = await saveEmployeeOverride(editing.id, overrideForm.cycleId, overrideForm.questionSetId);
+        if (res.success) {
+            setOverrideForm({ cycleId: '', questionSetId: '' });
+        } else {
+            showToast('error', `Failed to save: ${res.error}`);
+        }
+    };
+
+    const handleRemoveOverride = async (cycleId) => {
+        if (!editing) return;
+        const res = await deleteEmployeeOverride(editing.id, cycleId);
+        if (!res.success) showToast('error', `Failed to remove: ${res.error}`);
+    };
+
+    const currentEmployeeOverrides = editing ? employeeOverrides.filter(o => String(o.employeeId) === String(editing.id)) : [];
 
 
     return (
@@ -226,12 +288,12 @@ export default function Employees() {
                     </thead>
                     <tbody>
                         {filtered.map(u => {
-                            const mgr = managers.find(m => m.id === u.managerId);
+                            const mgr = users.find(m => m.id === u.managerId);
                             return (
                                 <tr key={u.id}>
                                     <td>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                            <div className="avatar" style={{ width: '32px', height: '32px', fontSize: '12px' }}>{u.avatar}</div>
+                                            <Avatar avatarData={u.avatar} name={u.name} size={32} />
                                             <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{u.name}</span>
                                         </div>
                                     </td>
@@ -274,19 +336,14 @@ export default function Employees() {
                         <div className="modal-header" style={{ padding: '20px 24px 16px', gap: '12px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                 {/* Avatar preview */}
-                                <div style={{
-                                    width: '44px', height: '44px', borderRadius: '50%',
-                                    background: 'var(--blue-gradient)',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    fontSize: '16px', fontWeight: 700, color: 'white',
-                                    overflow: 'hidden', flexShrink: 0,
-                                    boxShadow: '0 4px 12px rgba(59,130,246,0.35)'
-                                }}>
-                                    {profilePhoto
-                                        ? <img src={profilePhoto} style={{ width: '44px', height: '44px', objectFit: 'cover' }} alt="avatar" />
-                                        : (form.name ? form.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '?')
-                                    }
-                                </div>
+                                <Avatar
+                                    avatarData={profilePhoto || (editing ? editing.avatar : null) || form.name}
+                                    name={form.name}
+                                    size={44}
+                                    editable={true}
+                                    onUpload={(base64) => setProfilePhoto(base64)}
+                                    style={{ boxShadow: '0 4px 12px rgba(59,130,246,0.35)' }}
+                                />
                                 <div>
                                     <h3 style={{ fontSize: '16px', fontWeight: 700, margin: 0 }}>
                                         {editing ? 'Edit Employee' : 'Add New Employee'}
@@ -415,11 +472,32 @@ export default function Employees() {
                                 </div>
                                 <div className="form-group">
                                     <label className="form-label">Job Title / Designation</label>
-                                    <select className="form-select" value={form.designation}
-                                        onChange={e => setForm(p => ({ ...p, designation: e.target.value }))}>
+                                    <select 
+                                        className="form-select" 
+                                        value={form.designation}
+                                        onChange={e => setForm(p => ({ ...p, designation: e.target.value }))}
+                                    >
                                         <option value="">-- Select Title --</option>
                                         {designations.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
                                     </select>
+                                    {profileReviewStarted && (
+                                        <div style={{ 
+                                            fontSize: '11px', 
+                                            color: 'var(--blue)', 
+                                            marginTop: '6px', 
+                                            fontWeight: 600, 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            gap: '4px',
+                                            padding: '4px 8px',
+                                            background: 'rgba(59, 130, 246, 0.05)',
+                                            borderRadius: '4px',
+                                            border: '1px solid rgba(59, 130, 246, 0.1)'
+                                        }}>
+                                            <Icons.Info style={{ width: 14, height: 14 }} /> 
+                                            Designation updated. Question Set remains unchanged as review has already started.
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -446,14 +524,174 @@ export default function Employees() {
                             </div>
 
                             {/* ── Row 3: Reporting Manager ── */}
-                            <div className="form-group" style={{ marginBottom: 0 }}>
+                            <div className="form-group">
                                 <label className="form-label">Reporting Manager</label>
                                 <select className="form-select" value={form.managerId}
-                                    onChange={e => setForm(p => ({ ...p, managerId: e.target.value }))}>
+                                    onChange={e => setForm(p => ({ ...p, managerId: e.target.value }))}
+                                    disabled={currentUser.role !== 'admin'}
+                                    style={currentUser.role !== 'admin' ? { cursor: 'not-allowed', backgroundColor: 'var(--bg-secondary)', opacity: 0.7 } : {}}
+                                >
                                     <option value="">None</option>
-                                    {managers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                                    {availableManagers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                                 </select>
                             </div>
+
+                            {/* ── Cycle-Specific Question Set Overrides (only for existing employees) ── */}
+                            {editing && (
+                                <div style={{
+                                    background: 'var(--bg-secondary)',
+                                    padding: '16px',
+                                    borderRadius: '8px',
+                                    border: '1px solid var(--border)',
+                                    marginTop: '4px',
+                                }}>
+                                    <h4 style={{
+                                        margin: '0 0 12px 0',
+                                        fontSize: '13px',
+                                        color: 'var(--text-primary)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px'
+                                    }}>
+                                        <Icons.Cycles style={{ width: 14, height: 14 }} /> Cycle-Specific Question Set
+                                    </h4>
+
+                                    {/* Existing override list */}
+                                    {currentEmployeeOverrides.length > 0 && (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '12px' }}>
+                                            {currentEmployeeOverrides.map(override => {
+                                                const c = cycles.find(cy => cy.id === override.cycleId);
+                                                const q = questionSets.find(qs => qs.id === override.questionSetId);
+                                                
+                                                // Check if a review has already started for this cycle
+                                                const reviewStarted = selfReviews.some(r => 
+                                                    String(r.employeeId) === String(editing.id) && 
+                                                    String(r.cycleId) === String(override.cycleId) && 
+                                                    (r.status === 'draft' || r.status === 'submitted')
+                                                );
+                                                
+                                                const isCycleClosed = c?.status === 'closed';
+
+                                                return (
+                                                    <div key={override.cycleId} style={{ marginBottom: '8px' }}>
+                                                        <div style={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'space-between',
+                                                            background: 'var(--bg-card)',
+                                                            padding: '8px 12px',
+                                                            borderRadius: '6px',
+                                                            border: '1px solid var(--border)'
+                                                        }}>
+                                                            <div style={{ fontSize: '13px' }}>
+                                                                <strong style={{ color: 'var(--blue)' }}>{c?.name || 'Unknown Cycle'}</strong>
+                                                                <span style={{ color: 'var(--text-muted)', margin: '0 8px' }}>→</span>
+                                                                <span style={{ color: 'var(--text-secondary)' }}>{q?.name || 'Unknown Set'}</span>
+                                                            </div>
+                                                            {!reviewStarted && !isCycleClosed && (
+                                                                <button
+                                                                    className="btn btn-sm"
+                                                                    style={{ padding: '4px', background: 'transparent', color: 'var(--red)', border: 'none', cursor: 'pointer' }}
+                                                                    onClick={() => handleRemoveOverride(override.cycleId)}
+                                                                    title="Remove this override"
+                                                                >
+                                                                    <Icons.Trash style={{ width: 14, height: 14 }} />
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                        {(reviewStarted || isCycleClosed) && (
+                                                            <div style={{ 
+                                                                fontSize: '11px', 
+                                                                color: '#ef4444', 
+                                                                marginTop: '4px', 
+                                                                paddingLeft: '4px',
+                                                                fontWeight: 600,
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '4px'
+                                                            }}>
+                                                                <AlertCircle /> {isCycleClosed ? 'Question Set cannot be changed for closed cycles' : 'Question Set cannot be changed once review is started'}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+
+                                    {/* Add new override */}
+                                    {(() => {
+                                        const activeCycle = cycles.find(c => c.status === 'active');
+                                        if (!activeCycle) return <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>No active cycle available.</div>;
+                                        
+                                        const hasOverride = currentEmployeeOverrides.some(o => o.cycleId === activeCycle.id);
+                                        const reviewStarted = selfReviews.some(r => 
+                                            String(r.employeeId) === String(editing.id) && 
+                                            String(r.cycleId) === String(activeCycle.id) && 
+                                            (r.status === 'draft' || r.status === 'submitted')
+                                        );
+
+                                        if (hasOverride) return null; // Already assigned
+
+                                        return (
+                                            <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end', marginTop: currentEmployeeOverrides.length > 0 ? '12px' : '0' }}>
+                                                <div style={{ flex: 1 }}>
+                                                    <label style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Active Cycle</label>
+                                                    <div style={{
+                                                        height: '36px',
+                                                        fontSize: '13px',
+                                                        background: 'var(--bg-secondary)',
+                                                        border: '1px solid var(--border)',
+                                                        borderRadius: '6px',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        padding: '0 12px',
+                                                        color: 'var(--text-primary)',
+                                                        fontWeight: 600,
+                                                        opacity: reviewStarted ? 0.6 : 1
+                                                    }}>
+                                                        {activeCycle.name}
+                                                    </div>
+                                                </div>
+                                                <div style={{ flex: 1 }}>
+                                                    <label style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Question Set</label>
+                                                    <select
+                                                        className="form-select"
+                                                        style={{ height: '36px', fontSize: '13px' }}
+                                                        value={overrideForm.questionSetId}
+                                                        onChange={e => setOverrideForm(p => ({ ...p, cycleId: activeCycle.id, questionSetId: e.target.value }))}
+                                                        disabled={reviewStarted}
+                                                    >
+                                                        <option value="">-- Choose Set --</option>
+                                                        {questionSets.map(qs => <option key={qs.id} value={qs.id}>{qs.name}</option>)}
+                                                    </select>
+                                                </div>
+                                                <button
+                                                    className="btn btn-secondary"
+                                                    style={{ height: '36px', padding: '0 14px', fontSize: '13px', whiteSpace: 'nowrap' }}
+                                                    onClick={() => {
+                                                        const activeCycle = cycles.find(c => c.status === 'active');
+                                                        if (!editing || !activeCycle || !overrideForm.questionSetId) return;
+                                                        saveEmployeeOverride(editing.id, activeCycle.id, overrideForm.questionSetId).then(res => {
+                                                            if (res.success) {
+                                                                setOverrideForm({ cycleId: '', questionSetId: '' });
+                                                            } else {
+                                                                showToast('error', `Failed to save: ${res.error}`);
+                                                            }
+                                                        });
+                                                    }}
+                                                    disabled={reviewStarted || !overrideForm.questionSetId}
+                                                >
+                                                    + Add
+                                                </button>
+                                            </div>
+                                        );
+                                    })()}
+                                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px' }}>
+                                        Overrides take priority. All other cycles fall back to Job Title defaults.
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* Footer */}

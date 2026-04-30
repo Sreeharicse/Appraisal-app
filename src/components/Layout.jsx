@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext';
 import logo from '../assets/logo-techxl.png';
 import logoDark from '../assets/logo-techxl-dark.png';
 import Icons from './Icons';
+import Avatar from './Avatar';
 
 // BASE LINKS - Available to ALL roles
 const BASE_LINKS = [
@@ -18,6 +19,7 @@ const EMPLOYEE_LINKS = [...BASE_LINKS];
 const MANAGER_LINKS = [
     ...BASE_LINKS,
     { to: '/manager', label: 'Evaluate Team', icon: <Icons.Users /> },
+    { to: '/hr/approvals', label: 'Approvals', icon: <Icons.Check /> },
     { to: '/manager/team-report', label: 'Team Report', icon: <Icons.Chart /> },
     { to: '/hr/employees', label: 'Employees', icon: <Icons.Users /> },
 ];
@@ -29,6 +31,7 @@ const HR_LINKS = [
     { to: '/hr/cycles', label: 'Appraisal Cycles', icon: <Icons.Cycles /> },
     { to: '/hr/approvals', label: 'Approvals', icon: <Icons.Check /> },
     { to: '/hr/reports', label: 'Reports', icon: <Icons.Chart /> },
+    { to: '/hr/question-sets', label: 'Question Sets', icon: <Icons.Edit /> },
 ];
 
 // ADMIN LINKS - ALL links + Admin settings
@@ -40,6 +43,7 @@ const ADMIN_LINKS = [
     { to: '/hr/cycles', label: 'Appraisal Cycles', icon: <Icons.Cycles /> },
     { to: '/hr/approvals', label: 'Approvals', icon: <Icons.Check /> },
     { to: '/hr/reports', label: 'Reports', icon: <Icons.Chart /> },
+    { to: '/hr/question-sets', label: 'Question Sets', icon: <Icons.Edit /> },
     { to: '/admin/settings', label: 'Admin Settings', icon: <Icons.Edit /> },
 ];
 
@@ -52,11 +56,12 @@ const ROLE_LINKS = {
 const ROLE_LABELS = { hr: 'HR Administrator', manager: 'Team Manager', employee: 'Employee', admin: 'System Administrator' };
 
 export default function Layout({ children }) {
-    const { currentUser, logout, theme, toggleTheme, notifications, markNotificationAsRead, refreshData } = useApp();
+    const { currentUser, logout, theme, toggleTheme, notifications, markNotificationAsRead, refreshData, updateUser, topBarAction } = useApp();
     const navigate = useNavigate();
     const location = useLocation();
     const links = ROLE_LINKS[currentUser?.role] || [];
     const [showNotifications, setShowNotifications] = useState(false);
+    const [collapsed, setCollapsed] = useState(false);
     const notifRef = useRef(null);
 
     // Filter notifications to ONLY the current user (important for fake mode locally!)
@@ -66,13 +71,17 @@ export default function Layout({ children }) {
 
     const unreadCount = myNotifications.filter(n => !n.isRead).length;
 
-    // Polling: Auto-refresh data every 10 seconds to detect new notifications or changes
-    useEffect(() => {
-        const interval = setInterval(() => {
-            if (currentUser) refreshData();
-        }, 10000);
-        return () => clearInterval(interval);
-    }, [refreshData, currentUser]);
+    const handleAvatarUpload = async (base64) => {
+        const res = await updateUser(currentUser.id, { avatar: base64 });
+        if (res.success) {
+            await refreshData();
+        } else {
+            alert('Failed to update profile photo.');
+        }
+    };
+
+    // Removed aggressive polling to stay within Supabase usage limits. 
+    // Data is refreshed on mount and after specific mutations.
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -107,51 +116,139 @@ export default function Layout({ children }) {
     };
 
     return (
-        <div className="app-shell">
-            <aside className="sidebar">
-                <div className="sidebar-logo" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-                    {theme === 'dark' ? (
-                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-                            <img src={logoDark} alt="Techxl Logo" style={{ height: '100px', width: 'auto' }} />
-                        </div>
-                    ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-                            <img src={logo} alt="Techxl Logo" style={{ height: '42px', width: 'auto' }} />
+        <div className="app-shell" style={{ position: 'relative' }}>
+            <aside className="sidebar" style={{
+                width: collapsed ? '64px' : 'var(--sidebar-width)',
+                transition: 'width 0.25s ease',
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column',
+            }}>
+                {/* Logo */}
+                <div className="sidebar-logo" style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    textAlign: 'center',
+                    padding: collapsed ? '20px 8px 16px' : '20px 16px 16px',
+                    transition: 'padding 0.25s ease',
+                    flexShrink: 0,
+                }}>
+                    <img
+                        src={theme === 'dark' ? logoDark : logo}
+                        alt="Techxl Logo"
+                        style={{
+                            width: collapsed ? '32px' : '150px',
+                            height: 'auto',
+                            display: 'block',
+                            marginBottom: collapsed ? '0' : '10px',
+                            transition: 'width 0.25s ease',
+                            objectFit: 'contain',
+                        }}
+                    />
+                    {!collapsed && (
+                        <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', whiteSpace: 'nowrap' }}>
+                            {ROLE_LABELS[currentUser?.role]}
                         </div>
                     )}
-                    <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '6px' }}>
-                        {ROLE_LABELS[currentUser?.role]}
-                    </div>
                 </div>
-                <nav className="sidebar-nav">
+
+                {/* Nav */}
+                <nav className="sidebar-nav" style={{ flex: 1 }}>
                     {links.map((link, index) => (
                         <NavLink
                             key={index}
                             to={link.to}
-                            end={link.to === '/dashboard'}
+                            end={link.to === '/dashboard' || link.to === '/manager'}
                             className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+                            title={collapsed ? link.label : ''}
+                            style={{ justifyContent: collapsed ? 'center' : 'flex-start', gap: collapsed ? '0' : '12px' }}
                         >
                             <span className="icon">{link.icon}</span>
-                            {link.label}
+                            {!collapsed && link.label}
                         </NavLink>
                     ))}
                 </nav>
-                <div className="sidebar-footer">
-                    <div className="user-badge">
-                        <div className="avatar" style={{ background: 'var(--blue-gradient)' }}>{currentUser?.avatar || '?'}</div>
-                        <div className="user-info">
-                            <div className="user-name">{currentUser?.name}</div>
-                            <div className="user-role">{currentUser?.department}</div>
-                        </div>
-                    </div>
 
-                    <button className="logout-btn" onClick={handleLogout}>🚪 Sign Out</button>
-                </div>
+                {/* Footer */}
+                {!collapsed ? (
+                    <div className="sidebar-footer">
+                        <div className="user-badge">
+                            <Avatar
+                                avatarData={currentUser?.avatar}
+                                name={currentUser?.name}
+                                size={36}
+                                editable={true}
+                                onUpload={handleAvatarUpload}
+                            />
+                            <div className="user-info">
+                                <div className="user-name">{currentUser?.name}</div>
+                                <div className="user-role">{currentUser?.department}</div>
+                            </div>
+                        </div>
+                        <button className="logout-btn" onClick={handleLogout}>🚪 Sign Out</button>
+                    </div>
+                ) : (
+                    <div style={{ padding: '16px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', borderTop: '1px solid var(--border)' }}>
+                        <Avatar avatarData={currentUser?.avatar} name={currentUser?.name} size={32} editable={false} />
+                        <button
+                            onClick={handleLogout}
+                            title="Sign Out"
+                            style={{ background: 'rgba(239,68,68,0.1)', border: 'none', borderRadius: '8px', color: '#fca5a5', fontSize: '16px', width: '36px', height: '36px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        >🚪</button>
+                    </div>
+                )}
             </aside>
 
-            <div className="main-content">
+            <div className="main-content" style={{ marginLeft: collapsed ? '64px' : 'var(--sidebar-width)', transition: 'margin-left 0.25s ease' }}>
                 <div className="topbar">
-                    <h1>{getPageTitle()}</h1>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        <button
+                            onClick={() => setCollapsed(c => !c)}
+                            title={collapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+                            className="sidebar-toggle-btn"
+                            style={{
+                                background: 'none',
+                                border: '1px solid var(--border)',
+                                borderRadius: '8px',
+                                width: '36px',
+                                height: '36px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                color: 'var(--text-secondary)',
+                                transition: 'all 0.2s ease',
+                                flexShrink: 0,
+                            }}
+                        >
+                            <Icons.Sidebar size={20} />
+                        </button>
+
+                        {/* Dynamic Page Action (e.g. Save Draft) */}
+                        {topBarAction && (
+                            <button
+                                onClick={topBarAction.onClick}
+                                className={`btn btn-${topBarAction.type || 'secondary'} btn-sm`}
+                                style={{
+                                    height: '36px',
+                                    padding: '0 16px',
+                                    borderRadius: '8px',
+                                    fontWeight: 700,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    animation: 'fadeIn 0.2s ease-out'
+                                }}
+                            >
+                                {topBarAction.icon}
+                                {topBarAction.label}
+                            </button>
+                        )}
+
+                        <h1 style={{ marginLeft: topBarAction ? '4px' : '0' }}>{getPageTitle()}</h1>
+                    </div>
+
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                         <span className="topbar-meta">
                             {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
