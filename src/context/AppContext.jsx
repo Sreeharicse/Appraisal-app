@@ -8,23 +8,6 @@ export const CONFIG_DRAFT_EDIT_AFTER_DEADLINE = false;
 
 const AppContext = createContext(null);
 
-export function calculateScore(allQsAvg, _unused, subRating, hrRating = 0) {
-    // New flat formula:
-    // allQsAvg: simple average of ALL rated questions (q1-q12) on a 1-5 scale → 70% of total
-    // subRating: manager final sub-rating (1-5) → 20% of total
-    // hrRating: HR assessment (1-5) → 10% of total
-    const questionsPart = (allQsAvg / 5) * 70 || 0;    // 70%
-    const subPart = (subRating / 5) * 20 || 0;   // 20%
-    const hrPart = (hrRating / 5) * 10 || 0;   // 10%
-    return Math.round(questionsPart + subPart + hrPart);
-}
-
-export function getCategory(score) {
-    for (const cat of PERFORMANCE_CATEGORIES) {
-        if (score >= cat.min) return cat;
-    }
-    return PERFORMANCE_CATEGORIES[PERFORMANCE_CATEGORIES.length - 1];
-}
 
 // Shared date normalizer: strips timestamps → returns plain YYYY-MM-DD for Supabase DATE columns and <input type="date">
 export function toDateOnly(val) {
@@ -130,7 +113,7 @@ export function AppProvider({ children }) {
         // Map snake_case DB columns → camelCase used by the UI
         const mappedUsers = (profilesData || []).map(p => ({
             id: p.id,
-            name: p.full_name || p.name,
+            name: p.name || p.full_name || p.email || "Unknown",
             email: p.email,
             role: p.role,
             department: p.department,
@@ -156,11 +139,10 @@ export function AppProvider({ children }) {
         setCycles((cyclesData || []).map(c => ({
             id: c.id,
             name: c.name,
-            startDate: toDateOnly(c.start_date),
-            endDate: toDateOnly(c.end_date),
-            selfReviewEndDate: toDateOnly(c.self_review_end_date) || toDateOnly(c.end_date),
-            evaluationEndDate: toDateOnly(c.evaluation_end_date) || toDateOnly(c.end_date),
-            approvalEndDate: toDateOnly(c.approval_end_date) || toDateOnly(c.end_date),
+            startDate: c.start_date,
+            endDate: c.end_date,
+            employeeEndDate: c.employee_end_date || c.end_date,
+            managerEndDate: c.manager_end_date || c.end_date,
             status: c.status,
             createdBy: c.created_by,
         })));
@@ -188,37 +170,28 @@ export function AppProvider({ children }) {
         } else {
             const { data: { session } } = await supabase.auth.getSession();
             if (session) {
-                activeUserId = session.user.id;
-                // Match by ID first, then fall back to email (for manually created profiles)
-                let profile = mappedUsers.find(u => u.id === activeUserId);
-                if (!profile && session.user.email) {
-                    profile = mappedUsers.find(u => u.email === session.user.email);
-                    if (profile) activeUserId = profile.id;
+                // Fix: Find profile by Auth UID or matching email (for imported users where PK update failed)
+                const profile = mappedUsers.find(u => u.id === session.user.id || u.email?.toLowerCase() === session.user.email?.toLowerCase());
+                if (profile) {
+                    activeUserId = profile.id; // Use profile ID (HR UUID) instead of Auth UID if they differ
+                    activeUserRole = profile.role;
+                } else {
+                    activeUserId = session.user.id;
                 }
-                activeUserRole = profile?.role;
-            }
-            // Ultimate fallback: use already-known currentUser from state (via ref)
-            if (!activeUserRole && currentUserRef.current) {
-                activeUserRole = currentUserRef.current.role;
-                if (!activeUserId) activeUserId = currentUserRef.current.id;
             }
         }
 
         const isAdminHr = activeUserRole === 'admin' || activeUserRole === 'hr';
-        const getReportees = (mgrId, visited = new Set()) => {
-            if (visited.has(mgrId)) return [];
-            visited.add(mgrId);
+        const getReportees = (mgrId) => {
             let res = [];
             const dir = mappedUsers.filter(u => u.managerId === mgrId);
             res.push(...dir);
-            dir.forEach(d => res.push(...getReportees(d.id, visited)));
+            dir.forEach(d => res.push(...getReportees(d.id)));
             return res;
         };
         const allowedUserIds = new Set(activeUserId ? getReportees(activeUserId).map(u => u.id) : []);
         if (activeUserId) allowedUserIds.add(activeUserId);
 
-        // Ultimate fallback: if role still not resolved, check ALL profiles for admin/hr role
-        // This handles cases where auth.uid doesn't match profile.id and email also differs
         const canView = (empId) => isAdminHr || allowedUserIds.has(empId);
 
         setSelfReviews((reviewsData || [])
@@ -246,13 +219,6 @@ export function AppProvider({ children }) {
                     console.error("Failed to parse review metadata", e);
                 }
 
-                // Status resolution: if r.status is 'draft' but the JSON metadata claims 'submitted', 
-                // trust the JSON metadata since old rows were bugged and omitted DB status.
-                let resolvedStatus = r.status || metadata.status || 'draft';
-                if (resolvedStatus === 'draft' && metadata.status === 'submitted') {
-                    resolvedStatus = 'submitted';
-                }
-
                 const isJson = r.comments && r.comments.startsWith('{');
                 return {
                     id: r.id,
@@ -262,7 +228,7 @@ export function AppProvider({ children }) {
                     comments: isJson ? (metadata.comments || '') : (decrypt(r.comments) || r.comments),
                     metadata: metadata,
                     submittedAt: r.submitted_at,
-                    status: resolvedStatus,
+                    status: metadata.status || 'submitted'
                 };
             }));
         setEvaluations((evalsData || [])
@@ -411,29 +377,50 @@ export function AppProvider({ children }) {
                     .eq('id', session.user.id)
                     .single();
 
-                // If profile doesn't exist (e.g., first time SSO login), auto-create or link it
+                // If profile doesn't exist by ID (e.g., first time SSO login), auto-create or link it
                 if (!profile) {
-                    // First, check if there's a profile with this email (pre-registered by HR)
+                    // Check if HR pre-registered a profile with this email
                     const { data: existingProfile } = await supabase
                         .from('profiles')
                         .select('*')
-                        .eq('email', session.user.email)
-                        .single();
+                        .ilike('email', session.user.email)
+                        .maybeSingle();
 
                     if (existingProfile) {
-                        // Link existing profile to this Auth user ID
-                        const { error: linkError } = await supabase
+                        // Try to update the profile PK to match the Auth UID
+                        await supabase
                             .from('profiles')
                             .update({ id: session.user.id })
                             .eq('email', session.user.email);
 
-                        if (!linkError) {
+                        // Verify the update actually worked — RLS can silently block it
+                        const { data: verifyRow } = await supabase
+                            .from('profiles')
+                            .select('id')
+                            .eq('id', session.user.id)
+                            .maybeSingle();
+
+                        if (verifyRow) {
+                            // Update succeeded — profile now has Auth UID
                             profile = { ...existingProfile, id: session.user.id };
                         } else {
-                            console.error("Failed to link profile:", linkError.message);
+                            // RLS silently blocked the update — try INSERT instead
+                            console.warn('[Auth] Profile PK update blocked by RLS, trying insert...');
+                            const { id: _oldId, created_at: _ca, ...profileData } = existingProfile;
+                            const { error: insError } = await supabase
+                                .from('profiles')
+                                .insert({ ...profileData, id: session.user.id });
+                            
+                            if (!insError) {
+                                profile = { ...existingProfile, id: session.user.id };
+                            } else {
+                                // Last resort: use the existing HR profile UUID as-is
+                                console.warn('[Auth] Insert also blocked, using HR profile UUID:', existingProfile.id);
+                                profile = existingProfile;
+                            }
                         }
                     } else {
-                        // No profile exists, create a new one
+                        // No profile at all — create a brand new one
                         const metadata = session.user.user_metadata || {};
                         const fullName = metadata.full_name || metadata.name || session.user.email?.split('@')[0] || 'Unknown User';
                         const avatar = fullName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
@@ -451,7 +438,7 @@ export function AppProvider({ children }) {
                         if (!error) {
                             profile = newProfile;
                         } else {
-                            console.error("Failed to auto-create profile:", error.message);
+                            console.error('Failed to auto-create profile:', error.message);
                         }
                     }
                 }
@@ -778,15 +765,6 @@ export function AppProvider({ children }) {
 
         // Update local state on success
         setUsers(p => p.map(u => u.id === id ? { ...u, ...updates, managerId: updates.managerId !== undefined ? updates.managerId : u.managerId } : u));
-
-        if (currentUser && currentUser.id === id) {
-            setCurrentUser(prev => ({
-                ...prev,
-                ...updates,
-                managerId: updates.managerId !== undefined ? updates.managerId : prev.managerId
-            }));
-        }
-
         return { success: true };
     };
 
@@ -887,12 +865,12 @@ export function AppProvider({ children }) {
     };
 
     // ──── Notifications ────
-    const createNotification = async (userIds, title, message, type = 'info', link = null, metadata = {}) => {
+    const createNotification = async (userIds, title, message, type = 'info', link = null) => {
         if (!userIds || userIds.length === 0) return;
         const now = new Date().toISOString();
 
-        // Pack link and metadata into the message string securely so we don't need a DB schema change
-        const payloadStr = JSON.stringify({ text: message, link: link, ...metadata });
+        // Pack link into the message string securely so we don't need a DB schema change
+        const payloadStr = JSON.stringify({ text: message, link: link });
 
         if (localStorage.getItem('fake_session_role')) {
             const newNotifs = userIds.map(uid => ({
@@ -932,7 +910,7 @@ export function AppProvider({ children }) {
     // ──── Cycles CRUD ────
     const addCycle = async (cycle) => {
         if (localStorage.getItem('fake_session_role')) {
-            const mapped = { id: crypto.randomUUID(), name: cycle.name, startDate: cycle.startDate, endDate: cycle.endDate, selfReviewEndDate: cycle.selfReviewEndDate || cycle.endDate, evaluationEndDate: cycle.evaluationEndDate || cycle.endDate, approvalEndDate: cycle.approvalEndDate || cycle.endDate, status: cycle.status || 'draft', createdBy: currentUser?.id };
+            const mapped = { id: crypto.randomUUID(), name: cycle.name, startDate: cycle.startDate, endDate: cycle.endDate, employeeEndDate: cycle.employeeEndDate || cycle.endDate, managerEndDate: cycle.managerEndDate || cycle.endDate, status: cycle.status || 'draft', createdBy: currentUser?.id };
             setCycles(p => {
                 const updated = [...p, mapped];
                 localStorage.setItem('fake_cycles', JSON.stringify(updated));
@@ -954,49 +932,31 @@ export function AppProvider({ children }) {
             return mapped;
         }
 
-        console.log('[addCycle] Inserting:', {
-            name: cycle.name,
-            start_date: toDateOnly(cycle.startDate),
-            end_date: toDateOnly(cycle.endDate),
-            self_review_end_date: toDateOnly(cycle.selfReviewEndDate) || toDateOnly(cycle.endDate),
-            evaluation_end_date: toDateOnly(cycle.evaluationEndDate) || toDateOnly(cycle.endDate),
-            approval_end_date: toDateOnly(cycle.approvalEndDate) || toDateOnly(cycle.endDate),
-            status: cycle.status || 'draft',
-        });
-
         const { data, error } = await supabase.from('cycles').insert({
             name: cycle.name,
-            start_date: toDateOnly(cycle.startDate),
-            end_date: toDateOnly(cycle.endDate),
-            self_review_end_date: toDateOnly(cycle.selfReviewEndDate) || toDateOnly(cycle.endDate),
-            evaluation_end_date: toDateOnly(cycle.evaluationEndDate) || toDateOnly(cycle.endDate),
-            approval_end_date: toDateOnly(cycle.approvalEndDate) || toDateOnly(cycle.endDate),
+            start_date: cycle.startDate,
+            end_date: cycle.endDate,
+            employee_end_date: cycle.employeeEndDate || cycle.endDate,
+            manager_end_date: cycle.managerEndDate || cycle.endDate,
             status: cycle.status || 'draft',
             created_by: currentUser?.id,
         }).select().single();
         if (error) {
-            console.error('[addCycle] Supabase error:', error.message, '| Code:', error.code, '| Details:', error.details);
-            throw new Error(error.message);
+            console.error('Supabase error adding cycle:', error.message);
+            return null;
         }
         if (data) {
-            console.log('[addCycle] Success, inserted row:', data);
-            const mapped = {
-                id: data.id,
-                name: data.name,
-                startDate: toDateOnly(data.start_date),
-                endDate: toDateOnly(data.end_date),
-                selfReviewEndDate: toDateOnly(data.self_review_end_date) || toDateOnly(data.end_date),
-                evaluationEndDate: toDateOnly(data.evaluation_end_date) || toDateOnly(data.end_date),
-                approvalEndDate: toDateOnly(data.approval_end_date) || toDateOnly(data.end_date),
-                status: data.status,
-                createdBy: data.created_by,
-            };
-            setCycles(p => [mapped, ...p]); // prepend so newest shows first
+            const mapped = { id: data.id, name: data.name, startDate: data.start_date, endDate: data.end_date, employeeEndDate: data.employee_end_date, managerEndDate: data.manager_end_date, status: data.status, createdBy: data.created_by };
+            setCycles(p => [...p, mapped]);
 
             if (mapped.status === 'active') {
-                const allUserIds = users.map(u => u.id);
+                const allUsers = users.filter(u => u.role === 'employee' || u.role === 'manager');
+                const allUserIds = allUsers.map(u => u.id);
+                console.log(`[EMAIL DEBUG] Found ${allUsers.length} recipients for activated cycle.`);
+
                 createNotification(allUserIds, 'New Appraisal Cycle', `The ${mapped.name} cycle has been launched.`, 'info', '/employee/self-review');
-                users.forEach(emp => {
+                allUsers.forEach(emp => {
+                    console.log(`[EMAIL DEBUG] Attempting to email: ${emp.name} <${emp.email}>`);
                     sendEmailNotification(emp.email, 'New Appraisal Cycle Launched', cycleCreatedEmail(emp.name, mapped.name, mapped.startDate, mapped.endDate));
                 });
             }
@@ -1014,7 +974,7 @@ export function AppProvider({ children }) {
             });
             if (updates.status === 'active') {
                 const cName = cycles.find(c => c.id === id)?.name || updates.name || "A";
-                const allUserIds = users.map(u => u.id);
+                const allUserIds = users.filter(u => u.role === 'employee' || u.role === 'manager').map(u => u.id);
                 createNotification(allUserIds, 'Appraisal Cycle Active', `The ${cName} cycle is now active.`, 'info', '/employee/self-review');
                 allUserIds.forEach(uid => {
                     const emp = users.find(u => u.id === uid);
@@ -1029,37 +989,27 @@ export function AppProvider({ children }) {
 
         const dbUpdates = {};
         if (updates.name !== undefined) dbUpdates.name = updates.name;
-        if (updates.startDate !== undefined) dbUpdates.start_date = toDateOnly(updates.startDate);
-        if (updates.endDate !== undefined) dbUpdates.end_date = toDateOnly(updates.endDate);
-        if (updates.selfReviewEndDate !== undefined) dbUpdates.self_review_end_date = toDateOnly(updates.selfReviewEndDate);
-        if (updates.evaluationEndDate !== undefined) dbUpdates.evaluation_end_date = toDateOnly(updates.evaluationEndDate);
-        if (updates.approvalEndDate !== undefined) dbUpdates.approval_end_date = toDateOnly(updates.approvalEndDate);
+        if (updates.startDate !== undefined) dbUpdates.start_date = updates.startDate;
+        if (updates.endDate !== undefined) dbUpdates.end_date = updates.endDate;
+        if (updates.employeeEndDate !== undefined) dbUpdates.employee_end_date = updates.employeeEndDate;
+        if (updates.managerEndDate !== undefined) dbUpdates.manager_end_date = updates.managerEndDate;
         if (updates.status !== undefined) dbUpdates.status = updates.status;
 
         const { error } = await supabase.from('cycles').update(dbUpdates).eq('id', id);
-        if (error) {
-            console.error('[updateCycle] Supabase error:', error.message, '| Payload:', dbUpdates);
-            throw new Error(error.message);
-        }
-        // Update local state — normalize dates too
-        const normalizedUpdates = { ...updates };
-        if (normalizedUpdates.startDate) normalizedUpdates.startDate = toDateOnly(normalizedUpdates.startDate);
-        if (normalizedUpdates.endDate) normalizedUpdates.endDate = toDateOnly(normalizedUpdates.endDate);
-        if (normalizedUpdates.selfReviewEndDate) normalizedUpdates.selfReviewEndDate = toDateOnly(normalizedUpdates.selfReviewEndDate);
-        if (normalizedUpdates.evaluationEndDate) normalizedUpdates.evaluationEndDate = toDateOnly(normalizedUpdates.evaluationEndDate);
-        if (normalizedUpdates.approvalEndDate) normalizedUpdates.approvalEndDate = toDateOnly(normalizedUpdates.approvalEndDate);
-        setCycles(p => p.map(c => c.id === id ? { ...c, ...normalizedUpdates } : c));
-        if (updates.status === 'active') {
-            const cName = cycles.find(c => c.id === id)?.name || updates.name || "A";
-            const allUserIds = users.map(u => u.id);
-            createNotification(allUserIds, 'Appraisal Cycle Active', `The ${cName} cycle is now active.`, 'info', '/employee/self-review');
-            allUserIds.forEach(uid => {
-                const emp = users.find(u => u.id === uid);
-                if (emp) {
-                    const cycle = cycles.find(c => c.id === id);
-                    sendEmailNotification(emp.email, 'Appraisal Cycle Active', cycleCreatedEmail(emp.name, cName, cycle?.startDate || '', cycle?.endDate || ''));
-                }
-            });
+        if (!error) {
+            setCycles(p => p.map(c => c.id === id ? { ...c, ...updates } : c));
+            if (updates.status === 'active') {
+                const cName = cycles.find(c => c.id === id)?.name || updates.name || "A";
+                const allUserIds = users.filter(u => u.role === 'employee' || u.role === 'manager').map(u => u.id);
+                createNotification(allUserIds, 'Appraisal Cycle Active', `The ${cName} cycle is now active.`, 'info', '/employee/self-review');
+                allUserIds.forEach(uid => {
+                    const emp = users.find(u => u.id === uid);
+                    if (emp) {
+                        const cycle = cycles.find(c => c.id === id);
+                        sendEmailNotification(emp.email, 'Appraisal Cycle Active', cycleCreatedEmail(emp.name, cName, cycle?.startDate || '', cycle?.endDate || ''));
+                    }
+                });
+            }
         }
     };
 
@@ -1140,13 +1090,6 @@ export function AppProvider({ children }) {
     const submitSelfReview = async (review) => {
         const cycle = cycles.find(c => String(c.id) === String(review.cycleId));
         if (cycle && cycle.status !== 'active') return { success: false, error: 'Self-reviews can only be submitted for active cycles.' };
-        if (cycle) {
-            const d = new Date(cycle.selfReviewEndDate || cycle.endDate);
-            d.setHours(23, 59, 59, 999);
-            if (new Date() > d) {
-                return { success: false, error: 'Self Review phase is closed. No further changes allowed.' };
-            }
-        }
 
         const existing = selfReviews.find(r => r.cycleId === review.cycleId && r.employeeId === review.employeeId);
 
@@ -1225,19 +1168,46 @@ export function AppProvider({ children }) {
             return mapped;
         }
 
+        // ── Database-First Lookup ──
+        // This ensures we always know if a row exists in the DB, even if local state is stale.
+        // It prevents 409 Conflict (Duplicate Key) errors on submission.
+        const { data: dbRows, error: lookupError } = await supabase
+            .from('self_reviews')
+            .select('id')
+            .eq('employee_id', review.employeeId)
+            .eq('cycle_id', review.cycleId)
+            .limit(1);
+
+        if (lookupError) {
+            console.warn('[SelfReview] DB lookup warning:', lookupError.message);
+        }
+        
+        const dbExisting = dbRows?.[0] || null;
+
         const payload = {
             cycle_id: review.cycleId,
             employee_id: review.employeeId,
-            summary: encrypt(review.summary),
+            summary: encrypt(review.summary || ''), // Ensure never undefined (prevents 406 error)
             comments: packedComments,
             submitted_at: new Date().toISOString()
         };
 
         let result;
-        if (existing) {
-            result = await supabase.from('self_reviews').update(payload).eq('id', existing.id).select().single();
+        if (dbExisting) {
+            // Row exists — UPDATE by ID (safe and unambiguous)
+            result = await supabase
+                .from('self_reviews')
+                .update(payload)
+                .eq('id', dbExisting.id)
+                .select()
+                .single();
         } else {
-            result = await supabase.from('self_reviews').insert(payload).select().single();
+            // New row — INSERT
+            result = await supabase
+                .from('self_reviews')
+                .insert(payload)
+                .select()
+                .single();
         }
 
         if (!result.error && result.data) {
@@ -1270,7 +1240,7 @@ export function AppProvider({ children }) {
                     console.log(`[SelfReview] No manager found for ${empName}, falling back to HR.`);
                     const hrs = users.filter(u => u.role === 'admin' || u.role === 'hr');
                     if (hrs.length > 0) {
-                        createNotification(hrs.map(h => h.id), 'Self-Review Submitted', `${empName} has submitted their self-review (no manager assigned).`, 'success', '/manager');
+                        createNotification(hrs.map(h => h.id), 'Self-Review Submitted', `${empName} has submitted their self-review (no manager assigned).`, 'success', '/hr/approvals');
                         hrs.forEach(hr => sendEmailNotification(hr.email, `Self-Review Submitted by ${empName}`, employeeSubmitEmail(empName, hr.name)));
                     }
                 }
@@ -1286,14 +1256,6 @@ export function AppProvider({ children }) {
     // ──── Evaluations ────
     const submitEvaluation = async (evaluation) => {
         if (isCycleClosed(evaluation.cycleId)) return { success: false, error: 'This cycle is closed. No further changes are allowed.' };
-        const cycle = cycles.find(c => String(c.id) === String(evaluation.cycleId));
-        if (cycle) {
-            const d = new Date(cycle.evaluationEndDate || cycle.endDate);
-            d.setHours(23, 59, 59, 999);
-            if (new Date() > d) {
-                return { success: false, error: 'Evaluation phase is closed. No further changes allowed.' };
-            }
-        }
         const existing = evaluations.find(e => e.cycleId === evaluation.cycleId && e.employeeId === evaluation.employeeId);
 
         const encryptedCompetencies = {};
@@ -1422,34 +1384,17 @@ export function AppProvider({ children }) {
                 const emp = users.find(u => u.id === evaluation.employeeId);
                 const empRole = emp?.role;
 
-                console.log("Evaluation submitted, triggering notifications"); // Debug log
+                // If the evaluated employee is HR or Manager, only Admins can approve → notify only Admins
+                // If the evaluated employee is a regular employee, notify both HR and Admin
+                const notifyApprovers = (empRole === 'hr' || empRole === 'manager')
+                    ? users.filter(u => u.role === 'admin')
+                    : users.filter(u => u.role === 'admin' || u.role === 'hr');
 
-                // 1. Notify Employee
                 if (emp) {
                     createNotification([emp.id], 'Evaluation Submitted', `Your manager has submitted your evaluation. Pending approval.`, 'success', '/employee/results');
                     sendEmailNotification(emp.email, 'Evaluation Assessed', managerSubmitEmail(emp.name));
                 }
-
-                // 2. Identify HR/Admin based on role for approval notification
-                // Standard flow: Employee/Manager → HR. High privilege flow: HR/Admin → Admin.
-                const notifyApprovers = (empRole === 'hr' || empRole === 'admin')
-                    ? users.filter(u => u.role === 'admin')
-                    : users.filter(u => u.role === 'hr');
-
-                createNotification(
-                    notifyApprovers.map(h => h.id), 
-                    'Pending Approval', 
-                    `An evaluation for ${emp?.name || 'an employee'} is pending for your approval`, 
-                    'warning', 
-                    '/hr/approvals',
-                    { 
-                        type: 'evaluation_submitted', 
-                        cycle_id: evaluation.cycleId, 
-                        employee_id: evaluation.employeeId, 
-                        evaluation_id: mapped.id 
-                    }
-                );
-
+                createNotification(notifyApprovers.map(h => h.id), 'Pending Approval', `Evaluation for ${emp?.name} is awaiting your approval.`, 'warning', '/hr/approvals');
                 notifyApprovers.forEach(h => sendEmailNotification(h.email, 'Evaluation Awaiting Approval', hrEvaluationSubmittedEmail(emp?.name || 'An employee', currentUser?.name || 'A Manager')));
             }
 
@@ -1784,6 +1729,24 @@ export function AppProvider({ children }) {
             {children}
         </AppContext.Provider>
     );
+}
+
+export function calculateScore(allQsAvg, _unused, subRating, hrRating = 0) {
+    // New flat formula:
+    // allQsAvg: simple average of ALL rated questions (q1-q12) on a 1-5 scale → 70% of total
+    // subRating: manager final sub-rating (1-5) → 20% of total
+    // hrRating: HR assessment (1-5) → 10% of total
+    const questionsPart = (allQsAvg / 5) * 70 || 0;    // 70%
+    const subPart = (subRating / 5) * 20 || 0;   // 20%
+    const hrPart = (hrRating / 5) * 10 || 0;   // 10%
+    return Math.round(questionsPart + subPart + hrPart);
+}
+
+export function getCategory(score) {
+    for (const cat of PERFORMANCE_CATEGORIES) {
+        if (score >= cat.min) return cat;
+    }
+    return PERFORMANCE_CATEGORIES[PERFORMANCE_CATEGORIES.length - 1];
 }
 
 export const useApp = () => useContext(AppContext);
