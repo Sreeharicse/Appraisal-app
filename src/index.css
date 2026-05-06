@@ -1491,6 +1491,12 @@ textarea.form-input::-webkit-scrollbar-thumb:hover,
   gap: 20px;
 }
 
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
 /* Microsoft Auth Styles */
 .ms-auth-container {
   background-color: var(--bg-primary);

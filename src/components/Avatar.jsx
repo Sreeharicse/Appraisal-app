@@ -87,6 +87,10 @@ export default function Avatar({
         ...style
     };
 
+    const imageSrc = isImage 
+        ? (avatarData.startsWith('http') ? `${avatarData}${avatarData.includes('?') ? '&' : '?'}t=${new Date().getTime()}` : avatarData) 
+        : '';
+
     return (
         <div 
             className={`avatar-container ${className}`} 
@@ -97,7 +101,7 @@ export default function Avatar({
         >
             {isImage ? (
                 <img 
-                    src={avatarData} 
+                    src={imageSrc} 
                     alt={name || "Avatar"} 
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                 />

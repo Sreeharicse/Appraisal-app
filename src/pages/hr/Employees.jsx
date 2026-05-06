@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import * as XLSX from 'xlsx';
 import { useApp } from '../../context/AppContext';
 import Icons from '../../components/Icons';
 import Avatar from '../../components/Avatar';
@@ -62,8 +63,16 @@ export default function Employees() {
     const [search, setSearch] = useState('');
     const [toast, setToast] = useState(null); // { type: 'success'|'error', msg: string }
 
-    const profileReviewStarted = editing && selfReviews.some(r => 
-        String(r.employeeId) === String(editing.id) && 
+    /* ── Import / Bulk Upload State ── */
+    const fileInputRef = useRef(null);
+    const [showImportModal, setShowImportModal] = useState(false);
+    const [isDragging, setIsDragging] = useState(false);
+    const [bulkUploading, setBulkUploading] = useState(false);
+    const [bulkResults, setBulkResults] = useState(null); // { total, success, failed, skipped, errors[] }
+    const [selectedFile, setSelectedFile] = useState(null);
+
+    const profileReviewStarted = editing && selfReviews.some(r =>
+        String(r.employeeId) === String(editing.id) &&
         (r.status === 'draft' || r.status === 'submitted')
     );
 
@@ -80,25 +89,145 @@ export default function Employees() {
     const isCircular = (targetManagerId, employeeId) => {
         if (!targetManagerId || !employeeId) return false;
         let currentId = targetManagerId;
-        while(currentId) {
-            if(currentId === employeeId) return true;
+        while (currentId) {
+            if (currentId === employeeId) return true;
             const mgr = users.find(u => u.id === currentId);
             currentId = mgr ? mgr.managerId : null;
         }
         return false;
     };
 
-    const availableManagers = users.filter(u => 
-        (u.role === 'manager' || u.role === 'admin') &&
-        u.id !== editing?.id &&
-        !isCircular(u.id, editing?.id)
-    );
+    const availableManagers = users.filter(u => {
+        if (u.id === editing?.id) return false;
+
+        if (form.role === 'admin') {
+            return u.role === 'admin';
+        }
+
+        return u.role === 'manager' || u.role === 'admin';
+    });
     const filtered = users.filter(u =>
         u.name.toLowerCase().includes(search.toLowerCase()) ||
         u.email.toLowerCase().includes(search.toLowerCase()) ||
         u.department?.toLowerCase().includes(search.toLowerCase()) ||
         u.designation?.toLowerCase().includes(search.toLowerCase())
     );
+
+
+
+    /* ── Open Import Modal ── */
+    const openImportModal = () => {
+        setSelectedFile(null);
+        setBulkResults(null);
+        setBulkUploading(false);
+        setShowImportModal(true);
+    };
+
+    /* ── Drag & Drop Handlers ── */
+    const handleDragOver = (e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); };
+    const handleDragLeave = (e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(false); };
+    const handleDrop = (e) => {
+        e.preventDefault(); e.stopPropagation(); setIsDragging(false);
+        const file = e.dataTransfer.files?.[0];
+        if (file && /\.(xlsx|xls|csv)$/i.test(file.name)) {
+            setSelectedFile(file);
+        }
+    };
+    const handleFileSelect = (e) => {
+        const file = e.target.files?.[0];
+        if (file) setSelectedFile(file);
+        e.target.value = '';
+    };
+
+    /* ── Process the Selected File ── */
+    const processImportFile = async () => {
+        if (!selectedFile) return;
+
+        setBulkUploading(true);
+        setBulkResults(null);
+
+        try {
+            const bstr = await selectedFile.arrayBuffer();
+            const wb = XLSX.read(bstr, { type: 'array' });
+            const wsName = wb.SheetNames[0];
+            const rows = XLSX.utils.sheet_to_json(wb.Sheets[wsName]);
+
+            if (!rows.length) {
+                setBulkResults({ total: 0, success: 0, failed: 0, skipped: 0, errors: [{ row: 0, msg: 'The spreadsheet is empty or has no readable data rows.' }] });
+                setBulkUploading(false);
+                return;
+            }
+
+            let successCount = 0;
+            let failedCount = 0;
+            let skippedCount = 0;
+            const errors = [];
+
+            for (let i = 0; i < rows.length; i++) {
+                const row = rows[i];
+                const rowNum = i + 2; // Excel rows are 1-indexed + header
+                const name = (row['Full Name'] || row['Name'] || row['name'] || row['full_name'] || '').toString().trim();
+                const email = (row['Email'] || row['email'] || row['Email Address'] || '').toString().trim().toLowerCase();
+                const role = (row['Role'] || row['role'] || 'employee').toString().trim().toLowerCase();
+                const department = (row['Department'] || row['department'] || '').toString().trim();
+                const designation = (row['Designation'] || row['designation'] || row['Job Title'] || row['Title'] || '').toString().trim();
+                const managerEmail = (row['Manager Email'] || row['manager_email'] || row['Manager'] || '').toString().trim().toLowerCase();
+
+                // Validation
+                if (!email) {
+                    errors.push({ row: rowNum, msg: `Missing email` });
+                    failedCount++;
+                    continue;
+                }
+                if (!name) {
+                    errors.push({ row: rowNum, msg: `Missing name for ${email}` });
+                    failedCount++;
+                    continue;
+                }
+                const validRoles = ['employee', 'manager', 'hr', 'admin'];
+                const normalizedRole = validRoles.includes(role) ? role : 'employee';
+
+                // Check duplicate — skip if email already exists in system
+                const existing = users.find(u => u.email?.toLowerCase() === email);
+                if (existing) {
+                    skippedCount++;
+                    errors.push({ row: rowNum, msg: `Skipped — ${email} already exists`, type: 'skip' });
+                    continue;
+                }
+
+                // Resolve manager
+                let managerId = '';
+                if (managerEmail) {
+                    const mgr = users.find(u => u.email?.toLowerCase() === managerEmail);
+                    if (mgr) managerId = mgr.id;
+                }
+
+                try {
+                    await addUser({
+                        name,
+                        email,
+                        role: normalizedRole,
+                        department,
+                        designation,
+                        managerId,
+                        avatar: name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2),
+                    });
+                    successCount++;
+                } catch (err) {
+                    failedCount++;
+                    errors.push({ row: rowNum, msg: `Failed to add ${email}: ${err.message}` });
+                }
+            }
+
+            setBulkResults({ total: rows.length, success: successCount, failed: failedCount, skipped: skippedCount, errors });
+            if (successCount > 0) await refreshData();
+        } catch (err) {
+            setBulkResults({ total: 0, success: 0, failed: 1, skipped: 0, errors: [{ row: 0, msg: `File parse error: ${err.message}` }] });
+        } finally {
+            setBulkUploading(false);
+            setSelectedFile(null);
+        }
+    };
 
     const resetModal = () => {
         setFetchState('idle');
@@ -116,11 +245,11 @@ export default function Employees() {
     const openEdit = (u) => {
         setEditing(u);
         setForm({ name: u.name, email: u.email, role: u.role, designation: u.designation || '', department: u.department || '', managerId: u.managerId || '' });
-        
+
         // Preselect common question set if available
         const commonSet = questionSets.find(qs => qs.isCommon);
         setOverrideForm({ cycleId: '', questionSetId: commonSet ? commonSet.id : '' });
-        
+
         resetModal();
         setShowModal(true);
     };
@@ -258,13 +387,37 @@ export default function Employees() {
                 </div>
             )}
 
+            {/* Hidden file input for Import modal */}
+            <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                style={{ display: 'none' }}
+                onChange={handleFileSelect}
+            />
+
             <div className="section-header">
                 <div>
                     <h2 className="section-title">Employee Management</h2>
                     <p className="section-subtitle">Manage all employees, departments, and reporting relationships</p>
                 </div>
                 {!isManager && (
-                    <button className="btn btn-primary" onClick={openAdd}>+ Add Employee</button>
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <button
+                            className="btn btn-secondary"
+                            onClick={openImportModal}
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: '7px', fontSize: '13px',
+                                background: 'linear-gradient(135deg, rgba(168,85,247,0.12), rgba(59,130,246,0.12))',
+                                border: '1px solid rgba(168,85,247,0.3)',
+                                color: '#a855f7',
+                            }}
+                        >
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            Import
+                        </button>
+                        <button className="btn btn-primary" onClick={openAdd}>+ Add Employee</button>
+                    </div>
                 )}
             </div>
 
@@ -472,8 +625,8 @@ export default function Employees() {
                                 </div>
                                 <div className="form-group">
                                     <label className="form-label">Job Title / Designation</label>
-                                    <select 
-                                        className="form-select" 
+                                    <select
+                                        className="form-select"
                                         value={form.designation}
                                         onChange={e => setForm(p => ({ ...p, designation: e.target.value }))}
                                     >
@@ -481,20 +634,20 @@ export default function Employees() {
                                         {designations.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
                                     </select>
                                     {profileReviewStarted && (
-                                        <div style={{ 
-                                            fontSize: '11px', 
-                                            color: 'var(--blue)', 
-                                            marginTop: '6px', 
-                                            fontWeight: 600, 
-                                            display: 'flex', 
-                                            alignItems: 'center', 
+                                        <div style={{
+                                            fontSize: '11px',
+                                            color: 'var(--blue)',
+                                            marginTop: '6px',
+                                            fontWeight: 600,
+                                            display: 'flex',
+                                            alignItems: 'center',
                                             gap: '4px',
                                             padding: '4px 8px',
                                             background: 'rgba(59, 130, 246, 0.05)',
                                             borderRadius: '4px',
                                             border: '1px solid rgba(59, 130, 246, 0.1)'
                                         }}>
-                                            <Icons.Info style={{ width: 14, height: 14 }} /> 
+                                            <Icons.Info style={{ width: 14, height: 14 }} />
                                             Designation updated. Question Set remains unchanged as review has already started.
                                         </div>
                                     )}
@@ -528,8 +681,8 @@ export default function Employees() {
                                 <label className="form-label">Reporting Manager</label>
                                 <select className="form-select" value={form.managerId}
                                     onChange={e => setForm(p => ({ ...p, managerId: e.target.value }))}
-                                    disabled={currentUser.role !== 'admin'}
-                                    style={currentUser.role !== 'admin' ? { cursor: 'not-allowed', backgroundColor: 'var(--bg-secondary)', opacity: 0.7 } : {}}
+                                    disabled={currentUser.role !== 'admin' && currentUser.role !== 'hr'}
+                                    style={currentUser.role !== 'admin' && currentUser.role !== 'hr' ? { cursor: 'not-allowed', backgroundColor: 'var(--bg-secondary)', opacity: 0.7 } : {}}
                                 >
                                     <option value="">None</option>
                                     {availableManagers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
@@ -562,14 +715,14 @@ export default function Employees() {
                                             {currentEmployeeOverrides.map(override => {
                                                 const c = cycles.find(cy => cy.id === override.cycleId);
                                                 const q = questionSets.find(qs => qs.id === override.questionSetId);
-                                                
+
                                                 // Check if a review has already started for this cycle
-                                                const reviewStarted = selfReviews.some(r => 
-                                                    String(r.employeeId) === String(editing.id) && 
-                                                    String(r.cycleId) === String(override.cycleId) && 
+                                                const reviewStarted = selfReviews.some(r =>
+                                                    String(r.employeeId) === String(editing.id) &&
+                                                    String(r.cycleId) === String(override.cycleId) &&
                                                     (r.status === 'draft' || r.status === 'submitted')
                                                 );
-                                                
+
                                                 const isCycleClosed = c?.status === 'closed';
 
                                                 return (
@@ -600,10 +753,10 @@ export default function Employees() {
                                                             )}
                                                         </div>
                                                         {(reviewStarted || isCycleClosed) && (
-                                                            <div style={{ 
-                                                                fontSize: '11px', 
-                                                                color: '#ef4444', 
-                                                                marginTop: '4px', 
+                                                            <div style={{
+                                                                fontSize: '11px',
+                                                                color: '#ef4444',
+                                                                marginTop: '4px',
                                                                 paddingLeft: '4px',
                                                                 fontWeight: 600,
                                                                 display: 'flex',
@@ -621,37 +774,38 @@ export default function Employees() {
 
                                     {/* Add new override */}
                                     {(() => {
-                                        const activeCycle = cycles.find(c => c.status === 'active');
-                                        if (!activeCycle) return <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>No active cycle available.</div>;
-                                        
-                                        const hasOverride = currentEmployeeOverrides.some(o => o.cycleId === activeCycle.id);
-                                        const reviewStarted = selfReviews.some(r => 
-                                            String(r.employeeId) === String(editing.id) && 
-                                            String(r.cycleId) === String(activeCycle.id) && 
-                                            (r.status === 'draft' || r.status === 'submitted')
-                                        );
+                                        // Show all active and draft cycles (not just active)
+                                        const assignableCycles = cycles.filter(c => c.status === 'active' || c.status === 'draft');
+                                        if (assignableCycles.length === 0) return <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>No active or draft cycles available.</div>;
 
-                                        if (hasOverride) return null; // Already assigned
+                                        // Filter out cycles that already have an override for this employee
+                                        const availableCycles = assignableCycles.filter(c => !currentEmployeeOverrides.some(o => o.cycleId === c.id));
+                                        if (availableCycles.length === 0) return <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>All available cycles already have a question set assigned.</div>;
+
+                                        const selectedCycleId = overrideForm.cycleId || availableCycles[0]?.id || '';
+                                        const selectedCycle = availableCycles.find(c => c.id === selectedCycleId) || availableCycles[0];
+                                        const reviewStarted = selectedCycle ? selfReviews.some(r =>
+                                            String(r.employeeId) === String(editing.id) &&
+                                            String(r.cycleId) === String(selectedCycle.id) &&
+                                            (r.status === 'draft' || r.status === 'submitted')
+                                        ) : false;
 
                                         return (
                                             <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end', marginTop: currentEmployeeOverrides.length > 0 ? '12px' : '0' }}>
                                                 <div style={{ flex: 1 }}>
-                                                    <label style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Active Cycle</label>
-                                                    <div style={{
-                                                        height: '36px',
-                                                        fontSize: '13px',
-                                                        background: 'var(--bg-secondary)',
-                                                        border: '1px solid var(--border)',
-                                                        borderRadius: '6px',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        padding: '0 12px',
-                                                        color: 'var(--text-primary)',
-                                                        fontWeight: 600,
-                                                        opacity: reviewStarted ? 0.6 : 1
-                                                    }}>
-                                                        {activeCycle.name}
-                                                    </div>
+                                                    <label style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Cycle</label>
+                                                    <select
+                                                        className="form-select"
+                                                        style={{ height: '36px', fontSize: '13px' }}
+                                                        value={selectedCycleId}
+                                                        onChange={e => setOverrideForm(p => ({ ...p, cycleId: e.target.value }))}
+                                                    >
+                                                        {availableCycles.map(c => (
+                                                            <option key={c.id} value={c.id}>
+                                                                {c.name} ({c.status})
+                                                            </option>
+                                                        ))}
+                                                    </select>
                                                 </div>
                                                 <div style={{ flex: 1 }}>
                                                     <label style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Question Set</label>
@@ -659,7 +813,7 @@ export default function Employees() {
                                                         className="form-select"
                                                         style={{ height: '36px', fontSize: '13px' }}
                                                         value={overrideForm.questionSetId}
-                                                        onChange={e => setOverrideForm(p => ({ ...p, cycleId: activeCycle.id, questionSetId: e.target.value }))}
+                                                        onChange={e => setOverrideForm(p => ({ ...p, cycleId: selectedCycleId, questionSetId: e.target.value }))}
                                                         disabled={reviewStarted}
                                                     >
                                                         <option value="">-- Choose Set --</option>
@@ -670,9 +824,9 @@ export default function Employees() {
                                                     className="btn btn-secondary"
                                                     style={{ height: '36px', padding: '0 14px', fontSize: '13px', whiteSpace: 'nowrap' }}
                                                     onClick={() => {
-                                                        const activeCycle = cycles.find(c => c.status === 'active');
-                                                        if (!editing || !activeCycle || !overrideForm.questionSetId) return;
-                                                        saveEmployeeOverride(editing.id, activeCycle.id, overrideForm.questionSetId).then(res => {
+                                                        const targetCycleId = selectedCycleId;
+                                                        if (!editing || !targetCycleId || !overrideForm.questionSetId) return;
+                                                        saveEmployeeOverride(editing.id, targetCycleId, overrideForm.questionSetId).then(res => {
                                                             if (res.success) {
                                                                 setOverrideForm({ cycleId: '', questionSetId: '' });
                                                             } else {
@@ -707,6 +861,204 @@ export default function Employees() {
                                 <Icons.Save /> {editing ? 'Update Employee' : 'Add Employee'}
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ══════════════════════════════════════════════════════
+                IMPORT MODAL — Drag & Drop + Results
+            ══════════════════════════════════════════════════════ */}
+            {showImportModal && (
+                <div className="modal-overlay" onClick={e => e.target === e.currentTarget && !bulkUploading && setShowImportModal(false)}>
+                    <div className="modal" style={{ maxWidth: '560px' }}>
+
+                        {/* ── Header ── */}
+                        <div className="modal-header" style={{ padding: '20px 24px 16px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <div style={{
+                                    width: '40px', height: '40px', borderRadius: '12px',
+                                    background: bulkUploading ? 'rgba(59,130,246,0.15)' : bulkResults ? (bulkResults.failed > 0 ? 'rgba(245,158,11,0.15)' : 'rgba(16,185,129,0.15)') : 'rgba(168,85,247,0.15)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px'
+                                }}>
+                                    {bulkUploading ? '⏳' : bulkResults ? (bulkResults.failed > 0 ? '⚠️' : '✅') : '📥'}
+                                </div>
+                                <div>
+                                    <h3 style={{ fontSize: '16px', fontWeight: 700, margin: 0 }}>
+                                        {bulkUploading ? 'Importing Employees…' : bulkResults ? 'Import Complete' : 'Import Employees'}
+                                    </h3>
+                                    <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0, marginTop: '2px' }}>
+                                        {bulkUploading ? 'Processing your spreadsheet' : bulkResults ? 'Review the results below' : 'Upload an Excel or CSV file'}
+                                    </p>
+                                </div>
+                            </div>
+                            {!bulkUploading && <button className="close-btn" onClick={() => setShowImportModal(false)}>×</button>}
+                        </div>
+
+                        <div className="modal-body" style={{ padding: '20px 24px' }}>
+
+                            {/* ── STATE 1: Drag & Drop Zone ── */}
+                            {!bulkUploading && !bulkResults && (
+                                <>
+                                    <div
+                                        onDragOver={handleDragOver}
+                                        onDragLeave={handleDragLeave}
+                                        onDrop={handleDrop}
+                                        onClick={() => fileInputRef.current?.click()}
+                                        style={{
+                                            border: `2px dashed ${isDragging ? '#a855f7' : selectedFile ? '#10b981' : 'var(--border)'}`,
+                                            borderRadius: '16px',
+                                            padding: '40px 24px',
+                                            textAlign: 'center',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.25s ease',
+                                            background: isDragging ? 'rgba(168,85,247,0.06)' : selectedFile ? 'rgba(16,185,129,0.04)' : 'transparent',
+                                            transform: isDragging ? 'scale(1.01)' : 'scale(1)',
+                                        }}
+                                    >
+                                        {/* Icon */}
+                                        <div style={{
+                                            width: '56px', height: '56px', borderRadius: '16px', margin: '0 auto 16px',
+                                            background: isDragging ? 'rgba(168,85,247,0.15)' : selectedFile ? 'rgba(16,185,129,0.12)' : 'rgba(100,116,139,0.1)',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            transition: 'all 0.25s ease',
+                                        }}>
+                                            {selectedFile ? (
+                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+                                                </svg>
+                                            ) : (
+                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={isDragging ? '#a855f7' : '#94a3b8'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                                                </svg>
+                                            )}
+                                        </div>
+
+                                        {selectedFile ? (
+                                            <>
+                                                <div style={{ fontSize: '14px', fontWeight: 700, color: '#10b981', marginBottom: '4px' }}>
+                                                    {selectedFile.name}
+                                                </div>
+                                                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                                                    {(selectedFile.size / 1024).toFixed(1)} KB — Click to change file
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div style={{ fontSize: '14px', fontWeight: 600, color: isDragging ? '#a855f7' : 'var(--text-primary)', marginBottom: '6px' }}>
+                                                    {isDragging ? 'Drop your file here' : 'Drag & drop your Excel file here'}
+                                                </div>
+                                                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                                                    or <span style={{ color: '#a855f7', fontWeight: 600, textDecoration: 'underline' }}>browse files</span>
+                                                </div>
+                                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '10px', opacity: 0.7 }}>
+                                                    Supports .xlsx, .xls, .csv
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                </>
+                            )}
+
+                            {/* ── STATE 2: Processing ── */}
+                            {bulkUploading && (
+                                <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                                    <div style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>
+                                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                                        </svg>
+                                    </div>
+                                    <div style={{ marginTop: '16px', fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>Importing employees…</div>
+                                    <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--text-muted)' }}>Please wait while records are being registered</div>
+                                </div>
+                            )}
+
+                            {/* ── STATE 3: Results ── */}
+                            {!bulkUploading && bulkResults && (
+                                <>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '20px' }}>
+                                        <div style={{
+                                            textAlign: 'center', padding: '18px 12px', borderRadius: '14px',
+                                            background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)'
+                                        }}>
+                                            <div style={{ fontSize: '28px', fontWeight: 800, color: '#10b981' }}>{bulkResults.success}</div>
+                                            <div style={{ fontSize: '11px', fontWeight: 600, color: '#10b981', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Added</div>
+                                        </div>
+                                        <div style={{
+                                            textAlign: 'center', padding: '18px 12px', borderRadius: '14px',
+                                            background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)'
+                                        }}>
+                                            <div style={{ fontSize: '28px', fontWeight: 800, color: '#f59e0b' }}>{bulkResults.skipped || 0}</div>
+                                            <div style={{ fontSize: '11px', fontWeight: 600, color: '#f59e0b', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Skipped</div>
+                                        </div>
+                                        <div style={{
+                                            textAlign: 'center', padding: '18px 12px', borderRadius: '14px',
+                                            background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)'
+                                        }}>
+                                            <div style={{ fontSize: '28px', fontWeight: 800, color: '#ef4444' }}>{bulkResults.failed}</div>
+                                            <div style={{ fontSize: '11px', fontWeight: 600, color: '#ef4444', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Failed</div>
+                                        </div>
+                                    </div>
+
+                                    {bulkResults.errors.length > 0 && (
+                                        <div style={{
+                                            maxHeight: '180px', overflowY: 'auto',
+                                            background: 'var(--bg-secondary)', borderRadius: '10px',
+                                            border: '1px solid var(--border)', padding: '12px',
+                                        }}>
+                                            <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>Details</div>
+                                            {bulkResults.errors.map((err, idx) => (
+                                                <div key={idx} style={{
+                                                    fontSize: '12px', padding: '6px 8px', marginBottom: '4px',
+                                                    borderRadius: '6px',
+                                                    background: err.type === 'skip' ? 'rgba(245,158,11,0.06)' : 'rgba(239,68,68,0.06)',
+                                                    color: err.type === 'skip' ? '#d97706' : '#ef4444',
+                                                    display: 'flex', alignItems: 'center', gap: '6px',
+                                                }}>
+                                                    {err.type === 'skip' ? '⏭️' : '❌'}
+                                                    {err.row > 0 && <span style={{ fontWeight: 700 }}>Row {err.row}:</span>}
+                                                    {err.msg}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {bulkResults.errors.length === 0 && bulkResults.success > 0 && (
+                                        <div style={{
+                                            textAlign: 'center', padding: '20px',
+                                            background: 'rgba(16,185,129,0.06)', borderRadius: '12px',
+                                            border: '1px solid rgba(16,185,129,0.15)',
+                                            color: '#10b981', fontSize: '15px', fontWeight: 700
+                                        }}>
+                                            🎉 All {bulkResults.success} employees imported successfully!
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </div>
+
+                        {/* ── Footer ── */}
+                        {!bulkUploading && (
+                            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+                                {!bulkResults ? (
+                                    <button
+                                        className="btn btn-primary"
+                                        disabled={!selectedFile}
+                                        onClick={processImportFile}
+                                        style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: selectedFile ? 1 : 0.5 }}
+                                    >
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>
+                                        Import {selectedFile ? `(${selectedFile.name})` : ''}
+                                    </button>
+                                ) : (
+                                    <>
+                                        <button className="btn btn-secondary" onClick={() => { setBulkResults(null); setSelectedFile(null); }}>
+                                            Import More
+                                        </button>
+                                        <button className="btn btn-primary" onClick={() => setShowImportModal(false)}>Done</button>
+                                    </>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

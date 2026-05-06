@@ -1,14 +1,26 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { PERFORMANCE_CATEGORIES } from '../data/constants';
 import { encrypt, decrypt, encryptJSON, decryptJSON, MASKED, AUTHORIZED_ROLES, logDecryptionAccess } from '../utils/encryption';
 import { sendEmailNotification, employeeSubmitEmail, managerSubmitEmail, hrApproveEmail, cycleCreatedEmail, hrEvaluationSubmittedEmail } from '../utils/emailService';
 
+export const CONFIG_DRAFT_EDIT_AFTER_DEADLINE = false;
+
 const AppContext = createContext(null);
 
 
+// Shared date normalizer: strips timestamps → returns plain YYYY-MM-DD for Supabase DATE columns and <input type="date">
+export function toDateOnly(val) {
+    if (!val) return null;
+    if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return null;
+    return d.toISOString().split('T')[0];
+}
+
 export function AppProvider({ children }) {
     const [currentUser, setCurrentUser] = useState(null);
+    const currentUserRef = useRef(null); // Always reflects the latest currentUser for use in callbacks
     const [users, setUsers] = useState([]);
     const [departments, setDepartments] = useState([]);
     const [designations, setDesignations] = useState([]);
@@ -22,6 +34,9 @@ export function AppProvider({ children }) {
     const [employeeOverrides, setEmployeeOverrides] = useState([]);
     const [loading, setLoading] = useState(true);
     const [theme, setTheme] = useState(localStorage.getItem('app-theme') || 'dark');
+
+    // Keep ref in sync so fetchAllData (empty deps) can always read the latest user
+    useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
     const [encryptionKey, _setEncryptionKey] = useState(localStorage.getItem('admin_encryption_key') || 'techxl-secure-2026');
     const [showDecrypted, setShowDecrypted] = useState(false);
 
@@ -60,12 +75,13 @@ export function AppProvider({ children }) {
             try {
                 const { data, error } = await supabase.from(table).select(query);
                 if (error) {
-                    console.error(`Error fetching ${table}:`, error);
+                    console.error(`[fetchTable] Error fetching ${table}:`, error.message, error.details || '');
                     return [];
                 }
+                console.log(`[fetchTable] ${table}: fetched ${data?.length ?? 0} rows`);
                 return data || [];
             } catch (err) {
-                console.error(`Exception fetching ${table}:`, err);
+                console.error(`[fetchTable] Exception fetching ${table}:`, err);
                 return [];
             }
         };

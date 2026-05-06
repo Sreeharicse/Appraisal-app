@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useApp } from '../../context/AppContext';
+import { useApp, CONFIG_DRAFT_EDIT_AFTER_DEADLINE } from '../../context/AppContext';
 import { calculateScore } from '../../context/AppContext';
 import Icons from '../../components/Icons';
 import Avatar from '../../components/Avatar';
@@ -66,57 +66,44 @@ export default function Approvals() {
         return sum / values.length;
     };
 
-    const getCurrentApproverId = (ev) => {
-        let currentApproverId = users.find(u => u.id === ev.managerId)?.managerId;
-        const evApprovals = approvals.filter(a => String(a.evalId) === String(ev.id));
-
-        // Follow the approval chain
-        let hasMoreApprovers = true;
-        while (currentApproverId && hasMoreApprovers) {
-            const hasApproved = evApprovals.some(a => a.approvedBy === currentApproverId);
-            if (hasApproved) {
-                currentApproverId = users.find(u => u.id === currentApproverId)?.managerId;
-            } else {
-                hasMoreApprovers = false;
-            }
-        }
-        return currentApproverId;
-    };
+    const getUserById = (id) => users.find(u => u.id === id);
+    const getCycleById = (id) => cycles.find(c => c.id === id);
 
     const filterByRole = (ev) => {
-        const currentApproverId = getCurrentApproverId(ev);
+        const empRole = getUserById(ev.employeeId)?.role;
 
-        if (currentUser.role === 'manager') {
-            return currentApproverId === currentUser.id;
+        if (currentUser.role === 'hr') {
+            // HR approves Employee & Manager evaluations
+            return empRole === 'employee' || empRole === 'manager';
         }
-        if (currentUser.role === 'hr' || currentUser.role === 'admin') {
-            return !currentApproverId;
+        if (currentUser.role === 'admin') {
+            // Admin approves HR & Admin evaluations
+            return empRole === 'hr' || empRole === 'admin';
         }
+
         return false;
     };
 
     const pending = evaluations.filter(e => e.status === 'pending_approval' && filterByRole(e));
     const historical = evaluations.filter(e => e.status !== 'pending_approval' && filterByRole(e));
 
-    const getUserById = (id) => users.find(u => u.id === id);
-    const getCycleById = (id) => cycles.find(c => c.id === id);
-
     const handleApprove = (evalId) => {
-        const currentApproverId = getCurrentApproverId(evaluations.find(e => e.id === evalId));
-
-        // If manager is approving (not final step)
-        if (currentApproverId && currentUser.role === 'manager') {
-            approveEvaluation(evalId, comment[evalId] || '', 0, true); // true = isIntermediate
-            return;
-        }
-
         // Final HR/Admin approval
         const avgHr = getAvgHrRating(evalId);
         if (avgHr === 0) {
             alert('Please complete all HR ratings before final approval.');
             return;
         }
-        approveEvaluation(evalId, comment[evalId] || '', avgHr, false);
+        const cycle = getCycleById(evaluations.find(e => e.id === evalId)?.cycleId);
+        if (cycle) {
+            const deadline = new Date(cycle.approvalEndDate || cycle.endDate);
+            deadline.setHours(23, 59, 59, 999);
+            if (new Date() > deadline) {
+                alert('The deadline for approvals has passed. You can no longer approve evaluations.');
+                return;
+            }
+        }
+        approveEvaluation(evalId, comment[evalId] || '', avgHr);
     };
 
     return (
@@ -155,6 +142,14 @@ export default function Approvals() {
                 const allQsAvg = allRatings.length > 0 ? allRatings.reduce((a, b) => a + b, 0) / allRatings.length : 0;
                 const previewScoreMath = calculateScore(allQsAvg, 0, ev.subRating || 0, avgHr);
                 const previewCategory = getCategory(previewScoreMath);
+                
+                const deadlineStr = cycle?.approvalEndDate || cycle?.endDate;
+                let isPastDeadline = false;
+                if (deadlineStr) {
+                    const d = new Date(deadlineStr);
+                    d.setHours(23, 59, 59, 999);
+                    isPastDeadline = new Date() > d;
+                }
 
                 return (
                     <div key={ev.id} className="card" style={{ marginBottom: '24px', padding: '24px' }}>
@@ -282,28 +277,34 @@ export default function Approvals() {
                         </div>
 
                         {/* Action Buttons */}
-                        <div style={{ display: 'flex', gap: '10px' }}>
-                            <button
-                                className="btn btn-success"
-                                style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: allRated ? 1 : 0.5 }}
-                                disabled={!allRated}
-                                onClick={() => handleApprove(ev.id)}>
-                                <Icons.Check /> {allRated ? 'Approve Evaluation' : 'Complete HR Ratings to Approve'}
-                            </button>
-                            <button
-                                className="btn btn-secondary"
-                                style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-                                onClick={async () => {
-                                    const res = await saveHRDraft(ev.id, comment[ev.id] || '', hrRatings[ev.id] || {});
-                                    if (res) alert('Progress saved successfully.');
-                                }}>
-                                💾 Save Progress
-                            </button>
-                            <button className="btn btn-danger" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-                                onClick={() => { if (window.confirm('Reject this evaluation?')) rejectEvaluation(ev.id, comment[ev.id]); }}>
-                                <Icons.X /> Reject
-                            </button>
-                        </div>
+                        {isPastDeadline ? (
+                            <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: 'var(--red)', fontWeight: 600, textAlign: 'center' }}>
+                                ⚠️ The approval deadline has passed. This evaluation can no longer be modified or approved.
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <button
+                                    className="btn btn-success"
+                                    style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: allRated ? 1 : 0.5 }}
+                                    disabled={!allRated}
+                                    onClick={() => handleApprove(ev.id)}>
+                                    <Icons.Check /> {allRated ? 'Approve Evaluation' : 'Complete HR Ratings to Approve'}
+                                </button>
+                                <button
+                                    className="btn btn-secondary"
+                                    style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                                    onClick={async () => {
+                                        const res = await saveHRDraft(ev.id, comment[ev.id] || '', hrRatings[ev.id] || {});
+                                        if (res) alert('Progress saved successfully.');
+                                    }}>
+                                    💾 Save Progress
+                                </button>
+                                <button className="btn btn-danger" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                                    onClick={() => { if (window.confirm('Reject this evaluation?')) rejectEvaluation(ev.id, comment[ev.id]); }}>
+                                    <Icons.X /> Reject
+                                </button>
+                            </div>
+                        )}
                     </div>
                 );
             })}

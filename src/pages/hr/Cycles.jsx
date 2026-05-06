@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import Icons from '../../components/Icons';
+import CycleStepper from '../../components/CycleStepper';
 
 export default function Cycles() {
     const { currentUser, users, cycles, selfReviews, evaluations, approvals, addCycle, updateCycle, deleteCycle, requestCycleDelete, getScore } = useApp();
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
-    const [form, setForm] = useState({ name: '', startDate: '', endDate: '', employeeEndDate: '', managerEndDate: '', status: 'draft' });
+    const [form, setForm] = useState({ name: '', startDate: '', endDate: '', selfReviewEndDate: '', evaluationEndDate: '', approvalEndDate: '', status: 'draft' });
 
     // Deletion Flow State
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -15,29 +16,239 @@ export default function Cycles() {
     const [confirmName, setConfirmName] = useState('');
     const [deleteRequested, setDeleteRequested] = useState({});
 
-    const openAdd = () => { setEditing(null); setForm({ name: '', startDate: '', endDate: '', employeeEndDate: '', managerEndDate: '', status: 'draft' }); setShowModal(true); };
-    const openEdit = (c) => { setEditing(c); setForm({ name: c.name, startDate: c.startDate, endDate: c.endDate, employeeEndDate: c.employeeEndDate || c.endDate, managerEndDate: c.managerEndDate || c.endDate, status: c.status }); setShowModal(true); };
+    const openAdd = () => { setEditing(null); setForm({ name: '', startDate: '', endDate: '', selfReviewEndDate: '', evaluationEndDate: '', approvalEndDate: '', status: 'draft' }); setShowModal(true); };
+
+    // Normalize any date value (ISO string, datetime, or plain date) to YYYY-MM-DD for <input type="date">
+    const toDateStr = (val) => {
+        if (!val) return '';
+        // If it already looks like YYYY-MM-DD (no time component), return it directly
+        if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+        // Otherwise parse and extract date portion in local timezone
+        const d = new Date(val);
+        if (isNaN(d.getTime())) return '';
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    };
+
+    const openEdit = (c) => {
+        setEditing(c);
+        setForm({
+            name: c.name,
+            startDate: toDateStr(c.startDate),
+            endDate: toDateStr(c.endDate),
+            selfReviewEndDate: toDateStr(c.selfReviewEndDate) || toDateStr(c.endDate),
+            evaluationEndDate: toDateStr(c.evaluationEndDate) || toDateStr(c.endDate),
+            approvalEndDate: toDateStr(c.approvalEndDate) || toDateStr(c.endDate),
+            status: c.status
+        });
+        setShowModal(true);
+    };
 
     const handleSave = async () => {
         if (!form.name || !form.startDate || !form.endDate) return;
-        if (editing) await updateCycle(editing.id, form);
-        else await addCycle(form);
-        setShowModal(false);
+
+        const previousStatus = editing?.status;
+        const newStatus = form.status;
+
+        // If transitioning to Active, check if another cycle is active first then show activation warning
+        if (editing && newStatus === 'active' && previousStatus !== 'active') {
+            const alreadyActive = cycles.find(c => c.status === 'active' && c.id !== editing.id);
+            setPhaseConfirm({
+                phase: 'Activate Cycle',
+                isActivation: true,
+                alreadyActive,
+                pendingItems: alreadyActive ? [{ name: alreadyActive.name, detail: 'Currently Active — will be replaced' }] : [],
+                onConfirm: async () => {
+                    if (alreadyActive) await updateCycle(alreadyActive.id, { status: 'draft' });
+                    await updateCycle(editing.id, form);
+                    setPhaseConfirm(null);
+                    setShowModal(false);
+                }
+            });
+            return;
+        }
+
+        // If transitioning to Closed via Edit form, reuse the full closure validation
+        if (editing && newStatus === 'closed' && previousStatus !== 'closed') {
+            const c = editing;
+            const warnings = [];
+            const employees = users.filter(u => u.role === 'employee');
+            const notSubmitted = employees.filter(u => !selfReviews.find(sr => String(sr.cycleId) === String(c.id) && String(sr.employeeId) === String(u.id) && sr.status === 'submitted'));
+            if (notSubmitted.length > 0) warnings.push(...notSubmitted.map(u => ({ name: u.name, detail: 'Self Review not submitted' })));
+            const pendingEvals = evaluations.filter(ev => String(ev.cycleId) === String(c.id) && ev.status === 'pending_approval');
+            if (pendingEvals.length > 0) warnings.push(...pendingEvals.map(ev => {
+                const u = users.find(u => String(u.id) === String(ev.employeeId));
+                return { name: u?.name || 'Unknown', detail: 'Pending Approval' };
+            }));
+
+            setPhaseConfirm({
+                phase: 'Close Cycle',
+                pendingItems: warnings,
+                onConfirm: async () => {
+                    await updateCycle(editing.id, form);
+                    setPhaseConfirm(null);
+                    setShowModal(false);
+                }
+            });
+            return;
+        }
+
+        // Normal save (no status change, or new cycle)
+        try {
+            if (editing) await updateCycle(editing.id, form);
+            else await addCycle(form);
+            setShowModal(false);
+        } catch (err) {
+            console.error('[handleSave] Error saving cycle:', err);
+            alert(`Failed to save cycle: ${err.message || 'Unknown error. Check console.'}`);
+        }
     };
 
     const statusBadge = { draft: 'badge-gray', active: 'badge-green', closed: 'badge-red' };
 
-    const activate = async (c) => {
-        // deactivate all others first
-        for (const x of cycles) {
-            if (x.status === 'active') await updateCycle(x.id, { status: 'closed' });
+    const activate = (c) => {
+        const alreadyActive = cycles.find(x => x.status === 'active');
+
+        if (alreadyActive) {
+            // Build pending items for the cycle being closed — ALL roles
+            const pendingItems = [];
+            const notSubmitted = users.filter(u => {
+                const sr = selfReviews.find(r => String(r.cycleId) === String(alreadyActive.id) && String(r.employeeId) === String(u.id));
+                return !sr || sr.status !== 'submitted';
+            });
+            if (notSubmitted.length > 0) {
+                notSubmitted.forEach(u => pendingItems.push({ name: u.name, detail: `${u.role}${u.department ? ' · ' + u.department : ''}` }));
+            }
+            const pendingEvals = evaluations.filter(ev => String(ev.cycleId) === String(alreadyActive.id) && ev.status === 'pending_approval');
+            if (pendingEvals.length > 0) {
+                pendingEvals.forEach(ev => {
+                    const u = users.find(u => String(u.id) === String(ev.employeeId));
+                    pendingItems.push({ name: u?.name || 'Unknown', detail: 'Pending Approval' });
+                });
+            }
+
+            setPhaseConfirm({
+                phase: `Close "${alreadyActive.name}" & Activate "${c.name}"`,
+                isActivation: true,
+                alreadyActive,
+                pendingItems,
+                activatingCycle: c,
+                onConfirm: async () => {
+                    await updateCycle(alreadyActive.id, { status: 'closed' });
+                    await updateCycle(c.id, { status: 'active' });
+                    setPhaseConfirm(null);
+                }
+            });
+        } else {
+            // No active cycle — confirm activation directly
+            setPhaseConfirm({
+                phase: `Activate "${c.name}"`,
+                isActivation: true,
+                alreadyActive: null,
+                pendingItems: [],
+                activatingCycle: c,
+                onConfirm: async () => {
+                    await updateCycle(c.id, { status: 'active' });
+                    setPhaseConfirm(null);
+                }
+            });
         }
-        await updateCycle(c.id, { status: 'active' });
     };
-    // --- State for Close Warning Modal ---
+    // --- State for Final Close Warning Modal ---
     const [showCloseWarning, setShowCloseWarning] = useState(false);
     const [cycleToClose, setCycleToClose] = useState(null);
     const [closeWarnings, setCloseWarnings] = useState([]);
+
+    // --- State for Phase Confirmation Modal ---
+    const [phaseConfirm, setPhaseConfirm] = useState(null); // { phase, pendingItems: [], onConfirm }
+
+    // --- State for Lifecycle Management Modal ---
+    const [showLifecycleModal, setShowLifecycleModal] = useState(false);
+    const [cycleToManage, setCycleToManage] = useState(null);
+
+    const openLifecycle = (c) => {
+        setCycleToManage(c);
+        setShowLifecycleModal(true);
+    };
+
+    const handleClosePhase = (phase) => {
+        if (!cycleToManage) return;
+        const liveCycle = cycles.find(c => c.id === cycleToManage.id) || cycleToManage;
+        let pendingItems = [];
+
+        if (phase === 'Self Review') {
+            // Find ALL users (any role) who haven't submitted their self review
+            const notSubmitted = users.filter(u => {
+                const sr = selfReviews.find(r => String(r.cycleId) === String(liveCycle.id) && String(r.employeeId) === String(u.id));
+                return !sr || sr.status !== 'submitted';
+            });
+            pendingItems = notSubmitted.map(u => ({ name: u.name, detail: `${u.role}${u.department ? ' · ' + u.department : ''}` }));
+        } else if (phase === 'Evaluation') {
+            // Find employees whose evaluations are not submitted/approved
+            const submittedReviews = selfReviews.filter(sr => String(sr.cycleId) === String(liveCycle.id) && sr.status === 'submitted');
+            const pendingEvals = submittedReviews.filter(sr => {
+                const ev = evaluations.find(e => String(e.cycleId) === String(liveCycle.id) && String(e.employeeId) === String(sr.employeeId));
+                return !ev || (ev.status !== 'pending_approval' && ev.status !== 'approved');
+            });
+            pendingItems = pendingEvals.map(sr => {
+                const u = users.find(u => String(u.id) === String(sr.employeeId));
+                return { name: u?.name || 'Unknown', detail: 'Evaluation not completed' };
+            });
+        }
+
+        // Show the validation popup
+        setPhaseConfirm({
+            phase,
+            pendingItems,
+            onConfirm: async () => {
+                try {
+                    const forceCloseDate = new Date();
+                    forceCloseDate.setDate(forceCloseDate.getDate() - 1);
+                    const pastIso = forceCloseDate.toISOString();
+                    if (phase === 'Self Review') {
+                        await updateCycle(liveCycle.id, { selfReviewEndDate: pastIso });
+                    } else if (phase === 'Evaluation') {
+                        await updateCycle(liveCycle.id, { evaluationEndDate: pastIso });
+                    } else if (phase === 'Cycle') {
+                        await updateCycle(liveCycle.id, { status: 'closed' });
+                    }
+                    setPhaseConfirm(null);
+                    setShowLifecycleModal(false);
+                } catch (e) {
+                    console.error(e);
+                    alert('Failed to close phase.');
+                }
+            }
+        });
+    };
+
+    const handleReopenPhase = (phase) => {
+        if (!cycleToManage) return;
+        const liveCycle = cycles.find(c => c.id === cycleToManage.id) || cycleToManage;
+        setPhaseConfirm({
+            phase: `Reopen ${phase}`,
+            pendingItems: [],
+            isReopen: true,
+            onConfirm: async () => {
+                try {
+                    if (phase === 'Self Review') {
+                        await updateCycle(cycleToManage.id, { selfReviewEndDate: liveCycle.endDate });
+                    } else if (phase === 'Evaluation') {
+                        await updateCycle(cycleToManage.id, { evaluationEndDate: liveCycle.endDate });
+                    } else if (phase === 'Cycle') {
+                        await updateCycle(cycleToManage.id, { status: 'active' });
+                    }
+                    setPhaseConfirm(null);
+                    setShowLifecycleModal(false);
+                } catch (e) {
+                    console.error(e);
+                    alert('Failed to reopen phase.');
+                }
+            }
+        });
+    };
 
     const handleClose = (c) => {
         const allReviewers = users; // All roles: employee, hr, manager, admin
@@ -206,8 +417,8 @@ export default function Cycles() {
                                             </button>
                                         )}
                                         {c.status === 'active' && (
-                                            <button className="btn btn-secondary btn-sm" style={{ display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => handleClose(c)}>
-                                                <Icons.Square /> Close
+                                            <button className="btn btn-secondary btn-sm" style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--blue)', color: '#fff', border: 'none' }} onClick={() => openLifecycle(c)}>
+                                                <Icons.Cycles style={{width:'14px', height:'14px'}} /> Manage Lifecycle
                                             </button>
                                         )}
                                         <button className="btn btn-secondary btn-sm" style={{ display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => openEdit(c)}>
@@ -220,6 +431,110 @@ export default function Cycles() {
                     </tbody>
                 </table>
             </div>
+
+            {/* Lifecycle Management Modal */}
+            {showLifecycleModal && cycleToManage && (
+                <div className="modal-overlay" style={{ zIndex: 9999 }}>
+                    <div className="modal" style={{ maxWidth: '800px', width: '90%' }}>
+                        <div className="modal-header">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <Icons.Cycles style={{ color: 'var(--purple)' }} />
+                                <div>
+                                    <h3 style={{ margin: 0 }}>Manage Cycle Lifecycle</h3>
+                                    <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{cycleToManage.name}</div>
+                                </div>
+                            </div>
+                            <button className="close-btn" onClick={() => setShowLifecycleModal(false)}>×</button>
+                        </div>
+                        <div className="modal-body" style={{ padding: '24px' }}>
+                            <CycleStepper cycle={cycles.find(c => c.id === cycleToManage.id) || cycleToManage} />
+
+                            <div style={{ marginTop: '32px' }}>
+                                <h4 style={{ marginBottom: '16px', fontSize: '14px', color: 'var(--text-primary)' }}>Manual Closure Actions</h4>
+                                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                                    
+                                    {/* Action 1: Close Self Review */}
+                                    <div style={{ flex: 1, minWidth: '200px', background: 'var(--bg-secondary)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                                        <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '8px' }}>Close Self Review</div>
+                                        <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '16px', lineHeight: '1.4' }}>Immediately lock all employee self-reviews from further edits.</p>
+                                        {(() => {
+                                            const liveCycle = cycles.find(c => c.id === cycleToManage.id) || cycleToManage;
+                                            if (liveCycle.status === 'closed') {
+                                                return <button className="btn btn-secondary" style={{ width: '100%', opacity: 0.5, cursor: 'not-allowed' }} disabled>🔒 Locked by Cycle</button>;
+                                            }
+                                            const d = liveCycle.selfReviewEndDate ? new Date(liveCycle.selfReviewEndDate) : null;
+                                            if (d) d.setHours(23, 59, 59, 999);
+                                            const isClosed = (d && new Date() > d);
+                                            return isClosed ? (
+                                                <button className="btn btn-outline" style={{ width: '100%', borderColor: 'var(--blue)', color: 'var(--blue)' }} onClick={() => handleReopenPhase('Self Review')}>
+                                                    🔄 Reopen Phase
+                                                </button>
+                                            ) : (
+                                                <button 
+                                                    className="btn btn-secondary" 
+                                                    style={{ width: '100%' }}
+                                                    onClick={() => handleClosePhase('Self Review')}
+                                                >
+                                                    Force Close Self Review
+                                                </button>
+                                            );
+                                        })()}
+                                    </div>
+
+                                    {/* Action 2: Close Evaluation */}
+                                    <div style={{ flex: 1, minWidth: '200px', background: 'var(--bg-secondary)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                                        <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '8px' }}>Close Evaluation</div>
+                                        <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '16px', lineHeight: '1.4' }}>Immediately lock manager evaluations. (Auto-locks Self Reviews)</p>
+                                        {(() => {
+                                            const liveCycle = cycles.find(c => c.id === cycleToManage.id) || cycleToManage;
+                                            if (liveCycle.status === 'closed') {
+                                                return <button className="btn btn-secondary" style={{ width: '100%', opacity: 0.5, cursor: 'not-allowed' }} disabled>🔒 Locked by Cycle</button>;
+                                            }
+                                            const d = liveCycle.evaluationEndDate ? new Date(liveCycle.evaluationEndDate) : null;
+                                            if (d) d.setHours(23, 59, 59, 999);
+                                            const isClosed = (d && new Date() > d);
+                                            return isClosed ? (
+                                                <button className="btn btn-outline" style={{ width: '100%', borderColor: 'var(--blue)', color: 'var(--blue)' }} onClick={() => handleReopenPhase('Evaluation')}>
+                                                    🔄 Reopen Phase
+                                                </button>
+                                            ) : (
+                                                <button 
+                                                    className="btn btn-secondary" 
+                                                    style={{ width: '100%' }}
+                                                    onClick={() => handleClosePhase('Evaluation')}
+                                                >
+                                                    Force Close Evaluation
+                                                </button>
+                                            );
+                                        })()}
+                                    </div>
+
+                                    {/* Action 3: Final Close */}
+                                    <div style={{ flex: 1, minWidth: '200px', background: 'var(--bg-secondary)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                                        <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '8px' }}>Close Entire Cycle</div>
+                                        <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '16px', lineHeight: '1.4' }}>Locks all queues and officially finalizes all cycle data forever.</p>
+                                        {(() => {
+                                            const liveCycle = cycles.find(c => c.id === cycleToManage.id) || cycleToManage;
+                                            return liveCycle.status === 'closed' ? (
+                                                <button className="btn btn-outline" style={{ width: '100%', borderColor: 'var(--green)', color: 'var(--green)' }} onClick={() => handleReopenPhase('Cycle')}>
+                                                    🔄 Reopen Cycle
+                                                </button>
+                                            ) : (
+                                                <button className="btn btn-danger" style={{ width: '100%' }} onClick={() => {
+                                                    setShowLifecycleModal(false);
+                                                    handleClose(liveCycle);
+                                                }}>
+                                                    ⚠️ Fully Close Cycle
+                                                </button>
+                                            );
+                                        })()}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Cycle Close Warning Modal - Blue Theme */}
             {showCloseWarning && cycleToClose && (
@@ -301,6 +616,163 @@ export default function Cycles() {
                                 boxShadow: '0 4px 12px rgba(59, 130, 246, 0.35)'
                             }}>
                                 <Icons.Square style={{ width: '16px', height: '16px' }} /> Confirm & Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Phase Confirmation / Validation Modal */}
+            {phaseConfirm && (
+                <div className="modal-overlay" style={{ zIndex: 10000, backdropFilter: 'blur(8px)', background: 'rgba(0,0,0,0.65)' }}>
+                    <div className="modal" style={{ maxWidth: '520px', borderRadius: '20px', overflow: 'hidden', boxShadow: '0 30px 60px rgba(0,0,0,0.5)' }}>
+                        <div className="modal-header" style={{
+                            background: phaseConfirm.isReopen || phaseConfirm.isActivation
+                                ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                                : phaseConfirm.pendingItems.length > 0
+                                    ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
+                                    : 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+                            padding: '24px 28px',
+                            border: 'none'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <div style={{ background: 'rgba(255,255,255,0.2)', padding: '10px', borderRadius: '12px', fontSize: '20px' }}>
+                                    {phaseConfirm.isReopen ? '🔄' : phaseConfirm.isActivation ? '🟢' : phaseConfirm.pendingItems.length > 0 ? '⚠️' : '✅'}
+                                </div>
+                                <div>
+                                    <h3 style={{ color: '#fff', margin: 0, fontSize: '18px', fontWeight: 800 }}>
+                                        {phaseConfirm.isReopen
+                                            ? `Reopen ${phaseConfirm.phase.replace('Reopen ', '')}?`
+                                            : phaseConfirm.isActivation
+                                                ? 'Activate This Cycle?'
+                                                : `Close ${phaseConfirm.phase}?`}
+                                    </h3>
+                                    <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '12px', margin: '4px 0 0 0' }}>
+                                        {phaseConfirm.isReopen
+                                            ? 'This will restore access for all participants.'
+                                            : phaseConfirm.isActivation
+                                                ? phaseConfirm.alreadyActive
+                                                    ? `⚠️ Another cycle is currently active`
+                                                    : 'Ready to activate this cycle'
+                                                : phaseConfirm.pendingItems.length > 0
+                                                    ? `${phaseConfirm.pendingItems.length} pending item${phaseConfirm.pendingItems.length > 1 ? 's' : ''} detected`
+                                                    : 'All items are complete. Ready to close.'}
+                                    </p>
+                                </div>
+                            </div>
+                            <button className="close-btn" style={{ color: '#fff', opacity: 0.8 }} onClick={() => setPhaseConfirm(null)}>×</button>
+                        </div>
+
+                        <div className="modal-body" style={{ padding: '28px', background: 'var(--bg-card)' }}>
+                            {phaseConfirm.isReopen ? (
+                                <p style={{ color: 'var(--text-secondary)', fontSize: '14px', lineHeight: '1.6', margin: 0 }}>
+                                    Reopening this phase will allow participants to resume their work. You can close it again at any time.
+                                </p>
+                            ) : phaseConfirm.isActivation ? (
+                                <>
+                                    {phaseConfirm.alreadyActive ? (
+                                        <>
+                                            {/* Cycle being closed */}
+                                            <div style={{ marginBottom: '20px', padding: '14px 16px', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '12px' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: phaseConfirm.pendingItems.length > 0 ? '12px' : 0 }}>
+                                                    <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '14px' }}>{phaseConfirm.alreadyActive.name}</span>
+                                                    <span style={{ fontSize: '11px', color: 'var(--red)', background: 'rgba(239,68,68,0.12)', padding: '3px 10px', borderRadius: '6px', fontWeight: 700 }}>Will be Closed</span>
+                                                </div>
+                                                {phaseConfirm.pendingItems.length > 0 && (
+                                                    <>
+                                                        <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '10px' }}>
+                                                            ⚠️ <strong>{phaseConfirm.pendingItems.length}</strong> pending item{phaseConfirm.pendingItems.length > 1 ? 's' : ''} in this cycle will be locked:
+                                                        </p>
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '160px', overflowY: 'auto' }}>
+                                                            {phaseConfirm.pendingItems.map((item, i) => (
+                                                                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', borderRadius: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border)' }}>
+                                                                    <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '12px' }}>{item.name}</span>
+                                                                    <span style={{ fontSize: '10px', color: 'var(--text-muted)', padding: '2px 7px', borderRadius: '5px', background: 'var(--bg-secondary)' }}>{item.detail}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
+
+                                            {/* Cycle being activated */}
+                                            <div style={{ padding: '14px 16px', background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: '12px' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '14px' }}>{phaseConfirm.activatingCycle?.name}</span>
+                                                    <span style={{ fontSize: '11px', color: '#10b981', background: 'rgba(16,185,129,0.12)', padding: '3px 10px', borderRadius: '6px', fontWeight: 700 }}>Will Become Active</span>
+                                                </div>
+                                                <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px', marginBottom: 0, lineHeight: '1.5' }}>
+                                                    Employees and managers will be notified when this cycle becomes active.
+                                                </p>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div style={{ padding: '14px 16px', background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: '12px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '14px' }}>{phaseConfirm.activatingCycle?.name}</span>
+                                                <span style={{ fontSize: '11px', color: '#10b981', background: 'rgba(16,185,129,0.12)', padding: '3px 10px', borderRadius: '6px', fontWeight: 700 }}>Will Become Active</span>
+                                            </div>
+                                            <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px', marginBottom: 0, lineHeight: '1.5' }}>
+                                                No currently active cycle. This cycle will be activated and all users will be notified.
+                                            </p>
+                                        </div>
+                                    )}
+                                </>
+                            ) : phaseConfirm.pendingItems.length > 0 ? (
+                                <>
+                                    <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '16px' }}>
+                                        {phaseConfirm.phase === 'Self Review'
+                                            ? 'The following employees have not submitted their self review:'
+                                            : 'Evaluations are still pending for the following employees:'}
+                                    </p>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '240px', overflowY: 'auto' }}>
+                                        {phaseConfirm.pendingItems.map((item, i) => (
+                                            <div key={i} style={{
+                                                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                                padding: '10px 14px', borderRadius: '10px',
+                                                background: 'var(--bg-secondary)', border: '1px solid var(--border)'
+                                            }}>
+                                                <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '13px' }}>{item.name}</span>
+                                                <span style={{ fontSize: '11px', color: 'var(--text-muted)', background: 'var(--bg-primary)', padding: '3px 8px', borderRadius: '6px' }}>{item.detail}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div style={{ marginTop: '16px', padding: '12px 14px', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: '10px', fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.5' }}>
+                                        ⚠️ Closing now will lock out these participants. Their data will be finalized in its current incomplete state.
+                                    </div>
+                                </>
+                            ) : (
+                                <p style={{ color: 'var(--text-secondary)', fontSize: '14px', lineHeight: '1.6', margin: 0 }}>
+                                    All participants have completed their required actions. Proceeding will lock this phase immediately.
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="modal-footer" style={{ padding: '20px 28px', background: 'var(--bg-secondary)', borderTop: '1px solid var(--border)', display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                            <button className="btn btn-secondary" style={{ padding: '10px 20px', borderRadius: '10px' }} onClick={() => setPhaseConfirm(null)}>Cancel</button>
+                            <button
+                                className="btn"
+                                onClick={phaseConfirm.onConfirm}
+                                style={{
+                                    padding: '10px 24px',
+                                    borderRadius: '10px',
+                                    fontWeight: 700,
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    background: phaseConfirm.isReopen
+                                        ? '#10b981'
+                                        : phaseConfirm.pendingItems.length > 0 ? '#f59e0b' : '#6366f1',
+                                    color: '#fff',
+                                    boxShadow: `0 4px 12px ${phaseConfirm.isReopen ? 'rgba(16,185,129,0.35)' : phaseConfirm.pendingItems.length > 0 ? 'rgba(245,158,11,0.35)' : 'rgba(99,102,241,0.35)'}`
+                                }}
+                            >
+                                {phaseConfirm.isReopen
+                                    ? '🔄 Confirm Reopen'
+                                    : phaseConfirm.isActivation
+                                        ? '🟢 Confirm Activate'
+                                        : phaseConfirm.pendingItems.length > 0
+                                            ? '⚡ Force Close Anyway'
+                                            : '✅ Confirm Close'}
                             </button>
                         </div>
                     </div>
@@ -399,13 +871,17 @@ export default function Cycles() {
                             </div>
                             <div className="form-grid">
                                 <div className="form-group">
-                                    <label className="form-label">Employee Deadline</label>
-                                    <input className="form-input" type="date" value={form.employeeEndDate} onChange={e => setForm(p => ({ ...p, employeeEndDate: e.target.value }))} />
+                                    <label className="form-label">Self Review Deadline</label>
+                                    <input className="form-input" type="date" value={form.selfReviewEndDate} onChange={e => setForm(p => ({ ...p, selfReviewEndDate: e.target.value }))} />
                                 </div>
                                 <div className="form-group">
-                                    <label className="form-label">Manager Deadline</label>
-                                    <input className="form-input" type="date" value={form.managerEndDate} onChange={e => setForm(p => ({ ...p, managerEndDate: e.target.value }))} />
+                                    <label className="form-label">Evaluation Deadline</label>
+                                    <input className="form-input" type="date" value={form.evaluationEndDate} onChange={e => setForm(p => ({ ...p, evaluationEndDate: e.target.value }))} />
                                 </div>
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">HR / Admin Approval Deadline</label>
+                                <input className="form-input" type="date" value={form.approvalEndDate} onChange={e => setForm(p => ({ ...p, approvalEndDate: e.target.value }))} />
                             </div>
                             <div className="form-group">
                                 <label className="form-label">Status</label>
@@ -438,7 +914,7 @@ export default function Cycles() {
                                     >
                                         <option value="draft">Draft</option>
                                         <option value="active">Active</option>
-                                        <option value="closed">Closed</option>
+                                        {editing && <option value="closed">Closed</option>}
                                     </select>
                                 </div>
                             </div>

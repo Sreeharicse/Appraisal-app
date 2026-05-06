@@ -2,13 +2,14 @@ import React, { useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import Icons from '../components/Icons';
 import Avatar from '../components/Avatar';
+import CycleStepper from '../components/CycleStepper';
 import { useNavigate } from 'react-router-dom';
 
 export default function Dashboard() {
     const { currentUser, cycles, getActiveCycle, goals, selfReviews, evaluations, users, approvals, resetAndSeedFakeData, updateUser, refreshData } = useApp();
     const navigate = useNavigate();
     const activeCycle = getActiveCycle();
-    
+
     const getGreeting = () => {
         const hour = new Date().getHours();
         if (hour < 12) return 'Good Morning';
@@ -23,6 +24,21 @@ export default function Dashboard() {
             case 'draft': return 'badge-gray';
             default: return 'badge-gray';
         }
+    };
+
+    const getCountdownText = (roleOverride) => {
+        if (!activeCycle) return 'No active cycle';
+        const role = roleOverride || currentUser.role;
+        const targetDateStr = role === 'employee' ? (activeCycle.selfReviewEndDate || activeCycle.endDate) :
+            role === 'manager' ? (activeCycle.evaluationEndDate || activeCycle.endDate) :
+                (activeCycle.approvalEndDate || activeCycle.endDate);
+        const targetDate = new Date(targetDateStr);
+        targetDate.setHours(23, 59, 59, 999);
+        const diffDays = Math.ceil((targetDate - new Date()) / (1000 * 60 * 60 * 24));
+
+        if (diffDays > 0) return `Ends in ${diffDays} day${diffDays === 1 ? '' : 's'}`;
+        if (diffDays === 0) return 'Ends today';
+        return `Overdue by ${Math.abs(diffDays)} day${Math.abs(diffDays) === 1 ? '' : 's'}`;
     };
 
     // -- Personal Stats (All Roles)
@@ -48,9 +64,14 @@ export default function Dashboard() {
     const totalEmployees = users.length;
     const pendingHRApprovals = evaluations.filter(ev => {
         if (ev.status !== 'pending_approval') return false;
-        const emp = users.find(u => u.id === ev.employeeId);
-        if (currentUser.role === 'admin') return emp?.role !== 'admin';
-        if (currentUser.role === 'hr') return emp?.role === 'employee';
+        const empRole = users.find(u => u.id === ev.employeeId)?.role;
+
+        if (currentUser.role === 'admin') {
+            return empRole === 'hr' || empRole === 'admin';
+        }
+        if (currentUser.role === 'hr') {
+            return empRole === 'employee' || empRole === 'manager';
+        }
         return false;
     });
 
@@ -86,11 +107,11 @@ export default function Dashboard() {
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
             <div className="section-header" style={{ marginBottom: '32px', textAlign: 'left' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '8px' }}>
-                    <Avatar 
-                        avatarData={currentUser.avatar} 
-                        name={currentUser.name} 
-                        size={64} 
-                        editable={true} 
+                    <Avatar
+                        avatarData={currentUser.avatar}
+                        name={currentUser.name}
+                        size={64}
+                        editable={true}
                         onUpload={handleAvatarUpload}
                         style={{ boxShadow: '0 4px 14px rgba(0,0,0,0.1)' }}
                     />
@@ -109,21 +130,34 @@ export default function Dashboard() {
             </div>
 
             {/* ----- ALL ROLES: Personal Dashboard ----- */}
-            <div className="grid grid-3" style={{ marginBottom: '24px' }}>
+            <div className={`grid ${currentUser.role === 'employee' ? 'grid-3' : 'grid-4'}`} style={{ marginBottom: '24px' }}>
                 <div className="kpi-card" style={{ '--accent-color': 'var(--blue-light)', cursor: 'pointer' }} onClick={() => activeCycle && navigate(`/employee/cycle/${activeCycle.id}`)}>
                     <div className="kpi-icon"><Icons.Calendar /></div>
-                    <div className="kpi-label">Active Cycle</div>
+                    <div className="kpi-label">
+                        {currentUser.role === 'employee' ? 'Self Review Deadline' :
+                            currentUser.role === 'manager' ? 'Evaluation Deadline' :
+                                'Approval Deadline'}
+                    </div>
                     <div className="kpi-value" style={{ fontSize: '22px', marginTop: '8px' }}>
                         {activeCycle ? activeCycle.name : 'None'}
                     </div>
                     <div className="kpi-change">
-                        {activeCycle ? `Ends ${new Date(
-                            currentUser.role === 'employee' ? (activeCycle.employeeEndDate || activeCycle.endDate) :
-                            currentUser.role === 'manager' ? (activeCycle.managerEndDate || activeCycle.endDate) :
-                            activeCycle.endDate
-                        ).toLocaleDateString()}` : 'No active cycle'}
+                        {getCountdownText()}
                     </div>
                 </div>
+
+                {currentUser.role !== 'employee' && (
+                    <div className="kpi-card" style={{ '--accent-color': 'var(--indigo)', cursor: 'pointer' }} onClick={() => navigate('/employee/self-review')}>
+                        <div className="kpi-icon"><Icons.Clock /></div>
+                        <div className="kpi-label">Self Review Deadline</div>
+                        <div className="kpi-value" style={{ fontSize: '22px', marginTop: '8px' }}>
+                            {activeCycle ? activeCycle.name : 'None'}
+                        </div>
+                        <div className="kpi-change">
+                            {getCountdownText('employee')}
+                        </div>
+                    </div>
+                )}
                 {/* Self Review Card - Now First after Active Cycle */}
                 <div className="kpi-card" style={{ '--accent-color': 'var(--purple)', cursor: 'pointer' }} onClick={() => navigate('/employee/self-review')}>
                     <div className="kpi-icon"><Icons.FileText /></div>
@@ -153,6 +187,14 @@ export default function Dashboard() {
             {!hasSelfReview && (
                 <div style={{ marginBottom: '24px' }}>
                     <button className="btn btn-primary" onClick={() => navigate('/employee/self-review')}>Start Self Review</button>
+                </div>
+            )}
+
+            {/* ----- ALL ROLES: Active Cycle Progress UI ----- */}
+            {activeCycle && (
+                <div style={{ marginBottom: '32px' }}>
+                    <div style={{ fontSize: '16px', fontWeight: 700, marginBottom: '8px' }}>Current Cycle Progress</div>
+                    <CycleStepper cycle={activeCycle} />
                 </div>
             )}
 
