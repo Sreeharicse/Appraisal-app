@@ -182,11 +182,13 @@ export function AppProvider({ children }) {
         }
 
         const isAdminHr = activeUserRole === 'admin' || activeUserRole === 'hr';
-        const getReportees = (mgrId) => {
+        const getReportees = (mgrId, seen = new Set()) => {
+            if (seen.has(mgrId)) return [];
+            seen.add(mgrId);
             let res = [];
             const dir = mappedUsers.filter(u => u.managerId === mgrId);
             res.push(...dir);
-            dir.forEach(d => res.push(...getReportees(d.id)));
+            dir.forEach(d => res.push(...getReportees(d.id, seen)));
             return res;
         };
         const allowedUserIds = new Set(activeUserId ? getReportees(activeUserId).map(u => u.id) : []);

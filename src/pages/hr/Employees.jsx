@@ -836,7 +836,7 @@ export default function Employees() {
                                                 onChange={e => setOverrideForm(p => ({ ...p, cycleId: e.target.value }))}
                                             >
                                                 <option value="">-- Choose Cycle --</option>
-                                                {cycles.filter(c => c.status !== 'archived').map(c => (
+                                                {cycles.filter(c => c.status === 'active').map(c => (
                                                     <option key={c.id} value={c.id}>{c.name}</option>
                                                 ))}
                                             </select>
@@ -856,17 +856,47 @@ export default function Employees() {
                                         <button
                                             className="btn btn-secondary"
                                             style={{ height: '36px', padding: '0 14px', fontSize: '13px', whiteSpace: 'nowrap' }}
-                                            onClick={() => {
-                                                if (!editing || !overrideForm.cycleId || !overrideForm.questionSetId) return;
-                                                saveEmployeeOverride(editing.id, overrideForm.cycleId, overrideForm.questionSetId).then(res => {
-                                                    if (res.success) setOverrideForm({ cycleId: '', questionSetId: '' });
-                                                });
-                                            }}
+                                            onClick={handleAddOverride}
                                             disabled={!overrideForm.cycleId || !overrideForm.questionSetId}
                                         >
                                             + Add
                                         </button>
                                     </div>
+
+                                    {/* List of active overrides */}
+                                    {currentEmployeeOverrides.length > 0 && (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+                                            {currentEmployeeOverrides.map(ov => {
+                                                const cycle = cycles.find(c => String(c.id) === String(ov.cycleId));
+                                                const qSet = questionSets.find(qs => String(qs.id) === String(ov.questionSetId));
+                                                if (!cycle) return null;
+                                                return (
+                                                    <div key={ov.cycleId} style={{ 
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                                        padding: '10px 14px', borderRadius: '10px', background: 'var(--bg-secondary)',
+                                                        border: '1px solid var(--border)', fontSize: '13px'
+                                                    }}>
+                                                        <div>
+                                                            <span style={{ fontWeight: 600 }}>{cycle.name}</span>
+                                                            <span style={{ margin: '0 8px', color: 'var(--text-muted)' }}>→</span>
+                                                            <span style={{ color: 'var(--purple)', fontWeight: 600 }}>{qSet?.name || 'Unknown Set'}</span>
+                                                        </div>
+                                                        <button 
+                                                            onClick={() => handleRemoveOverride(ov.cycleId)}
+                                                            style={{ 
+                                                                background: 'none', border: 'none', color: '#ef4444', 
+                                                                cursor: 'pointer', padding: '4px', display: 'flex' 
+                                                            }}
+                                                            title="Remove Override"
+                                                        >
+                                                            <Icons.Trash style={{ width: 14, height: 14 }} />
+                                                        </button>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+
                                     <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px' }}>
                                         Overrides take priority. All other cycles fall back to Job Title defaults.
                                     </div>
