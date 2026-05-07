@@ -19,6 +19,9 @@ BEGIN
     
     FOR pol IN SELECT policyname FROM pg_policies WHERE tablename = 'approvals' AND schemaname = 'public'
     LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.approvals', pol.policyname); END LOOP;
+
+    FOR pol IN SELECT policyname FROM pg_policies WHERE tablename = 'profiles' AND schemaname = 'public'
+    LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.profiles', pol.policyname); END LOOP;
 END $$;
 
 -- STEP 2: Enable RLS on all tables
@@ -26,6 +29,17 @@ ALTER TABLE public.self_reviews ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.evaluations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.approvals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+-- STEP 2.5: profiles policies
+CREATE POLICY "profiles_select" ON public.profiles FOR SELECT USING (true);
+CREATE POLICY "profiles_insert" ON public.profiles FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "profiles_update" ON public.profiles FOR UPDATE USING (
+    auth.uid() = id 
+    OR email = auth.jwt()->>'email'
+    OR (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'hr')
+);
+CREATE POLICY "profiles_delete" ON public.profiles FOR DELETE USING ((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'hr'));
 
 -- STEP 3: self_reviews policies (all authenticated users can read — app handles role filtering)
 CREATE POLICY "sr_select" ON public.self_reviews FOR SELECT USING (auth.uid() IS NOT NULL);

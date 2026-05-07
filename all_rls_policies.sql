@@ -27,15 +27,24 @@ ALTER TABLE public.employee_cycle_overrides ENABLE ROW LEVEL SECURITY;
 -- ==========================================
 -- PROFILES POLICIES
 -- ==========================================
+-- Allow all to read profiles (needed for mentions/lookups)
 CREATE POLICY "profiles_select" ON public.profiles FOR SELECT USING (true);
-CREATE POLICY "profiles_insert" ON public.profiles FOR INSERT WITH CHECK ((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'hr'));
-CREATE POLICY "profiles_update" ON public.profiles FOR UPDATE USING (auth.uid() = id OR (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'hr'));
-CREATE POLICY "HR and Admin can delete profiles" ON public.profiles FOR DELETE USING ((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'hr'));
-CREATE POLICY "HR and Admin can insert profiles" ON public.profiles FOR INSERT WITH CHECK ((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'hr'));
-CREATE POLICY "HR can update profiles" ON public.profiles FOR UPDATE USING ((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'hr');
-CREATE POLICY "Public profiles are viewable by everyone" ON public.profiles FOR SELECT USING (true);
-CREATE POLICY "Users can read own profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
-CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+
+-- Allow authenticated users to INSERT their own profile if it doesn't exist
+CREATE POLICY "profiles_insert_self" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
+
+-- Allow HR and Admins to insert any profile
+CREATE POLICY "profiles_insert_admin" ON public.profiles FOR INSERT WITH CHECK ((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'hr'));
+
+-- THE FIX: Allow users to UPDATE their own profile OR any profile matching their email (for linking)
+CREATE POLICY "profiles_update_v2" ON public.profiles FOR UPDATE USING (
+    auth.uid() = id 
+    OR (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'hr')
+    OR email = auth.jwt()->>'email'
+);
+
+-- Allow HR and Admin to delete profiles
+CREATE POLICY "profiles_delete_admin" ON public.profiles FOR DELETE USING ((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'hr'));
 
 -- ==========================================
 -- CYCLES POLICIES

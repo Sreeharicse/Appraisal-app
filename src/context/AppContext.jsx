@@ -371,76 +371,95 @@ export function AppProvider({ children }) {
 
             const { data: { session } } = await supabase.auth.getSession();
             if (session && mounted) {
-                let { data: profile } = await supabase
+                // 1. Check for profile by ID (Auth UID)
+                let { data: profileById } = await supabase
                     .from('profiles')
                     .select('*')
                     .eq('id', session.user.id)
-                    .single();
+                    .maybeSingle();
 
-                // If profile doesn't exist by ID (e.g., first time SSO login), auto-create or link it
-                if (!profile) {
-                    // Check if HR pre-registered a profile with this email
-                    const { data: existingProfile } = await supabase
+                // 2. Check for profile by Email (Imported profile)
+                let { data: profileByEmail } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .ilike('email', session.user.email)
+                    .maybeSingle();
+
+                let profile = null;
+
+                if (profileById && profileByEmail && profileById.id !== profileByEmail.id) {
+                    // DUPLICATE DETECTED: We have an Auth profile AND an Imported profile
+                    console.log('[Auth] Duplicate profiles detected. Healing...');
+                    
+                    // Merge data: prefer profileByEmail (the imported one) for roles/manager
+                    const mergedData = {
+                        name: profileByEmail.name || profileById.name,
+                        role: profileByEmail.role !== 'employee' ? profileByEmail.role : profileById.role,
+                        department: profileByEmail.department || profileById.department,
+                        designation: profileByEmail.designation || profileById.designation,
+                        manager_id: profileByEmail.manager_id || profileById.manager_id,
+                        avatar: profileByEmail.avatar || profileById.avatar,
+                        question_set_id: profileByEmail.question_set_id || profileById.question_set_id
+                    };
+
+                    // Update the Auth-linked profile with merged data
+                    const { error: updateError } = await supabase
                         .from('profiles')
-                        .select('*')
-                        .ilike('email', session.user.email)
-                        .maybeSingle();
+                        .update(mergedData)
+                        .eq('id', session.user.id);
 
-                    if (existingProfile) {
-                        // Try to update the profile PK to match the Auth UID
-                        await supabase
-                            .from('profiles')
-                            .update({ id: session.user.id })
-                            .eq('email', session.user.email);
-
-                        // Verify the update actually worked — RLS can silently block it
-                        const { data: verifyRow } = await supabase
-                            .from('profiles')
-                            .select('id')
-                            .eq('id', session.user.id)
-                            .maybeSingle();
-
-                        if (verifyRow) {
-                            // Update succeeded — profile now has Auth UID
-                            profile = { ...existingProfile, id: session.user.id };
-                        } else {
-                            // RLS silently blocked the update — try INSERT instead
-                            console.warn('[Auth] Profile PK update blocked by RLS, trying insert...');
-                            const { id: _oldId, created_at: _ca, ...profileData } = existingProfile;
-                            const { error: insError } = await supabase
-                                .from('profiles')
-                                .insert({ ...profileData, id: session.user.id });
-                            
-                            if (!insError) {
-                                profile = { ...existingProfile, id: session.user.id };
-                            } else {
-                                // Last resort: use the existing HR profile UUID as-is
-                                console.warn('[Auth] Insert also blocked, using HR profile UUID:', existingProfile.id);
-                                profile = existingProfile;
-                            }
-                        }
+                    if (!updateError) {
+                        // Delete the redundant imported profile (with temp ID)
+                        await supabase.from('profiles').delete().eq('id', profileByEmail.id);
+                        profile = { ...mergedData, id: session.user.id };
+                        console.log('[Auth] Profiles healed and merged.');
                     } else {
-                        // No profile at all — create a brand new one
-                        const metadata = session.user.user_metadata || {};
-                        const fullName = metadata.full_name || metadata.name || session.user.email?.split('@')[0] || 'Unknown User';
-                        const avatar = fullName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+                        console.error('[Auth] Healing failed:', updateError.message);
+                        profile = profileById;
+                    }
+                } else if (profileByEmail && !profileById) {
+                    // LINKING NEEDED: Found imported profile, but no Auth profile yet
+                    console.log('[Auth] Linking imported profile to Auth UID...');
+                    const { error: linkError } = await supabase
+                        .from('profiles')
+                        .update({ id: session.user.id })
+                        .eq('id', profileByEmail.id);
 
-                        const newProfile = {
-                            id: session.user.id,
-                            name: fullName,
-                            email: session.user.email,
-                            role: 'employee',
-                            department: 'General',
-                            avatar: avatar,
-                        };
-
-                        const { error } = await supabase.from('profiles').insert(newProfile);
-                        if (!error) {
-                            profile = newProfile;
+                    if (!linkError) {
+                        profile = { ...profileByEmail, id: session.user.id };
+                    } else {
+                        console.warn('[Auth] Link failed, trying manual merge...');
+                        // If PK update is blocked, create new and delete old
+                        const { id: _old, created_at: _ca, ...data } = profileByEmail;
+                        const { error: insError } = await supabase.from('profiles').insert({ ...data, id: session.user.id });
+                        if (!insError) {
+                            await supabase.from('profiles').delete().eq('id', profileByEmail.id);
+                            profile = { ...data, id: session.user.id };
                         } else {
-                            console.error('Failed to auto-create profile:', error.message);
+                            profile = profileByEmail;
                         }
                     }
+                } else if (profileById) {
+                    // NORMAL FLOW: User already has a profile linked to their Auth UID
+                    profile = profileById;
+                } else {
+                    // NEW USER: Create fresh profile
+                    console.log('[Auth] Creating fresh profile...');
+                    const metadata = session.user.user_metadata || {};
+                    const fullName = metadata.full_name || metadata.name || session.user.email?.split('@')[0] || 'Unknown User';
+                    const avatar = fullName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+
+                    const newProfile = {
+                        id: session.user.id,
+                        name: fullName,
+                        email: session.user.email,
+                        role: 'employee',
+                        department: 'General',
+                        avatar: avatar,
+                    };
+
+                    const { error } = await supabase.from('profiles').insert(newProfile);
+                    if (!error) profile = newProfile;
                 }
 
                 // --- MS Graph Auto-Fetch via Supabase Provider Token ---
@@ -758,13 +777,17 @@ export function AppProvider({ children }) {
 
         if (error) {
             console.error("Supabase updateUser failed:", error.message, error.details, error.hint);
-            // Still update local state so the UI reflects changes
-            setUsers(p => p.map(u => u.id === id ? { ...u, ...updates, managerId: updates.managerId !== undefined ? updates.managerId : u.managerId } : u));
             return { success: false, error: error.message };
         }
 
         // Update local state on success
         setUsers(p => p.map(u => u.id === id ? { ...u, ...updates, managerId: updates.managerId !== undefined ? updates.managerId : u.managerId } : u));
+        
+        // If we updated our own profile, sync the currentUser state too
+        if (currentUser && id === currentUser.id) {
+            setCurrentUser(prev => ({ ...prev, ...updates }));
+        }
+
         return { success: true };
     };
 

@@ -70,6 +70,9 @@ export default function Employees() {
     const [bulkUploading, setBulkUploading] = useState(false);
     const [bulkResults, setBulkResults] = useState(null); // { total, success, failed, skipped, errors[] }
     const [selectedFile, setSelectedFile] = useState(null);
+    const [importMode, setImportMode] = useState('file'); // 'file' | 'manual'
+    const [manualEmails, setManualEmails] = useState('');
+
 
     const profileReviewStarted = editing && selfReviews.some(r =>
         String(r.employeeId) === String(editing.id) &&
@@ -120,8 +123,11 @@ export default function Employees() {
         setSelectedFile(null);
         setBulkResults(null);
         setBulkUploading(false);
+        setImportMode('file');
+        setManualEmails('');
         setShowImportModal(true);
     };
+
 
     /* ── Drag & Drop Handlers ── */
     const handleDragOver = (e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); };
@@ -229,6 +235,67 @@ export default function Employees() {
         }
     };
 
+    const handleManualImport = async () => {
+        if (!manualEmails.trim()) return;
+
+        setBulkUploading(true);
+        setBulkResults(null);
+
+        // Split by comma, newline, or semicolon and filter empty/invalid strings
+        const emails = manualEmails
+            .split(/[,\n;]+/)
+            .map(e => e.trim().toLowerCase())
+            .filter(e => e && e.includes('@'));
+
+        if (emails.length === 0) {
+            setBulkResults({ total: 0, success: 0, failed: 1, skipped: 0, errors: [{ row: 0, msg: 'No valid emails found.' }] });
+            setBulkUploading(false);
+            return;
+        }
+
+        let successCount = 0;
+        let failedCount = 0;
+        let skippedCount = 0;
+        const errors = [];
+
+        for (let i = 0; i < emails.length; i++) {
+            const email = emails[i];
+            const displayId = i + 1;
+
+            // Check duplicate
+            const existing = users.find(u => u.email?.toLowerCase() === email);
+            if (existing) {
+                skippedCount++;
+                errors.push({ row: displayId, msg: `Skipped — ${email} already exists`, type: 'skip' });
+                continue;
+            }
+
+            try {
+                // For manual add by email, we use the part before @ as the name initially
+                const name = email.split('@')[0].split(/[._-]+/).map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
+                
+                await addUser({
+                    name,
+                    email,
+                    role: 'employee',
+                    department: '',
+                    designation: '',
+                    managerId: '',
+                    avatar: name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2),
+                });
+                successCount++;
+            } catch (err) {
+                failedCount++;
+                errors.push({ row: displayId, msg: `Failed to add ${email}: ${err.message}` });
+            }
+        }
+
+        setBulkResults({ total: emails.length, success: successCount, failed: failedCount, skipped: skippedCount, errors });
+        if (successCount > 0) await refreshData();
+        setBulkUploading(false);
+    };
+
+
     const resetModal = () => {
         setFetchState('idle');
         setFetchError('');
@@ -238,6 +305,9 @@ export default function Employees() {
     const openAdd = () => {
         setEditing(null);
         setForm({ name: '', email: '', role: 'employee', designation: '', department: '', managerId: '' });
+        setImportMode('single'); // 'single' | 'manual'
+        setManualEmails('');
+        setBulkResults(null);
         resetModal();
         setShowModal(true);
     };
@@ -483,364 +553,320 @@ export default function Employees() {
             ══════════════════════════════════════════════════════ */}
             {showModal && (
                 <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowModal(false)}>
-                    <div className="modal" style={{ maxWidth: '560px' }}>
-
+                    <div className="modal" style={{ maxWidth: '640px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                         {/* Header */}
-                        <div className="modal-header" style={{ padding: '20px 24px 16px', gap: '12px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                {/* Avatar preview */}
+                        <div className="modal-header" style={{ padding: '24px 32px 20px', gap: '16px', borderBottom: '1px solid var(--border)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1 }}>
                                 <Avatar
                                     avatarData={profilePhoto || (editing ? editing.avatar : null) || form.name}
                                     name={form.name}
-                                    size={44}
+                                    size={48}
                                     editable={true}
                                     onUpload={(base64) => setProfilePhoto(base64)}
-                                    style={{ boxShadow: '0 4px 12px rgba(59,130,246,0.35)' }}
+                                    style={{ boxShadow: '0 8px 24px rgba(99,102,241,0.25)', border: '2px solid #fff' }}
                                 />
                                 <div>
-                                    <h3 style={{ fontSize: '16px', fontWeight: 700, margin: 0 }}>
-                                        {editing ? 'Edit Employee' : 'Add New Employee'}
+                                    <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
+                                        {editing ? 'Edit Employee Profile' : 'Register New Employee'}
                                     </h3>
-                                    <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0, marginTop: '2px' }}>
-                                        {editing ? 'Update employee information' : 'Enter email to auto-fill from Microsoft'}
+                                    <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: 0, marginTop: '4px' }}>
+                                        {editing ? 'Update professional information' : 'Complete the profile or auto-fill via Microsoft'}
                                     </p>
                                 </div>
                             </div>
-                            <button className="close-btn" onClick={() => setShowModal(false)}>×</button>
+                            <button className="close-btn" style={{ background: 'var(--bg-secondary)', width: '36px', height: '36px' }} onClick={() => { setShowModal(false); resetModal(); }}>×</button>
                         </div>
 
-                        <div className="modal-body" style={{ padding: '20px 24px' }}>
-
-                            {/* ── STEP 1: Email Hero Field ── */}
-                            {!editing && (
-                                <div style={{
-                                    background: 'var(--bg-secondary)',
-                                    border: '1px solid var(--border)',
-                                    borderRadius: '14px',
-                                    padding: '16px',
-                                    marginBottom: '20px',
-                                }}>
-                                    <label className="form-label" style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                        <MsLogo />
-                                        <span>Work Email — auto-fill from Microsoft Entra ID</span>
-                                    </label>
-
-                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                        <div style={{ position: 'relative', flex: 1 }}>
-                                            <input
-                                                className="form-input"
-                                                type="email"
-                                                placeholder="employee@company.com"
-                                                value={form.email}
-                                                onChange={e => {
-                                                    setForm(p => ({ ...p, email: e.target.value }));
-                                                    if (fetchState !== 'idle') setFetchState('idle');
-                                                }}
-                                                style={{
-                                                    paddingRight: '36px',
-                                                    borderColor: fetchState === 'success'
-                                                        ? 'rgba(16,185,129,0.5)'
-                                                        : fetchState === 'error'
-                                                            ? 'rgba(239,68,68,0.5)'
-                                                            : 'var(--border)',
-                                                }}
-                                            />
-                                            {fetchState === 'success' && (
-                                                <span style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)' }}>
-                                                    <CheckCircle />
-                                                </span>
-                                            )}
-                                        </div>
-                                        <button
-                                            onClick={handleFetchFromMS}
-                                            disabled={!form.email || fetchState === 'loading'}
-                                            style={{
-                                                display: 'flex', alignItems: 'center', gap: '7px',
-                                                padding: '10px 16px', borderRadius: '10px',
-                                                background: fetchState === 'loading'
-                                                    ? 'rgba(59,130,246,0.15)'
-                                                    : 'linear-gradient(135deg,#0078d4,#106ebe)',
-                                                color: fetchState === 'loading' ? 'var(--text-muted)' : 'white',
-                                                border: 'none', cursor: !form.email || fetchState === 'loading' ? 'not-allowed' : 'pointer',
-                                                fontSize: '13px', fontWeight: 600, fontFamily: 'inherit',
-                                                whiteSpace: 'nowrap',
-                                                transition: 'all 0.2s',
-                                                opacity: !form.email ? 0.5 : 1,
-                                                boxShadow: fetchState !== 'loading' && form.email ? '0 4px 12px rgba(0,120,212,0.35)' : 'none',
+                        <div className="modal-body" style={{ 
+                            padding: '32px', 
+                            overflowY: 'auto', 
+                            maxHeight: 'calc(90vh - 160px)',
+                            scrollbarWidth: 'thin'
+                        }}>
+                            <div className="form-grid">
+                                {/* ── Quick Add / Fetch Section (The Box) ── */}
+                                {!editing && (
+                                    <div className="form-section full-width" style={{
+                                        background: 'linear-gradient(135deg, rgba(99,102,241,0.03), rgba(59,130,246,0.03))',
+                                        border: '1px solid var(--border)',
+                                        padding: '24px',
+                                        borderRadius: '20px',
+                                        marginBottom: '32px',
+                                        boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.02)'
+                                    }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '18px' }}>
+                                            <div style={{ 
+                                                width: '28px', height: '28px', borderRadius: '8px', 
+                                                background: 'var(--purple)', color: '#fff', 
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                boxShadow: '0 4px 10px rgba(99,102,241,0.3)'
                                             }}>
-                                            {fetchState === 'loading' ? <Spinner /> : <MsLogo />}
-                                            {fetchState === 'loading' ? 'Fetching…' : 'Fetch Details'}
-                                        </button>
+                                                <Icons.Plus style={{ width: 14, height: 14 }} />
+                                            </div>
+                                            <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '0.08em' }}>
+                                                QUICK REGISTRATION & MICROSOFT SYNC
+                                            </span>
+                                        </div>
+
+                                        {!bulkUploading && !bulkResults ? (
+                                            <>
+                                                <div style={{ position: 'relative', marginBottom: '20px' }}>
+                                                    <textarea
+                                                        className="form-input"
+                                                        placeholder="Paste emails here (one per line, comma or semicolon)..."
+                                                        value={manualEmails}
+                                                        onChange={e => {
+                                                            setManualEmails(e.target.value);
+                                                            // If only one email, sync with form.email for potential fetch
+                                                            const lines = e.target.value.split(/[,\n;]+/).filter(l => l.trim());
+                                                            if (lines.length === 1 && lines[0].includes('@')) {
+                                                                setForm(p => ({ ...p, email: lines[0].trim().toLowerCase() }));
+                                                            }
+                                                        }}
+                                                        style={{
+                                                            minHeight: '110px',
+                                                            resize: 'none',
+                                                            padding: '16px',
+                                                            fontSize: '13px',
+                                                            fontFamily: 'monospace',
+                                                            borderRadius: '14px',
+                                                            background: 'var(--bg-card)',
+                                                            border: '1.5px solid var(--border)',
+                                                            lineHeight: '1.6'
+                                                        }}
+                                                    />
+                                                </div>
+
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                                    <button
+                                                        className="btn btn-secondary"
+                                                        onClick={handleFetchFromMS}
+                                                        disabled={fetchState === 'loading' || !manualEmails.trim() || manualEmails.split(/[,\n;]+/).filter(l => l.trim()).length !== 1}
+                                                        style={{ 
+                                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', 
+                                                            fontSize: '13px', padding: '12px',
+                                                            background: 'var(--bg-card)',
+                                                            border: '1px solid var(--border)',
+                                                            boxShadow: 'var(--nm-shadow-out-sm)',
+                                                            transition: 'all 0.2s',
+                                                            color: manualEmails.split(/[,\n;]+/).filter(l => l.trim()).length === 1 ? 'var(--text-primary)' : 'var(--text-muted)'
+                                                        }}
+                                                    >
+                                                        {fetchState === 'loading' ? <Spinner style={{ width: 14, height: 14 }} /> : <MsLogo />}
+                                                        Fetch Profile
+                                                    </button>
+
+                                                    <button
+                                                        className="btn btn-primary"
+                                                        onClick={handleManualImport}
+                                                        disabled={!manualEmails.trim()}
+                                                        style={{ 
+                                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', 
+                                                            fontSize: '13px', padding: '12px',
+                                                            background: 'var(--purple)', border: 'none',
+                                                            boxShadow: '0 4px 12px rgba(99,102,241,0.4)'
+                                                        }}
+                                                    >
+                                                        <Icons.Plus style={{ width: 14, height: 14 }} />
+                                                        Quick Add
+                                                    </button>
+                                                </div>
+
+                                                {fetchState === 'success' && (
+                                                    <div style={{ marginTop: '12px', fontSize: '11px', color: '#10b981', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                        <CheckCircle style={{ width: 14, height: 14 }} /> Profile details loaded below.
+                                                    </div>
+                                                )}
+                                                {fetchState === 'error' && (
+                                                    <div style={{ marginTop: '12px', fontSize: '11px', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                        <AlertCircle style={{ width: 14, height: 14 }} /> {fetchError}
+                                                    </div>
+                                                )}
+                                            </>
+                                        ) : bulkUploading ? (
+                                            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                                                <div style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>
+                                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                        <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                                                    </svg>
+                                                </div>
+                                                <div style={{ marginTop: '12px', fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>Processing...</div>
+                                            </div>
+                                        ) : (
+                                            <div style={{ padding: '5px 0' }}>
+                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '16px' }}>
+                                                    <div style={{ textAlign: 'center', padding: '12px 8px', borderRadius: '12px', background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.15)' }}>
+                                                        <div style={{ fontSize: '20px', fontWeight: 800, color: '#10b981' }}>{bulkResults.success}</div>
+                                                        <div style={{ fontSize: '10px', fontWeight: 700, color: '#10b981', textTransform: 'uppercase' }}>Added</div>
+                                                    </div>
+                                                    <div style={{ textAlign: 'center', padding: '12px 8px', borderRadius: '12px', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.15)' }}>
+                                                        <div style={{ fontSize: '20px', fontWeight: 800, color: '#f59e0b' }}>{bulkResults.skipped || 0}</div>
+                                                        <div style={{ fontSize: '10px', fontWeight: 700, color: '#f59e0b', textTransform: 'uppercase' }}>Skipped</div>
+                                                    </div>
+                                                    <div style={{ textAlign: 'center', padding: '12px 8px', borderRadius: '12px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)' }}>
+                                                        <div style={{ fontSize: '20px', fontWeight: 800, color: '#ef4444' }}>{bulkResults.failed}</div>
+                                                        <div style={{ fontSize: '10px', fontWeight: 700, color: '#ef4444', textTransform: 'uppercase' }}>Failed</div>
+                                                    </div>
+                                                </div>
+                                                <button className="btn btn-secondary" style={{ width: '100%', fontSize: '11px', height: '32px' }} onClick={() => { setBulkResults(null); setManualEmails(''); }}>
+                                                    Add More
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
+                                )}
 
-                                    {/* Status messages */}
-                                    {fetchState === 'success' && (
-                                        <div style={{
-                                            marginTop: '10px', padding: '8px 12px',
-                                            background: 'rgba(16,185,129,0.08)', borderRadius: '8px',
-                                            border: '1px solid rgba(16,185,129,0.2)',
-                                            fontSize: '12px', color: '#10b981',
-                                            display: 'flex', alignItems: 'center', gap: '6px'
-                                        }}>
-                                            <CheckCircle />
-                                            Details fetched successfully from Microsoft Entra ID — review below
-                                        </div>
-                                    )}
-                                    {fetchState === 'error' && (
-                                        <div style={{
-                                            marginTop: '10px', padding: '8px 12px',
-                                            background: 'rgba(239,68,68,0.08)', borderRadius: '8px',
-                                            border: '1px solid rgba(239,68,68,0.2)',
-                                            fontSize: '12px', color: '#ef4444',
-                                            display: 'flex', alignItems: 'center', gap: '6px'
-                                        }}>
-                                            <AlertCircle />
-                                            {fetchError} — you can still fill in the fields manually
-                                        </div>
-                                    )}
-                                </div>
-                            )}
+                                {/* ── Separator (Only for Add mode) ── */}
+                                {!editing && !bulkResults && (
+                                    <div style={{ 
+                                        gridColumn: '1 / -1', 
+                                        display: 'flex', alignItems: 'center', gap: '20px', 
+                                        margin: '8px 0 32px', opacity: 0.8
+                                    }}>
+                                        <div style={{ flex: 1, height: '1px', background: 'linear-gradient(to right, transparent, var(--border), var(--border))' }} />
+                                        <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '0.1em', whiteSpace: 'nowrap' }}>
+                                            OR REGISTER MANUALLY
+                                        </span>
+                                        <div style={{ flex: 1, height: '1px', background: 'linear-gradient(to left, transparent, var(--border), var(--border))' }} />
+                                    </div>
+                                )}
 
-                            {/* ── Edit mode: read-only email field ── */}
-                            {editing && (
                                 <div className="form-group">
-                                    <label className="form-label">Email</label>
+                                    <label className="form-label" style={{ color: 'var(--text-secondary)', fontSize: '11px', fontWeight: 700 }}>Work Email Address *</label>
                                     <input
-                                        className="form-input"
                                         type="email"
+                                        className="form-input"
+                                        placeholder="employee@company.com"
                                         value={form.email}
-                                        readOnly
-                                        style={{ color: 'var(--text-muted)', cursor: 'not-allowed', background: 'transparent' }}
+                                        onChange={e => setForm({ ...form, email: e.target.value.toLowerCase() })}
+                                        style={{ height: '46px', borderRadius: '12px', background: 'var(--bg-card)', border: '1px solid var(--border)' }}
                                     />
                                 </div>
-                            )}
 
-                            {/* ── Row 1: Name + Department ── */}
-                            <div className="form-grid">
                                 <div className="form-group">
-                                    <label className="form-label">Full Name *</label>
-                                    <input className="form-input" placeholder="Display Name"
+                                    <label className="form-label" style={{ color: 'var(--text-secondary)', fontSize: '11px', fontWeight: 700 }}>Full Name *</label>
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        placeholder="Enter display name"
                                         value={form.name}
-                                        onChange={e => setForm(p => ({ ...p, name: e.target.value }))} />
+                                        onChange={e => setForm({ ...form, name: e.target.value })}
+                                        style={{ height: '46px', borderRadius: '12px', background: 'var(--bg-card)', border: '1px solid var(--border)' }}
+                                    />
                                 </div>
+
                                 <div className="form-group">
-                                    <label className="form-label">Job Title / Designation</label>
+                                    <label className="form-label" style={{ color: 'var(--text-secondary)', fontSize: '11px', fontWeight: 700 }}>Job Title / Designation</label>
                                     <select
                                         className="form-select"
                                         value={form.designation}
-                                        onChange={e => setForm(p => ({ ...p, designation: e.target.value }))}
+                                        onChange={e => setForm({ ...form, designation: e.target.value })}
+                                        style={{ height: '46px', borderRadius: '12px', background: 'var(--bg-card)', border: '1px solid var(--border)' }}
                                     >
-                                        <option value="">-- Select Title --</option>
+                                        <option value="">-- Select Professional Title --</option>
                                         {designations.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
                                     </select>
-                                    {profileReviewStarted && (
-                                        <div style={{
-                                            fontSize: '11px',
-                                            color: 'var(--blue)',
-                                            marginTop: '6px',
-                                            fontWeight: 600,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '4px',
-                                            padding: '4px 8px',
-                                            background: 'rgba(59, 130, 246, 0.05)',
-                                            borderRadius: '4px',
-                                            border: '1px solid rgba(59, 130, 246, 0.1)'
-                                        }}>
-                                            <Icons.Info style={{ width: 14, height: 14 }} />
-                                            Designation updated. Question Set remains unchanged as review has already started.
-                                        </div>
-                                    )}
                                 </div>
-                            </div>
 
-                            {/* ── Row 2: Department + Role ── */}
-                            <div className="form-grid">
                                 <div className="form-group">
-                                    <label className="form-label">Department</label>
-                                    <select className="form-select" value={form.department}
-                                        onChange={e => setForm(p => ({ ...p, department: e.target.value }))}>
+                                    <label className="form-label" style={{ color: 'var(--text-secondary)', fontSize: '11px', fontWeight: 700 }}>Department</label>
+                                    <select
+                                        className="form-select"
+                                        value={form.department}
+                                        onChange={e => setForm({ ...form, department: e.target.value })}
+                                        style={{ height: '46px', borderRadius: '12px', background: 'var(--bg-card)', border: '1px solid var(--border)' }}
+                                    >
                                         <option value="">-- Select Department --</option>
                                         {departments.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
                                     </select>
                                 </div>
+
                                 <div className="form-group">
-                                    <label className="form-label">System Access Level</label>
-                                    <select className="form-select" value={form.role}
-                                        onChange={e => setForm(p => ({ ...p, role: e.target.value }))}>
-                                        <option value="employee">Employee</option>
-                                        <option value="manager">Manager</option>
-                                        <option value="hr">HR Admin</option>
-                                        <option value="admin">Admin</option>
+                                    <label className="form-label" style={{ color: 'var(--text-secondary)', fontSize: '11px', fontWeight: 700 }}>System Access Level</label>
+                                    <select
+                                        className="form-select"
+                                        value={form.role}
+                                        onChange={e => setForm({ ...form, role: e.target.value })}
+                                        style={{ height: '46px', borderRadius: '12px', background: 'var(--bg-card)', border: '1px solid var(--border)' }}
+                                    >
+                                        <option value="employee">Standard Employee</option>
+                                        <option value="manager">Reporting Manager</option>
+                                        <option value="hr">HR Personnel</option>
+                                        <option value="admin">System Administrator</option>
+                                    </select>
+                                </div>
+
+                                <div className="form-group">
+                                    <label className="form-label" style={{ color: 'var(--text-secondary)', fontSize: '11px', fontWeight: 700 }}>Reporting Manager</label>
+                                    <select
+                                        className="form-select"
+                                        value={form.managerId}
+                                        onChange={e => setForm({ ...form, managerId: e.target.value })}
+                                        disabled={currentUser.role !== 'admin' && currentUser.role !== 'hr'}
+                                        style={{ height: '46px', borderRadius: '12px', background: 'var(--bg-card)', border: '1px solid var(--border)' }}
+                                    >
+                                        <option value="">None (Top Level)</option>
+                                        {users.filter(u => u.role !== 'employee').map(u => (
+                                            <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
+                                        ))}
                                     </select>
                                 </div>
                             </div>
 
-                            {/* ── Row 3: Reporting Manager ── */}
-                            <div className="form-group">
-                                <label className="form-label">Reporting Manager</label>
-                                <select className="form-select" value={form.managerId}
-                                    onChange={e => setForm(p => ({ ...p, managerId: e.target.value }))}
-                                    disabled={currentUser.role !== 'admin' && currentUser.role !== 'hr'}
-                                    style={currentUser.role !== 'admin' && currentUser.role !== 'hr' ? { cursor: 'not-allowed', backgroundColor: 'var(--bg-secondary)', opacity: 0.7 } : {}}
-                                >
-                                    <option value="">None</option>
-                                    {availableManagers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                                </select>
-                            </div>
 
-                            {/* ── Cycle-Specific Question Set Overrides (only for existing employees) ── */}
+                            {/* Self Review Override Section (Existing) */}
                             {editing && (
                                 <div style={{
-                                    background: 'var(--bg-secondary)',
-                                    padding: '16px',
-                                    borderRadius: '8px',
-                                    border: '1px solid var(--border)',
-                                    marginTop: '4px',
+                                    marginTop: '24px',
+                                    paddingTop: '24px',
+                                    borderTop: '1px solid var(--border)'
                                 }}>
-                                    <h4 style={{
-                                        margin: '0 0 12px 0',
-                                        fontSize: '13px',
-                                        color: 'var(--text-primary)',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '6px'
-                                    }}>
-                                        <Icons.Cycles style={{ width: 14, height: 14 }} /> Cycle-Specific Question Set
-                                    </h4>
-
-                                    {/* Existing override list */}
-                                    {currentEmployeeOverrides.length > 0 && (
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '12px' }}>
-                                            {currentEmployeeOverrides.map(override => {
-                                                const c = cycles.find(cy => cy.id === override.cycleId);
-                                                const q = questionSets.find(qs => qs.id === override.questionSetId);
-
-                                                // Check if a review has already started for this cycle
-                                                const reviewStarted = selfReviews.some(r =>
-                                                    String(r.employeeId) === String(editing.id) &&
-                                                    String(r.cycleId) === String(override.cycleId) &&
-                                                    (r.status === 'draft' || r.status === 'submitted')
-                                                );
-
-                                                const isCycleClosed = c?.status === 'closed';
-
-                                                return (
-                                                    <div key={override.cycleId} style={{ marginBottom: '8px' }}>
-                                                        <div style={{
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'space-between',
-                                                            background: 'var(--bg-card)',
-                                                            padding: '8px 12px',
-                                                            borderRadius: '6px',
-                                                            border: '1px solid var(--border)'
-                                                        }}>
-                                                            <div style={{ fontSize: '13px' }}>
-                                                                <strong style={{ color: 'var(--blue)' }}>{c?.name || 'Unknown Cycle'}</strong>
-                                                                <span style={{ color: 'var(--text-muted)', margin: '0 8px' }}>→</span>
-                                                                <span style={{ color: 'var(--text-secondary)' }}>{q?.name || 'Unknown Set'}</span>
-                                                            </div>
-                                                            {!reviewStarted && !isCycleClosed && (
-                                                                <button
-                                                                    className="btn btn-sm"
-                                                                    style={{ padding: '4px', background: 'transparent', color: 'var(--red)', border: 'none', cursor: 'pointer' }}
-                                                                    onClick={() => handleRemoveOverride(override.cycleId)}
-                                                                    title="Remove this override"
-                                                                >
-                                                                    <Icons.Trash style={{ width: 14, height: 14 }} />
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                        {(reviewStarted || isCycleClosed) && (
-                                                            <div style={{
-                                                                fontSize: '11px',
-                                                                color: '#ef4444',
-                                                                marginTop: '4px',
-                                                                paddingLeft: '4px',
-                                                                fontWeight: 600,
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                gap: '4px'
-                                                            }}>
-                                                                <AlertCircle /> {isCycleClosed ? 'Question Set cannot be changed for closed cycles' : 'Question Set cannot be changed once review is started'}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                );
-                                            })}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                                        <Icons.Target style={{ color: 'var(--purple)' }} />
+                                        <span style={{ fontWeight: 700, fontSize: '14px' }}>Self-Review Overrides</span>
+                                    </div>
+                                    
+                                    <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+                                        <div style={{ flex: 1 }}>
+                                            <label className="form-label" style={{ fontSize: '11px' }}>Appraisal Cycle</label>
+                                            <select
+                                                className="form-select"
+                                                style={{ height: '36px', fontSize: '13px' }}
+                                                value={overrideForm.cycleId}
+                                                onChange={e => setOverrideForm(p => ({ ...p, cycleId: e.target.value }))}
+                                            >
+                                                <option value="">-- Choose Cycle --</option>
+                                                {cycles.filter(c => c.status !== 'archived').map(c => (
+                                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                                ))}
+                                            </select>
                                         </div>
-                                    )}
-
-                                    {/* Add new override */}
-                                    {(() => {
-                                        // Show all active and draft cycles (not just active)
-                                        const assignableCycles = cycles.filter(c => c.status === 'active' || c.status === 'draft');
-                                        if (assignableCycles.length === 0) return <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>No active or draft cycles available.</div>;
-
-                                        // Filter out cycles that already have an override for this employee
-                                        const availableCycles = assignableCycles.filter(c => !currentEmployeeOverrides.some(o => o.cycleId === c.id));
-                                        if (availableCycles.length === 0) return <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>All available cycles already have a question set assigned.</div>;
-
-                                        const selectedCycleId = overrideForm.cycleId || availableCycles[0]?.id || '';
-                                        const selectedCycle = availableCycles.find(c => c.id === selectedCycleId) || availableCycles[0];
-                                        const reviewStarted = selectedCycle ? selfReviews.some(r =>
-                                            String(r.employeeId) === String(editing.id) &&
-                                            String(r.cycleId) === String(selectedCycle.id) &&
-                                            (r.status === 'draft' || r.status === 'submitted')
-                                        ) : false;
-
-                                        return (
-                                            <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end', marginTop: currentEmployeeOverrides.length > 0 ? '12px' : '0' }}>
-                                                <div style={{ flex: 1 }}>
-                                                    <label style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Cycle</label>
-                                                    <select
-                                                        className="form-select"
-                                                        style={{ height: '36px', fontSize: '13px' }}
-                                                        value={selectedCycleId}
-                                                        onChange={e => setOverrideForm(p => ({ ...p, cycleId: e.target.value }))}
-                                                    >
-                                                        {availableCycles.map(c => (
-                                                            <option key={c.id} value={c.id}>
-                                                                {c.name} ({c.status})
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                </div>
-                                                <div style={{ flex: 1 }}>
-                                                    <label style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Question Set</label>
-                                                    <select
-                                                        className="form-select"
-                                                        style={{ height: '36px', fontSize: '13px' }}
-                                                        value={overrideForm.questionSetId}
-                                                        onChange={e => setOverrideForm(p => ({ ...p, cycleId: selectedCycleId, questionSetId: e.target.value }))}
-                                                        disabled={reviewStarted}
-                                                    >
-                                                        <option value="">-- Choose Set --</option>
-                                                        {questionSets.map(qs => <option key={qs.id} value={qs.id}>{qs.name}</option>)}
-                                                    </select>
-                                                </div>
-                                                <button
-                                                    className="btn btn-secondary"
-                                                    style={{ height: '36px', padding: '0 14px', fontSize: '13px', whiteSpace: 'nowrap' }}
-                                                    onClick={() => {
-                                                        const targetCycleId = selectedCycleId;
-                                                        if (!editing || !targetCycleId || !overrideForm.questionSetId) return;
-                                                        saveEmployeeOverride(editing.id, targetCycleId, overrideForm.questionSetId).then(res => {
-                                                            if (res.success) {
-                                                                setOverrideForm({ cycleId: '', questionSetId: '' });
-                                                            } else {
-                                                                showToast('error', `Failed to save: ${res.error}`);
-                                                            }
-                                                        });
-                                                    }}
-                                                    disabled={reviewStarted || !overrideForm.questionSetId}
-                                                >
-                                                    + Add
-                                                </button>
-                                            </div>
-                                        );
-                                    })()}
+                                        <div style={{ flex: 1 }}>
+                                            <label className="form-label" style={{ fontSize: '11px' }}>Question Set</label>
+                                            <select
+                                                className="form-select"
+                                                style={{ height: '36px', fontSize: '13px' }}
+                                                value={overrideForm.questionSetId}
+                                                onChange={e => setOverrideForm(p => ({ ...p, questionSetId: e.target.value }))}
+                                            >
+                                                <option value="">-- Choose Set --</option>
+                                                {questionSets.map(qs => <option key={qs.id} value={qs.id}>{qs.name}</option>)}
+                                            </select>
+                                        </div>
+                                        <button
+                                            className="btn btn-secondary"
+                                            style={{ height: '36px', padding: '0 14px', fontSize: '13px', whiteSpace: 'nowrap' }}
+                                            onClick={() => {
+                                                if (!editing || !overrideForm.cycleId || !overrideForm.questionSetId) return;
+                                                saveEmployeeOverride(editing.id, overrideForm.cycleId, overrideForm.questionSetId).then(res => {
+                                                    if (res.success) setOverrideForm({ cycleId: '', questionSetId: '' });
+                                                });
+                                            }}
+                                            disabled={!overrideForm.cycleId || !overrideForm.questionSetId}
+                                        >
+                                            + Add
+                                        </button>
+                                    </div>
                                     <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px' }}>
                                         Overrides take priority. All other cycles fall back to Job Title defaults.
                                     </div>
@@ -848,17 +874,21 @@ export default function Employees() {
                             )}
                         </div>
 
+
                         {/* Footer */}
                         <div className="modal-footer">
                             <button className="btn btn-secondary" onClick={() => { setShowModal(false); resetModal(); }}>
                                 Cancel
                             </button>
+                            
                             <button
                                 className="btn btn-primary"
                                 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
                                 onClick={handleSave}
-                                disabled={!form.name || !form.email}>
-                                <Icons.Save /> {editing ? 'Update Employee' : 'Add Employee'}
+                                disabled={!form.name || !form.email}
+                            >
+                                <Icons.Save /> 
+                                {editing ? 'Update Employee' : 'Add Employee'}
                             </button>
                         </div>
                     </div>
@@ -866,13 +896,12 @@ export default function Employees() {
             )}
 
             {/* ══════════════════════════════════════════════════════
-                IMPORT MODAL — Drag & Drop + Results
+                IMPORT MODAL — File Upload Only
             ══════════════════════════════════════════════════════ */}
             {showImportModal && (
                 <div className="modal-overlay" onClick={e => e.target === e.currentTarget && !bulkUploading && setShowImportModal(false)}>
                     <div className="modal" style={{ maxWidth: '560px' }}>
 
-                        {/* ── Header ── */}
                         <div className="modal-header" style={{ padding: '20px 24px 16px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                 <div style={{
@@ -895,71 +924,52 @@ export default function Employees() {
                         </div>
 
                         <div className="modal-body" style={{ padding: '20px 24px' }}>
-
-                            {/* ── STATE 1: Drag & Drop Zone ── */}
                             {!bulkUploading && !bulkResults && (
-                                <>
-                                    <div
-                                        onDragOver={handleDragOver}
-                                        onDragLeave={handleDragLeave}
-                                        onDrop={handleDrop}
-                                        onClick={() => fileInputRef.current?.click()}
-                                        style={{
-                                            border: `2px dashed ${isDragging ? '#a855f7' : selectedFile ? '#10b981' : 'var(--border)'}`,
-                                            borderRadius: '16px',
-                                            padding: '40px 24px',
-                                            textAlign: 'center',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.25s ease',
-                                            background: isDragging ? 'rgba(168,85,247,0.06)' : selectedFile ? 'rgba(16,185,129,0.04)' : 'transparent',
-                                            transform: isDragging ? 'scale(1.01)' : 'scale(1)',
-                                        }}
-                                    >
-                                        {/* Icon */}
-                                        <div style={{
-                                            width: '56px', height: '56px', borderRadius: '16px', margin: '0 auto 16px',
-                                            background: isDragging ? 'rgba(168,85,247,0.15)' : selectedFile ? 'rgba(16,185,129,0.12)' : 'rgba(100,116,139,0.1)',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            transition: 'all 0.25s ease',
-                                        }}>
-                                            {selectedFile ? (
-                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
-                                                </svg>
-                                            ) : (
-                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={isDragging ? '#a855f7' : '#94a3b8'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
-                                                </svg>
-                                            )}
-                                        </div>
-
+                                <div
+                                    onDragOver={handleDragOver}
+                                    onDragLeave={handleDragLeave}
+                                    onDrop={handleDrop}
+                                    onClick={() => fileInputRef.current?.click()}
+                                    style={{
+                                        border: `2px dashed ${isDragging ? '#a855f7' : selectedFile ? '#10b981' : 'var(--border)'}`,
+                                        borderRadius: '16px',
+                                        padding: '40px 24px',
+                                        textAlign: 'center',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.25s ease',
+                                        background: isDragging ? 'rgba(168,85,247,0.06)' : selectedFile ? 'rgba(16,185,129,0.04)' : 'transparent',
+                                        transform: isDragging ? 'scale(1.01)' : 'scale(1)',
+                                    }}
+                                >
+                                    <div style={{
+                                        width: '56px', height: '56px', borderRadius: '16px', margin: '0 auto 16px',
+                                        background: isDragging ? 'rgba(168,85,247,0.15)' : selectedFile ? 'rgba(16,185,129,0.12)' : 'rgba(100,116,139,0.1)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    }}>
                                         {selectedFile ? (
-                                            <>
-                                                <div style={{ fontSize: '14px', fontWeight: 700, color: '#10b981', marginBottom: '4px' }}>
-                                                    {selectedFile.name}
-                                                </div>
-                                                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                                                    {(selectedFile.size / 1024).toFixed(1)} KB — Click to change file
-                                                </div>
-                                            </>
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+                                            </svg>
                                         ) : (
-                                            <>
-                                                <div style={{ fontSize: '14px', fontWeight: 600, color: isDragging ? '#a855f7' : 'var(--text-primary)', marginBottom: '6px' }}>
-                                                    {isDragging ? 'Drop your file here' : 'Drag & drop your Excel file here'}
-                                                </div>
-                                                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                                                    or <span style={{ color: '#a855f7', fontWeight: 600, textDecoration: 'underline' }}>browse files</span>
-                                                </div>
-                                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '10px', opacity: 0.7 }}>
-                                                    Supports .xlsx, .xls, .csv
-                                                </div>
-                                            </>
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={isDragging ? '#a855f7' : '#94a3b8'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                                            </svg>
                                         )}
                                     </div>
-                                </>
+                                    {selectedFile ? (
+                                        <>
+                                            <div style={{ fontSize: '14px', fontWeight: 700, color: '#10b981', marginBottom: '4px' }}>{selectedFile.name}</div>
+                                            <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{(selectedFile.size / 1024).toFixed(1)} KB — Click to change</div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>Drag & drop your Excel file here</div>
+                                            <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>or <span style={{ color: '#a855f7', fontWeight: 600, textDecoration: 'underline' }}>browse files</span></div>
+                                        </>
+                                    )}
+                                </div>
                             )}
 
-                            {/* ── STATE 2: Processing ── */}
                             {bulkUploading && (
                                 <div style={{ textAlign: 'center', padding: '40px 0' }}>
                                     <div style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>
@@ -968,94 +978,46 @@ export default function Employees() {
                                         </svg>
                                     </div>
                                     <div style={{ marginTop: '16px', fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>Importing employees…</div>
-                                    <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--text-muted)' }}>Please wait while records are being registered</div>
                                 </div>
                             )}
 
-                            {/* ── STATE 3: Results ── */}
                             {!bulkUploading && bulkResults && (
                                 <>
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '20px' }}>
-                                        <div style={{
-                                            textAlign: 'center', padding: '18px 12px', borderRadius: '14px',
-                                            background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)'
-                                        }}>
+                                        <div style={{ textAlign: 'center', padding: '18px 12px', borderRadius: '14px', background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)' }}>
                                             <div style={{ fontSize: '28px', fontWeight: 800, color: '#10b981' }}>{bulkResults.success}</div>
-                                            <div style={{ fontSize: '11px', fontWeight: 600, color: '#10b981', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Added</div>
+                                            <div style={{ fontSize: '11px', fontWeight: 600, color: '#10b981', marginTop: '4px', textTransform: 'uppercase' }}>Added</div>
                                         </div>
-                                        <div style={{
-                                            textAlign: 'center', padding: '18px 12px', borderRadius: '14px',
-                                            background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)'
-                                        }}>
+                                        <div style={{ textAlign: 'center', padding: '18px 12px', borderRadius: '14px', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}>
                                             <div style={{ fontSize: '28px', fontWeight: 800, color: '#f59e0b' }}>{bulkResults.skipped || 0}</div>
-                                            <div style={{ fontSize: '11px', fontWeight: 600, color: '#f59e0b', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Skipped</div>
+                                            <div style={{ fontSize: '11px', fontWeight: 600, color: '#f59e0b', marginTop: '4px', textTransform: 'uppercase' }}>Skipped</div>
                                         </div>
-                                        <div style={{
-                                            textAlign: 'center', padding: '18px 12px', borderRadius: '14px',
-                                            background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)'
-                                        }}>
+                                        <div style={{ textAlign: 'center', padding: '18px 12px', borderRadius: '14px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
                                             <div style={{ fontSize: '28px', fontWeight: 800, color: '#ef4444' }}>{bulkResults.failed}</div>
-                                            <div style={{ fontSize: '11px', fontWeight: 600, color: '#ef4444', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Failed</div>
+                                            <div style={{ fontSize: '11px', fontWeight: 600, color: '#ef4444', marginTop: '4px', textTransform: 'uppercase' }}>Failed</div>
                                         </div>
                                     </div>
-
                                     {bulkResults.errors.length > 0 && (
-                                        <div style={{
-                                            maxHeight: '180px', overflowY: 'auto',
-                                            background: 'var(--bg-secondary)', borderRadius: '10px',
-                                            border: '1px solid var(--border)', padding: '12px',
-                                        }}>
-                                            <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>Details</div>
+                                        <div style={{ maxHeight: '180px', overflowY: 'auto', background: 'var(--bg-secondary)', borderRadius: '10px', border: '1px solid var(--border)', padding: '12px' }}>
                                             {bulkResults.errors.map((err, idx) => (
-                                                <div key={idx} style={{
-                                                    fontSize: '12px', padding: '6px 8px', marginBottom: '4px',
-                                                    borderRadius: '6px',
-                                                    background: err.type === 'skip' ? 'rgba(245,158,11,0.06)' : 'rgba(239,68,68,0.06)',
-                                                    color: err.type === 'skip' ? '#d97706' : '#ef4444',
-                                                    display: 'flex', alignItems: 'center', gap: '6px',
-                                                }}>
-                                                    {err.type === 'skip' ? '⏭️' : '❌'}
-                                                    {err.row > 0 && <span style={{ fontWeight: 700 }}>Row {err.row}:</span>}
-                                                    {err.msg}
+                                                <div key={idx} style={{ fontSize: '12px', padding: '6px 8px', marginBottom: '4px', borderRadius: '6px', background: err.type === 'skip' ? 'rgba(245,158,11,0.06)' : 'rgba(239,68,68,0.06)', color: err.type === 'skip' ? '#d97706' : '#ef4444', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                    {err.type === 'skip' ? '⏭️' : '❌'} {err.msg}
                                                 </div>
                                             ))}
-                                        </div>
-                                    )}
-
-                                    {bulkResults.errors.length === 0 && bulkResults.success > 0 && (
-                                        <div style={{
-                                            textAlign: 'center', padding: '20px',
-                                            background: 'rgba(16,185,129,0.06)', borderRadius: '12px',
-                                            border: '1px solid rgba(16,185,129,0.15)',
-                                            color: '#10b981', fontSize: '15px', fontWeight: 700
-                                        }}>
-                                            🎉 All {bulkResults.success} employees imported successfully!
                                         </div>
                                     )}
                                 </>
                             )}
                         </div>
 
-                        {/* ── Footer ── */}
                         {!bulkUploading && (
-                            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+                            <div className="modal-footer">
                                 {!bulkResults ? (
-                                    <button
-                                        className="btn btn-primary"
-                                        disabled={!selectedFile}
-                                        onClick={processImportFile}
-                                        style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: selectedFile ? 1 : 0.5 }}
-                                    >
-                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>
+                                    <button className="btn btn-primary" disabled={!selectedFile} onClick={processImportFile}>
                                         Import {selectedFile ? `(${selectedFile.name})` : ''}
                                     </button>
                                 ) : (
-                                    <>
-                                        <button className="btn btn-secondary" onClick={() => { setBulkResults(null); setSelectedFile(null); }}>
-                                            Import More
-                                        </button>
-                                        <button className="btn btn-primary" onClick={() => setShowImportModal(false)}>Done</button>
-                                    </>
+                                    <button className="btn btn-primary" onClick={() => setShowImportModal(false)}>Done</button>
                                 )}
                             </div>
                         )}
@@ -1065,3 +1027,4 @@ export default function Employees() {
         </div>
     );
 }
+
