@@ -11,16 +11,12 @@ const supabaseAnonKey = keyMatch[1].trim();
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 async function inspectSchema() {
-    console.log("Inspecting self_reviews table...");
-    // We can't query information_schema directly via PostgREST unless it's exposed.
-    // But we can try to do a dry-run insert or something.
-    
-    // Let's try to fetch one row and see the columns
-    const { data, error } = await supabase.from('self_reviews').select('*').limit(1);
-    if (error) {
-        console.error("Error:", error);
+    console.log("Inspecting evaluations table...");
+    const { data: evalData, error: evalError } = await supabase.from('evaluations').select('*').limit(1);
+    if (evalError) {
+        console.error("Eval Error:", evalError);
     } else {
-        console.log("Sample row:", data[0]);
+        console.log("Eval Sample row:", evalData[0]);
     }
 }
 

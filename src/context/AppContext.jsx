@@ -214,6 +214,9 @@ export function AppProvider({ children }) {
                                 if (metadata.competencies[qid]?.comment) {
                                     metadata.competencies[qid].comment = decrypt(metadata.competencies[qid].comment);
                                 }
+                                if (metadata.competencies[qid]?.rating) {
+                                    metadata.competencies[qid].rating = parseFloat(decrypt(metadata.competencies[qid].rating)) || metadata.competencies[qid].rating || 0;
+                                }
                             });
                         }
                     }
@@ -246,6 +249,14 @@ export function AppProvider({ children }) {
                                 if (metadata.competencies[qid]?.comment) {
                                     metadata.competencies[qid].comment = decrypt(metadata.competencies[qid].comment);
                                 }
+                                if (metadata.competencies[qid]?.rating) {
+                                    metadata.competencies[qid].rating = parseFloat(decrypt(metadata.competencies[qid].rating)) || metadata.competencies[qid].rating || 0;
+                                }
+                            });
+                        }
+                        if (metadata.hr_ratings) {
+                            Object.keys(metadata.hr_ratings).forEach(qid => {
+                                metadata.hr_ratings[qid] = parseFloat(decrypt(metadata.hr_ratings[qid])) || metadata.hr_ratings[qid] || 0;
                             });
                         }
                         if (metadata.hr_comment) metadata.hr_comment = decrypt(metadata.hr_comment);
@@ -295,7 +306,7 @@ export function AppProvider({ children }) {
                 if (plainComment.startsWith('{')) {
                     const parsed = JSON.parse(plainComment);
                     plainComment = decrypt(parsed.comment || '') || parsed.comment || '';
-                    hrRatingFromApproval = parsed.hrRating || 0;
+                    hrRatingFromApproval = parseFloat(decrypt(parsed.hrRating)) || parsed.hrRating || 0;
                 } else {
                     // Might be a bare encrypted or plain string
                     plainComment = decrypt(plainComment);
@@ -1123,7 +1134,8 @@ export function AppProvider({ children }) {
             Object.keys(review.competencies).forEach(qid => {
                 encryptedCompetencies[qid] = {
                     ...review.competencies[qid],
-                    comment: encrypt(review.competencies[qid].comment)
+                    comment: encrypt(review.competencies[qid].comment),
+                    rating: encrypt(String(review.competencies[qid].rating || 0))
                 };
             });
         }
@@ -1288,7 +1300,8 @@ export function AppProvider({ children }) {
             Object.keys(evaluation.competencies).forEach(qid => {
                 encryptedCompetencies[qid] = {
                     ...evaluation.competencies[qid],
-                    comment: encrypt(evaluation.competencies[qid].comment)
+                    comment: encrypt(evaluation.competencies[qid].comment),
+                    rating: encrypt(String(evaluation.competencies[qid].rating || 0))
                 };
             });
         }
@@ -1356,11 +1369,11 @@ export function AppProvider({ children }) {
             cycle_id: evaluation.cycleId,
             employee_id: evaluation.employeeId,
             manager_id: currentUser?.id,
-            // Legacy columns with NOT NULL constraints - sending defaults
-            work_performance_rating: encrypt('0'),
-            behavioral_rating: encrypt('0'),
+            // Use actual ratings from the evaluation object and encrypt them
+            work_performance_rating: encrypt(String(evaluation.workPerformanceRating || 0)),
+            behavioral_rating: encrypt(String(evaluation.behavioralRating || 0)),
             final_rating: evaluation.finalRating ? encrypt(evaluation.finalRating) : null,
-            sub_rating: evaluation.subRating || null, // Plain number for DB
+            sub_rating: evaluation.subRating || null, // Plain number for DB (numeric column)
             feedback: packedFeedback,
             status: evaluation.status || 'draft',
             submitted_at: new Date().toISOString().split('T')[0],
@@ -1467,7 +1480,7 @@ export function AppProvider({ children }) {
         const approval = {
             eval_id: evalId,
             approved_by: currentUser?.id,
-            comment: JSON.stringify({ comment: encrypt(comment), hrRating }),
+            comment: JSON.stringify({ comment: encrypt(comment), hrRating: encrypt(String(hrRating)) }),
             approved_at: new Date().toISOString().split('T')[0],
         };
         const { data: approvalData, error: approvalError } = await supabase.from('approvals').insert(approval).select().single();
@@ -1513,10 +1526,17 @@ export function AppProvider({ children }) {
 
         const avgHr = Object.values(hrRatings).reduce((a, b) => a + b, 0) / Object.keys(hrRatings).length || 0;
 
+        const encryptedHrRatings = {};
+        if (hrRatings) {
+            Object.keys(hrRatings).forEach(qid => {
+                encryptedHrRatings[qid] = encrypt(String(hrRatings[qid] || 0));
+            });
+        }
+
         const newMetadata = {
             ...existing.metadata,
             hr_comment: encrypt(hrComment),
-            hr_ratings: hrRatings
+            hr_ratings: encryptedHrRatings
         };
 
         const payload = {
