@@ -806,7 +806,7 @@ export default function Employees() {
                                         style={{ height: '46px', borderRadius: '12px', background: 'var(--bg-card)', border: '1px solid var(--border)' }}
                                     >
                                         <option value="">None (Top Level)</option>
-                                        {users.filter(u => u.role !== 'employee').map(u => (
+                                        {users.filter(u => u.role === 'admin' || u.role === 'manager').map(u => (
                                             <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
                                         ))}
                                     </select>
